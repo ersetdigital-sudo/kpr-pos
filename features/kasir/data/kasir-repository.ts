@@ -209,6 +209,7 @@ function buildReceiptView(
     branchAddress: branch?.address ?? "-",
     businessName: database.settings.business.name,
     businessPhone: database.settings.business.phone,
+    logoUrl: database.settings.business.logoUrl,
     cashierName: cashier?.name ?? "Karyawan",
     salesName: sales?.name ?? null,
     bankName: bank?.bankName ?? null,

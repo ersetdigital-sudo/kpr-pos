@@ -24,6 +24,7 @@ export interface Branch {
 export interface Employee {
   id: string;
   name: string;
+  phone: string;
   initials: string;
   role: Role;
   branchId: string;
@@ -65,6 +66,8 @@ export interface BusinessProfile {
   name: string;
   address: string;
   phone: string;
+  /** Data URL / URL logo; kosong berarti memakai logo bawaan. */
+  logoUrl?: string;
 }
 
 export interface PaymentSettings {
@@ -75,6 +78,12 @@ export interface PaymentSettings {
 export interface ReceiptSettings {
   paperSize: ReceiptPaperSize;
   footerText: string;
+}
+
+export interface AttendanceSettings {
+  /** Format HH:MM, dipakai untuk menandai telat. */
+  workStartTime: string;
+  workEndTime: string;
 }
 
 export type SalesBonusType = "per_piece" | "percent" | "tiered";
@@ -102,6 +111,7 @@ export interface StoreSettings {
   salesBonusPerPiece: number;
   salesBonus: SalesBonusSettings;
   receipt: ReceiptSettings;
+  attendance: AttendanceSettings;
 }
 
 export interface TransactionItem {
@@ -241,6 +251,15 @@ export interface StockTransferRecord {
 
 export type AttendanceStatus = "Hadir" | "Izin" | "Sakit" | "Alpa";
 
+/** Status yang ditampilkan; "Telat" dihitung dari jam masuk di pengaturan. */
+export type AttendanceDisplayStatus =
+  | "Hadir"
+  | "Telat"
+  | "Izin"
+  | "Sakit"
+  | "Alpa"
+  | "Belum absen";
+
 export interface AttendanceRecord {
   id: string;
   employeeId: string;
@@ -249,6 +268,21 @@ export interface AttendanceRecord {
   status: AttendanceStatus;
   checkIn?: string;
   checkOut?: string;
+}
+
+export type LeaveRequestStatus = "Menunggu" | "Disetujui" | "Ditolak";
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  branchId: string;
+  /** Tanggal izin (YYYY-MM-DD). */
+  date: string;
+  reason: string;
+  status: LeaveRequestStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
 }
 
 export interface ActivityLog {
@@ -268,7 +302,7 @@ export interface AppSession {
 }
 
 export interface AppDatabase {
-  schemaVersion: 2;
+  schemaVersion: 3;
   branches: Branch[];
   employees: Employee[];
   categories: Category[];
@@ -281,6 +315,7 @@ export interface AppDatabase {
   drafts: CartDraft[];
   salesOrders: SalesOrder[];
   attendance: AttendanceRecord[];
+  leaveRequests: LeaveRequest[];
   settings: StoreSettings;
   activityLogs: ActivityLog[];
   session: AppSession;

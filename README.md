@@ -1,9 +1,10 @@
 # POS Management System — CV. Karya Putra Ragil
 
 UI aplikasi POS berbasis **Next.js 16 (App Router)**, **TypeScript**, dan **Tailwind CSS 4**.
-Fase 2 mencakup store sementara (localStorage), demo role, Kasir, Produk & Stok,
-Pesanan Sales, Dashboard, dan Laporan yang semuanya membaca data store.
-Belum ada database, login, maupun API.
+Fase 3 mencakup store sementara (localStorage), demo role, Kasir, Produk & Stok,
+Pesanan Sales, Dashboard, Laporan, Absensi, Karyawan & Role, Cabang, dan
+Pengaturan yang semuanya membaca data store. Belum ada database, login, maupun
+API.
 
 ## Menjalankan
 
@@ -25,6 +26,10 @@ Perintah lain: `npm run lint`, `npm run typecheck`, `npm run build`.
 | `/pesanan`   | Input pesanan, status pesanan, bonus, papan peringkat         |
 | `/produk`    | Produk, kategori, stok masuk, opname, transfer, import Excel  |
 | `/laporan`   | Omzet, laba, metode bayar, per kasir, log aktivitas, export    |
+| `/absensi`   | Absen masuk/pulang, pengajuan izin, rekap bulanan, export      |
+| `/karyawan`  | CRUD karyawan, filter role/cabang/status, matriks hak akses    |
+| `/cabang`    | CRUD cabang + ringkasan karyawan, produk berstok, omzet         |
+| `/pengaturan`| Profil usaha, pembayaran, bonus, struk, jam kerja, reset data  |
 
 Desain mengikuti file HTML di `kpr-pos-mockup-html/`.
 
@@ -38,7 +43,8 @@ refresh.
 lib/store/
   types.ts      # tipe semua entitas + AppDatabase
   seed.ts       # data awal: 2 cabang, 10 karyawan (8 role), produk, stok,
-                # transaksi, pesanan, absensi, pengaturan, log
+                # transaksi, pesanan, absensi 4 hari, pengajuan izin,
+                # pengaturan, log
   store.ts      # baca/tulis store + hook useDatabase (useSyncExternalStore)
   activity.ts   # appendActivity/recordActivity + createId
 ```
@@ -54,8 +60,11 @@ Alur baca/tulis:
 - Log aktivitas dicatat lewat `appendActivity` (di dalam mutasi) atau
   `recordActivity` (aksi tanpa perubahan entitas, misalnya batal keranjang).
 
-Data seed dipakai jika localStorage kosong/rusak. Untuk mengulang dari awal,
-hapus key `kpr-pos-db-v1` di DevTools → Application → Local Storage, lalu refresh.
+Data seed dipakai jika localStorage kosong/rusak. `schemaVersion` kini **3**;
+data v1/v2 yang tersimpan dimigrasikan otomatis (nomor HP karyawan, jam kerja,
+pengajuan izin, logo). Untuk mengulang dari awal, pakai tombol **Reset Data Demo**
+di Pengaturan atau hapus key `kpr-pos-db-v1` di DevTools → Application → Local
+Storage, lalu refresh.
 
 ### Fungsi repository per fitur
 
@@ -66,13 +75,20 @@ hapus key `kpr-pos-db-v1` di DevTools → Application → Local Storage, lalu re
 | Pesanan    | `features/pesanan/data/pesanan-repository.ts`     | `usePesananData`, `createSalesOrder`, `updateSalesOrderStatus`                |
 | Dashboard  | `features/dashboard/data/dashboard-repository.ts` | `useDashboardData`                                                            |
 | Laporan    | `features/laporan/data/laporan-repository.ts`     | `useLaporanData`                                                              |
+| Absensi    | `features/absensi/data/absensi-repository.ts`     | `useAbsensiData`, `checkIn`, `checkOut`, `submitLeaveRequest`, `reviewLeaveRequest` |
+| Karyawan   | `features/karyawan/data/karyawan-repository.ts`   | `useKaryawanData`, `createEmployee`, `updateEmployee`, `setEmployeeActive`    |
+| Cabang     | `features/cabang/data/cabang-repository.ts`       | `useCabangData`, `createBranch`, `updateBranch`, `setBranchActive`            |
+| Pengaturan | `features/pengaturan/data/pengaturan-repository.ts` | `updateBusinessProfile`, `togglePaymentMethod`, `addBankAccount`, `updateSalesBonus`, `updateReceiptSettings`, `updateAttendanceSettings`, `resetDemoData` |
 | Sesi       | `features/session/data/session-repository.ts`     | `useSession`, `usePermissions`, `setActiveEmployee`, `setActiveBranch`         |
 
 Perhitungan murni dipisah dari komponen di `features/*/data/*-calculations.ts`,
 misalnya `kasir-calculations.ts` (`calculateCartTotals`, `reduceStockLevels`),
 `produk-calculations.ts` (status stok, selisih opname, pagination),
-`pesanan-calculations.ts` (`calculateBonusAmount`, `collectBonusEntries`), dan
-`laporan-calculations.ts` (`buildReportData`, `buildLogUsers`).
+`pesanan-calculations.ts` (`calculateBonusAmount`, `collectBonusEntries`),
+`laporan-calculations.ts` (`buildReportData`, `buildLogUsers`),
+`absensi-calculations.ts` (`resolveDisplayStatus`, `buildMonthlyRecap`),
+`karyawan-calculations.ts` (`buildEmployeeRows`, `buildRoleMatrix`), dan
+`cabang-calculations.ts` (`buildBranchRows`, `calculateBranchSummary`).
 
 ### Saat pindah ke database
 
@@ -83,12 +99,15 @@ misalnya `kasir-calculations.ts` (`calculateCartTotals`, `reduceStockLevels`),
    `ReportData`, dst. dipertahankan agar komponen tidak berubah.
 3. Fungsi `use*Data()` cukup mengembalikan data hasil query; perhitungan tetap di
    `*-calculations.ts`. `buildReportData` bisa dipindah ke server tanpa mengubah UI.
-4. `createTransaction`, `addStockIn`, `submitOpname`, `transferStock`, dan
-   `updateSalesOrderStatus` sebaiknya menjadi satu transaksi database: simpan
-dokumen, ubah `stocks`, dan tulis `activityLogs` sekaligus.
-5. Hapus `lib/store/seed.ts` setelah data nyata tersedia.
-6. SheetJS (`xlsx`) hanya dipakai di import produk dan export laporan; saat pindah
-   ke API, import bisa divalidasi di server sebelum disimpan.
+4. `createTransaction`, `addStockIn`, `submitOpname`, `transferStock`,
+   `updateSalesOrderStatus`, `checkIn`/`checkOut`, dan `reviewLeaveRequest`
+   sebaiknya menjadi satu transaksi database: simpan dokumen, ubah `stocks` atau
+   `attendance`, dan tulis `activityLogs` sekaligus.
+5. `resetDemoData` hanya untuk demo; hapus pemanggilannya setelah memakai data
+   nyata.
+6. Hapus `lib/store/seed.ts` setelah data nyata tersedia.
+7. SheetJS (`xlsx`) hanya dipakai di import produk, export laporan, dan export
+   rekap absensi; saat pindah ke API, import bisa divalidasi di server.
 
 ## Demo role & cabang
 
@@ -167,13 +186,59 @@ dokumen, ubah `stocks`, dan tulis `activityLogs` sekaligus.
 - Log Aktivitas memakai `activityLogs` asli dan bisa difilter per role, per user,
   dan mengikuti filter periode/cabang.
 
+## Absensi
+
+- Tombol **Masuk** dan **Pulang** mencatat jam serta cabang karyawan aktif. Masuk
+  kedua kali di hari yang sama ditolak; pulang butuh masuk dulu.
+- Status **Telat** dihitung otomatis dari jam masuk di Pengaturan
+  (`resolveDisplayStatus`), bukan disimpan terpisah, sehingga perubahan jam kerja
+  langsung berlaku.
+- Pengajuan izin (tanggal + alasan) bisa disetujui/ditolak Manager atau Owner;
+  izin yang disetujui langsung dicatat sebagai absensi `Izin`.
+- Karyawan biasa hanya melihat absensi dan izinnya sendiri; Manager, Supervisor,
+  dan Owner melihat semua karyawan dan bisa memfilter cabang.
+- Rekap bulanan (hadir, telat, izin, sakit, alpa) bisa diexport ke Excel.
+
+## Karyawan & Role
+
+- Tambah, edit, dan nonaktifkan karyawan (nama, no. HP, role, cabang). Karyawan
+  nonaktif hilang dari dropdown **Masuk sebagai** dan riwayatnya tetap utuh.
+- Penjagaan: tidak bisa menonaktifkan akun yang sedang dipakai, dan minimal satu
+  Owner harus tetap aktif.
+- Filter role, cabang, dan status; pencarian nama/no. HP/role.
+- Matriks hak akses per role diambil langsung dari `config/navigation.ts`.
+
+## Cabang
+
+- Tambah/edit/nonaktifkan cabang. Cabang baru otomatis punya baris stok 0 untuk
+  semua produk sehingga bisa langsung diisi lewat Stok Masuk.
+- Ringkasan per cabang: jumlah karyawan aktif, produk berstok (> 0), dan omzet
+  bulan berjalan.
+- Tidak bisa menonaktifkan cabang yang sedang aktif dipakai atau cabang aktif
+  terakhir.
+
+## Pengaturan (Owner)
+
+- **Profil usaha**: nama, alamat, no. telp, dan logo (maks. 200 KB). Logo dan nama
+  langsung dipakai di sidebar serta struk.
+- **Metode pembayaran**: aktif/nonaktifkan Cash, QRIS, Transfer (minimal satu
+  aktif) dan kelola rekening transfer.
+- **Bonus sales**: pilih per pcs, persen dari nominal, atau bertingkat; tingkat
+  target bisa ditambah/dihapus. Fungsi hitungnya sama dengan fase 2
+  (`calculateBonusAmount`).
+- **Struk**: ukuran 58/80mm, teks footer, dan preview memakai `ReceiptPaper` yang
+  sama dengan Kasir.
+- **Jam kerja**: jam masuk/pulang untuk perhitungan telat.
+- **Reset Data Demo**: mengembalikan seluruh data ke data awal dengan konfirmasi.
+
 ## Struktur folder
 
 ```
 app/
   (app)/                 # halaman dengan sidebar + header
     layout.tsx           # AppShell + ToastProvider
-    dashboard/ kasir/ pesanan/ produk/ laporan/
+    dashboard/ kasir/ pesanan/ produk/ laporan/ absensi/ karyawan/ cabang/
+    pengaturan/
   layout.tsx             # font, metadata, body
   globals.css            # design token Tailwind (@theme) + aturan print struk
 components/
@@ -189,7 +254,8 @@ config/
 constants/
   roles.ts               # 8 role aplikasi
 features/
-  dashboard/ kasir/ pesanan/ produk/ laporan/ session/
+  dashboard/ kasir/ pesanan/ produk/ laporan/ absensi/ karyawan/ cabang/
+  pengaturan/ session/
     components/          # komponen khusus fitur
     data/                # repository/selector + perhitungan
     types/               # tipe data fitur
@@ -245,16 +311,19 @@ ditampilkan sebagai placeholder "segera hadir".
   `overflow-x-auto` di `DataTable`.
 - Print hanya mencetak satu area: struk lewat portal `#receipt-print-root`,
   laporan lewat `#report-print-root`.
-- Import/export Excel memakai `xlsx` yang di-`import()` dinamis agar tidak ikut
-  membebani halaman lain.
+- Import/export Excel (produk, laporan, rekap absensi) memakai `xlsx` yang
+  di-`import()` dinamis agar tidak ikut membebani halaman lain.
+- Halaman yang memakai `new Date()` baru menghitung tanggal setelah store
+  ter-hydrate (`useHydratedDatabase`), supaya tidak memicu error prerender
+  Cache Components.
 
 ## Belum dikerjakan
 
 - Login/otorisasi nyata (role masih demo lewat dropdown) dan pembatasan data per
   karyawan di server.
-- Halaman Absensi, Karyawan & Role, Cabang, dan Pengaturan (termasuk UI aturan
-  bonus sales dan ukuran struk). Fungsi bonus tiga tipe sudah siap dipakai.
-- CRUD karyawan/cabang.
+- Login karyawan nonaktif masih bisa memakai data lama di localStorage; belum ada
+  sesi server.
 - Transaksi belum bisa dibatalkan/di-refund setelah dibayar; draft belum bisa
   diubah (hanya buka/hapus); keranjang belum dipulihkan otomatis saat refresh.
 - Scan barcode di Kasir masih placeholder.
+- Absensi belum memakai jadwal shift per karyawan, lembur, atau potongan gaji.

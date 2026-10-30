@@ -90,6 +90,7 @@ export interface ReceiptViewData {
   branchAddress: string;
   businessName: string;
   businessPhone: string;
+  logoUrl?: string;
   cashierName: string;
   salesName: string | null;
   bankName: string | null;

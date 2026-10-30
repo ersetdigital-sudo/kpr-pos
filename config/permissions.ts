@@ -8,6 +8,12 @@ export interface RolePermissions {
   canManageSalesOrders: boolean;
   canExportReports: boolean;
   canViewAllBranches: boolean;
+  /** Melihat absensi seluruh karyawan, bukan hanya miliknya. */
+  canViewAllAttendance: boolean;
+  canApproveLeave: boolean;
+  canManageEmployees: boolean;
+  canManageBranches: boolean;
+  canManageSettings: boolean;
 }
 
 export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
@@ -19,6 +25,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: true,
     canExportReports: true,
     canViewAllBranches: true,
+    canViewAllAttendance: true,
+    canApproveLeave: true,
+    canManageEmployees: true,
+    canManageBranches: true,
+    canManageSettings: true,
   },
   [ROLES.MANAGER]: {
     canApplyDiscount: true,
@@ -28,6 +39,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: true,
     canExportReports: true,
     canViewAllBranches: true,
+    canViewAllAttendance: true,
+    canApproveLeave: true,
+    canManageEmployees: true,
+    canManageBranches: false,
+    canManageSettings: false,
   },
   [ROLES.SUPERVISOR]: {
     canApplyDiscount: true,
@@ -37,6 +53,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: true,
     canExportReports: false,
     canViewAllBranches: true,
+    canViewAllAttendance: true,
+    canApproveLeave: false,
+    canManageEmployees: false,
+    canManageBranches: false,
+    canManageSettings: false,
   },
   [ROLES.CASHIER]: {
     canApplyDiscount: false,
@@ -46,6 +67,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: false,
     canExportReports: false,
     canViewAllBranches: false,
+    canViewAllAttendance: false,
+    canApproveLeave: false,
+    canManageEmployees: false,
+    canManageBranches: false,
+    canManageSettings: false,
   },
   [ROLES.INVENTORY]: {
     canApplyDiscount: false,
@@ -55,6 +81,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: false,
     canExportReports: false,
     canViewAllBranches: true,
+    canViewAllAttendance: false,
+    canApproveLeave: false,
+    canManageEmployees: false,
+    canManageBranches: false,
+    canManageSettings: false,
   },
   [ROLES.ACCOUNTANT]: {
     canApplyDiscount: false,
@@ -64,6 +95,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: false,
     canExportReports: true,
     canViewAllBranches: true,
+    canViewAllAttendance: false,
+    canApproveLeave: false,
+    canManageEmployees: false,
+    canManageBranches: false,
+    canManageSettings: false,
   },
   [ROLES.SALES]: {
     canApplyDiscount: false,
@@ -73,6 +109,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: false,
     canExportReports: false,
     canViewAllBranches: false,
+    canViewAllAttendance: false,
+    canApproveLeave: false,
+    canManageEmployees: false,
+    canManageBranches: false,
+    canManageSettings: false,
   },
   [ROLES.STAFF]: {
     canApplyDiscount: false,
@@ -82,5 +123,10 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageSalesOrders: false,
     canExportReports: false,
     canViewAllBranches: false,
+    canViewAllAttendance: false,
+    canApproveLeave: false,
+    canManageEmployees: false,
+    canManageBranches: false,
+    canManageSettings: false,
   },
 };

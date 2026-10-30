@@ -1,9 +1,14 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { createSeedDatabase, DEFAULT_SALES_BONUS } from "@/lib/store/seed";
+import {
+  createSeedDatabase,
+  DEFAULT_ATTENDANCE,
+  DEFAULT_SALES_BONUS,
+} from "@/lib/store/seed";
 import type {
   AppDatabase,
+  LeaveRequest,
   SalesOrder,
   StoreSettings,
 } from "@/lib/store/types";
@@ -21,7 +26,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Menormalkan data tersimpan. Data fase 1 (schemaVersion 1) dimigrasikan ke v2
+ * Menormalkan data tersimpan. Data lama (schemaVersion 1/2) dimigrasikan ke v3
  * tanpa menghapus transaksi/draft milik pengguna.
  */
 function normalizeDatabase(value: unknown): AppDatabase | null {
@@ -44,7 +49,7 @@ function normalizeDatabase(value: unknown): AppDatabase | null {
   if (
     typeof version !== "number" ||
     version < 1 ||
-    version > 2 ||
+    version > 3 ||
     coreArrays.some((key) => !Array.isArray(value[key])) ||
     !isRecord(value.settings) ||
     !isRecord(value.session) ||
@@ -59,11 +64,18 @@ function normalizeDatabase(value: unknown): AppDatabase | null {
 
   return {
     ...database,
-    schemaVersion: 2,
+    schemaVersion: 3,
+    employees: database.employees.map((employee) => ({
+      ...employee,
+      phone: employee.phone ?? "",
+    })),
     products: database.products.map((product) => ({
       ...product,
       imageUrl: product.imageUrl || undefined,
     })),
+    leaveRequests: Array.isArray(database.leaveRequests)
+      ? (database.leaveRequests as LeaveRequest[])
+      : [],
     stockIns: Array.isArray(database.stockIns) ? database.stockIns : [],
     stockOpnames: Array.isArray(database.stockOpnames)
       ? database.stockOpnames
@@ -81,7 +93,12 @@ function normalizeDatabase(value: unknown): AppDatabase | null {
     })) as SalesOrder[],
     settings: {
       ...settings,
+      business: {
+        ...settings.business,
+        logoUrl: settings.business.logoUrl || undefined,
+      },
       salesBonus: settings.salesBonus ?? DEFAULT_SALES_BONUS,
+      attendance: settings.attendance ?? DEFAULT_ATTENDANCE,
     },
   };
 }
@@ -173,4 +190,21 @@ export function updateDatabase(
   emitChange();
 
   return next;
+}
+
+/** Mengembalikan seluruh data ke data demo awal (dipakai Pengaturan). */
+export function resetDatabase(): void {
+  const next = createSeedDatabase();
+
+  clientSnapshot = next;
+
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Store tetap jalan di memori walau penyimpanan browser penuh/diblokir.
+    }
+  }
+
+  emitChange();
 }

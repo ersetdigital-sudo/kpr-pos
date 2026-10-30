@@ -2,8 +2,11 @@ import { ROLES } from "@/constants/roles";
 import type {
   ActivityLog,
   AppDatabase,
+  AttendanceRecord,
+  AttendanceSettings,
   Branch,
   Employee,
+  LeaveRequest,
   Product,
   SalesBonusSettings,
   SalesOrder,
@@ -14,6 +17,11 @@ import type {
   Transaction,
   TransactionItem,
 } from "@/lib/store/types";
+
+export const DEFAULT_ATTENDANCE: AttendanceSettings = {
+  workStartTime: "08:00",
+  workEndTime: "17:00",
+};
 
 export const DEFAULT_SALES_BONUS: SalesBonusSettings = {
   type: "per_piece",
@@ -55,6 +63,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-owner",
       name: "Nurcahyo",
+      phone: "0812-1000-0001",
       initials: "NA",
       role: ROLES.OWNER,
       branchId: "br-main",
@@ -63,6 +72,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-manager",
       name: "Hendra",
+      phone: "0812-1000-0002",
       initials: "HD",
       role: ROLES.MANAGER,
       branchId: "br-main",
@@ -71,6 +81,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-supervisor",
       name: "Sinta",
+      phone: "0812-1000-0003",
       initials: "SN",
       role: ROLES.SUPERVISOR,
       branchId: "br-bandung",
@@ -79,6 +90,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-cashier-lala",
       name: "Lala",
+      phone: "0812-1000-0004",
       initials: "LA",
       role: ROLES.CASHIER,
       branchId: "br-main",
@@ -87,6 +99,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-cashier-fajar",
       name: "Fajar",
+      phone: "0812-1000-0005",
       initials: "FA",
       role: ROLES.CASHIER,
       branchId: "br-bandung",
@@ -95,6 +108,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-inventory-bayu",
       name: "Bayu",
+      phone: "0812-1000-0006",
       initials: "BY",
       role: ROLES.INVENTORY,
       branchId: "br-main",
@@ -103,6 +117,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-accountant-dewi",
       name: "Dewi",
+      phone: "0812-1000-0007",
       initials: "DW",
       role: ROLES.ACCOUNTANT,
       branchId: "br-main",
@@ -111,6 +126,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-sales-rina",
       name: "Rina",
+      phone: "0812-1000-0008",
       initials: "RI",
       role: ROLES.SALES,
       branchId: "br-main",
@@ -119,6 +135,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-sales-dimas",
       name: "Dimas",
+      phone: "0812-1000-0009",
       initials: "DI",
       role: ROLES.SALES,
       branchId: "br-bandung",
@@ -127,6 +144,7 @@ export function createSeedDatabase(): AppDatabase {
     {
       id: "emp-staff-agus",
       name: "Agus",
+      phone: "0812-1000-0010",
       initials: "AG",
       role: ROLES.STAFF,
       branchId: "br-main",
@@ -527,85 +545,83 @@ export function createSeedDatabase(): AppDatabase {
     },
   ];
 
-  const attendance = [
+  // Empat hari kerja terakhir; cukup untuk mengisi tabel harian dan rekap bulanan.
+  const attendanceDays = [
+    "2026-10-26",
+    "2026-10-27",
+    "2026-10-28",
+    "2026-10-29",
+  ];
+  const attendance: AttendanceRecord[] = [];
+
+  attendanceDays.forEach((date, dayIndex) => {
+    employees.forEach((employee, employeeIndex) => {
+      const isSick =
+        (employee.id === "emp-inventory-bayu" && date === "2026-10-27") ||
+        (employee.id === "emp-sales-dimas" && date === "2026-10-29");
+      const isLeave =
+        employee.id === "emp-supervisor" && date === "2026-10-29"
+          ? true
+          : employee.id === "emp-cashier-lala" && date === "2026-10-28";
+      const isAbsent =
+        employee.id === "emp-staff-agus" && date === "2026-10-26";
+
+      const status = isSick
+        ? ("Sakit" as const)
+        : isLeave
+          ? ("Izin" as const)
+          : isAbsent
+            ? ("Alpa" as const)
+            : ("Hadir" as const);
+      const startMinute = 47 + ((employeeIndex * 3 + dayIndex) % 20);
+      const checkIn = `${String(7 + Math.floor(startMinute / 60)).padStart(
+        2,
+        "0",
+      )}:${String(startMinute % 60).padStart(2, "0")}`;
+
+      attendance.push({
+        id: `att-${employeeIndex + 1}-${dayIndex + 1}`,
+        employeeId: employee.id,
+        branchId: employee.branchId,
+        date,
+        status,
+        checkIn: status === "Hadir" ? checkIn : undefined,
+        checkOut: status === "Hadir" ? "17:05" : undefined,
+      });
+    });
+  });
+
+  const leaveRequests: LeaveRequest[] = [
     {
-      id: "att-01",
-      employeeId: "emp-owner",
+      id: "leave-01",
+      employeeId: "emp-cashier-lala",
       branchId: "br-main",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "07:45",
-      checkOut: "17:05",
+      date: "2026-10-30",
+      reason: "Acara keluarga di luar kota",
+      status: "Menunggu",
+      createdAt: "2026-10-29T16:20:00+07:00",
     },
     {
-      id: "att-02",
-      employeeId: "emp-manager",
-      branchId: "br-main",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "07:50",
-    },
-    {
-      id: "att-03",
+      id: "leave-02",
       employeeId: "emp-supervisor",
       branchId: "br-bandung",
       date: "2026-10-29",
-      status: "Izin" as const,
+      reason: "Sakit demam, ada surat dokter",
+      status: "Disetujui",
+      reviewedBy: "emp-manager",
+      reviewedAt: "2026-10-28T09:10:00+07:00",
+      createdAt: "2026-10-28T08:40:00+07:00",
     },
     {
-      id: "att-04",
-      employeeId: "emp-cashier-lala",
-      branchId: "br-main",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "07:55",
-    },
-    {
-      id: "att-05",
+      id: "leave-03",
       employeeId: "emp-cashier-fajar",
       branchId: "br-bandung",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "08:00",
-    },
-    {
-      id: "att-06",
-      employeeId: "emp-inventory-bayu",
-      branchId: "br-main",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "07:58",
-    },
-    {
-      id: "att-07",
-      employeeId: "emp-accountant-dewi",
-      branchId: "br-main",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "08:05",
-    },
-    {
-      id: "att-08",
-      employeeId: "emp-sales-rina",
-      branchId: "br-main",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "08:10",
-    },
-    {
-      id: "att-09",
-      employeeId: "emp-sales-dimas",
-      branchId: "br-bandung",
-      date: "2026-10-29",
-      status: "Sakit" as const,
-    },
-    {
-      id: "att-10",
-      employeeId: "emp-staff-agus",
-      branchId: "br-main",
-      date: "2026-10-29",
-      status: "Hadir" as const,
-      checkIn: "08:00",
+      date: "2026-10-27",
+      reason: "Keperluan pribadi",
+      status: "Ditolak",
+      reviewedBy: "emp-manager",
+      reviewedAt: "2026-10-26T15:05:00+07:00",
+      createdAt: "2026-10-26T14:30:00+07:00",
     },
   ];
 
@@ -673,7 +689,7 @@ export function createSeedDatabase(): AppDatabase {
   ];
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     branches,
     employees,
     categories,
@@ -686,6 +702,7 @@ export function createSeedDatabase(): AppDatabase {
     drafts: [],
     salesOrders,
     attendance,
+    leaveRequests,
     settings: {
       business: {
         name: "CV. Karya Putra Ragil",
@@ -722,6 +739,7 @@ export function createSeedDatabase(): AppDatabase {
         footerText:
           "Terima kasih telah berbelanja.\nBarang yang sudah dibeli tidak dapat ditukar.",
       },
+      attendance: DEFAULT_ATTENDANCE,
     },
     activityLogs,
     session: {

@@ -62,6 +62,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       },
       {
         label: "Absensi",
+        href: "/absensi",
         icon: "clock",
         roles: ALL_ROLES,
       },
@@ -78,16 +79,19 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     items: [
       {
         label: "Karyawan & Role",
+        href: "/karyawan",
         icon: "users",
         roles: [ROLES.OWNER, ROLES.MANAGER],
       },
       {
         label: "Cabang",
+        href: "/cabang",
         icon: "store",
-        roles: [ROLES.OWNER],
+        roles: [ROLES.OWNER, ROLES.MANAGER],
       },
       {
         label: "Pengaturan",
+        href: "/pengaturan",
         icon: "settings",
         roles: [ROLES.OWNER],
       },

@@ -7,6 +7,7 @@ import { Fragment } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { NAV_SECTIONS, type NavItem } from "@/config/navigation";
 import { useSession } from "@/features/session/data/session-repository";
+import { useDatabase } from "@/lib/store/store";
 import { cn } from "@/lib/cn";
 
 interface SidebarProps {
@@ -22,6 +23,7 @@ function isItemActive(item: NavItem, pathname: string): boolean {
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { employee } = useSession();
+  const { business } = useDatabase().settings;
   const sections = NAV_SECTIONS.map((section) => ({
     label: section.label,
     items: section.items.filter((item) =>
@@ -59,16 +61,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <nav className="flex h-full flex-col gap-1 overflow-y-auto bg-sidebar px-[14px] py-5">
           <div className="mb-2 flex flex-col items-center gap-3 border-b border-sidebar-line px-2.5 pt-2 pb-5 text-center">
             <Image
-              src="/logo-kpr.png"
-              alt="Logo CV. Karya Putra Ragil"
+              src={business.logoUrl || "/logo-kpr.png"}
+              alt={`Logo ${business.name}`}
               width={80}
               height={84}
               priority
+              unoptimized
               className="h-[84px] w-20 object-contain"
             />
             <div>
               <div className="text-[15px] leading-[1.3] font-bold text-white">
-                CV. Karya Putra Ragil
+                {business.name}
               </div>
               <div className="text-meta text-sidebar-muted">
                 POS Management System
