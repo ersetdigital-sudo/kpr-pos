@@ -1,5 +1,8 @@
 import type { Role } from "@/constants/roles";
+import type { ActivityAction } from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
+import type { DateRange } from "@/lib/date-range";
+import type { DateRangeValue } from "@/components/ui/DateRangePicker";
 
 export interface ReportStats {
   revenue: number;
@@ -18,6 +21,7 @@ export interface PaymentBreakdown {
 }
 
 export interface CashierReport {
+  cashierId: string;
   name: string;
   transactionCount: number;
   revenue: number;
@@ -29,31 +33,55 @@ export interface BestSeller {
   soldCount: number;
 }
 
-export type ActivityAction =
-  | "Membuat"
-  | "Mengubah"
-  | "Membatalkan"
-  | "Membuka";
-
-export interface ActivityLog {
+export interface ReportLogRow {
   id: string;
-  loggedAt: string;
+  at: string;
+  userId: string;
   userName: string;
   role: Role;
+  branchName: string;
   action: ActivityAction;
   detail: string;
 }
 
-export interface ReportsData {
+export interface ReportLogUser {
+  id: string;
+  name: string;
+  role: Role;
+}
+
+export interface ReportTransactionRow {
+  invoiceNumber: string;
+  createdAt: string;
+  cashierName: string;
+  branchName: string;
+  method: PaymentMethod;
+  subtotal: number;
+  discount: number;
+  total: number;
+  profit: number;
+}
+
+export interface ReportData {
   header: {
     title: string;
     subtitle: string;
   };
+  range: DateRange;
   stats: ReportStats;
   paymentBreakdown: readonly PaymentBreakdown[];
   cashiers: readonly CashierReport[];
   cashDifference: number;
   bestSellers: readonly BestSeller[];
-  activityLog: readonly ActivityLog[];
+  activityLog: readonly ReportLogRow[];
+  logUsers: readonly ReportLogUser[];
   roles: readonly Role[];
+  transactions: readonly ReportTransactionRow[];
+}
+
+export interface ReportFilterState {
+  range: DateRangeValue;
+  branchId: string | "all";
+  role: Role | "all";
+  userId: string | "all";
 }

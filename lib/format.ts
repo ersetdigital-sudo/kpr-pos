@@ -24,6 +24,11 @@ const fullDateFormatter = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
 });
 
+const monthYearFormatter = new Intl.DateTimeFormat("id-ID", {
+  month: "long",
+  year: "numeric",
+});
+
 export function formatNumber(value: number): string {
   return rupiahFormatter.format(value);
 }
@@ -52,6 +57,11 @@ export function formatPercent(value: number): string {
   return `${decimalFormatter.format(value)}%`;
 }
 
+/** Contoh: "Oktober 2026". */
+export function formatMonthYear(value: Date): string {
+  return monthYearFormatter.format(value);
+}
+
 function toDate(value: string | Date): Date {
   return value instanceof Date ? value : new Date(`${value}T00:00:00`);
 }
@@ -61,6 +71,12 @@ export function formatDateLong(value: string | Date): string {
   return longDateFormatter.format(toDate(value));
 }
 
+/** Contoh: "29 Okt". */
+export function formatDateShort(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(`${value}T00:00:00`);
+  return shortDateFormatter.format(date);
+}
+
 /** Contoh: "29 Oktober 2026, 13:12". */
 export function formatDateTimeLong(value: string | Date): string {
   const date = value instanceof Date ? value : new Date(value);
@@ -68,6 +84,14 @@ export function formatDateTimeLong(value: string | Date): string {
   const minutes = String(date.getMinutes()).padStart(2, "0");
 
   return `${fullDateFormatter.format(date)}, ${hours}:${minutes}`;
+}
+
+/** Contoh: "13:12". */
+export function formatTime(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes(),
+  ).padStart(2, "0")}`;
 }
 
 /** Contoh: "29 Okt, 13:12". */

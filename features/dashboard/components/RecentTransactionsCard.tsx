@@ -65,13 +65,19 @@ export function RecentTransactionsCard({
   return (
     <Card className="min-w-0 flex-[2_1_480px] p-5">
       <CardHeader title="Transaksi Terakhir" className="mb-3.5" />
-      <DataTable
-        ariaLabel="Transaksi terakhir"
-        columns={columns}
-        rows={transactions}
-        rowKey={(transaction) => transaction.invoiceNumber}
-        minWidth={560}
-      />
+      {transactions.length === 0 ? (
+        <p className="m-0 rounded-control border border-dashed border-line-strong bg-canvas px-3 py-6 text-center text-meta text-ink-muted">
+          Belum ada transaksi pada filter ini.
+        </p>
+      ) : (
+        <DataTable
+          ariaLabel="Transaksi terakhir"
+          columns={columns}
+          rows={transactions}
+          rowKey={(transaction) => transaction.id}
+          minWidth={560}
+        />
+      )}
     </Card>
   );
 }

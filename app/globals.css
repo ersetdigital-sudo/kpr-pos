@@ -95,12 +95,18 @@
     display: none !important;
   }
 
-  body > #receipt-print-root {
+  body > #receipt-print-root,
+  body > #report-print-root {
     display: block !important;
   }
 
   #receipt-print-root .receipt-paper {
     margin: 0 auto;
     box-shadow: none;
+  }
+
+  #report-print-root .report-paper {
+    width: 210mm;
+    margin: 0 auto;
   }
 }

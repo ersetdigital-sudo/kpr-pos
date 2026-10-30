@@ -1,8 +1,9 @@
 # POS Management System — CV. Karya Putra Ragil
 
 UI aplikasi POS berbasis **Next.js 16 (App Router)**, **TypeScript**, dan **Tailwind CSS 4**.
-Fase 1 mencakup fondasi data sementara (localStorage), demo role, dan halaman Kasir
-yang berfungsi penuh. Belum ada database, login, maupun API.
+Fase 2 mencakup store sementara (localStorage), demo role, Kasir, Produk & Stok,
+Pesanan Sales, Dashboard, dan Laporan yang semuanya membaca data store.
+Belum ada database, login, maupun API.
 
 ## Menjalankan
 
@@ -21,9 +22,9 @@ Perintah lain: `npm run lint`, `npm run typecheck`, `npm run build`.
 | ------------ | ------------------------------------------------------------ |
 | `/dashboard` | Ringkasan penjualan, grafik 7 hari, top sales, stok menipis   |
 | `/kasir`     | Katalog, keranjang, diskon, pembayaran, draft, struk          |
-| `/pesanan`   | Input pesanan sales, daftar pesanan, papan peringkat          |
-| `/produk`    | Tab stok, ringkasan stok, tabel produk, pagination            |
-| `/laporan`   | Omzet, metode bayar, per kasir, produk terlaris, log          |
+| `/pesanan`   | Input pesanan, status pesanan, bonus, papan peringkat         |
+| `/produk`    | Produk, kategori, stok masuk, opname, transfer, import Excel  |
+| `/laporan`   | Omzet, laba, metode bayar, per kasir, log aktivitas, export    |
 
 Desain mengikuti file HTML di `kpr-pos-mockup-html/`.
 
@@ -60,25 +61,34 @@ hapus key `kpr-pos-db-v1` di DevTools → Application → Local Storage, lalu re
 
 | Fitur   | File                                        | Contoh fungsi                                                                 |
 | ------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| Kasir   | `features/kasir/data/kasir-repository.ts`   | `getProducts`, `useCashierData`, `useNextInvoiceNumber`, `createTransaction`, `saveDraft`, `takeDraft`, `deleteDraft` |
-| Sesi    | `features/session/data/session-repository.ts` | `useSession`, `usePermissions`, `setActiveEmployee`, `setActiveBranch`       |
-| Lainnya | `features/*/data/*-data.ts`                 | `getDashboardData`, `getSalesOrdersData`, `getProductsData`, `getReportsData`  |
+| Kasir      | `features/kasir/data/kasir-repository.ts`         | `useCashierData`, `createTransaction`, `saveDraft`, `takeDraft`, `deleteDraft` |
+| Produk     | `features/produk/data/produk-repository.ts`       | `useProdukData`, `createProduct`, `updateProduct`, `deleteProduct`, `addStockIn`, `submitOpname`, `transferStock`, `importProducts` |
+| Pesanan    | `features/pesanan/data/pesanan-repository.ts`     | `usePesananData`, `createSalesOrder`, `updateSalesOrderStatus`                |
+| Dashboard  | `features/dashboard/data/dashboard-repository.ts` | `useDashboardData`                                                            |
+| Laporan    | `features/laporan/data/laporan-repository.ts`     | `useLaporanData`                                                              |
+| Sesi       | `features/session/data/session-repository.ts`     | `useSession`, `usePermissions`, `setActiveEmployee`, `setActiveBranch`         |
 
-Perhitungan murni ada di `features/kasir/data/kasir-calculations.ts`
-(`calculateCartTotals`, `calculateDiscountAmount`, `calculateChange`,
-`reduceStockLevels`, `getNextInvoiceNumber`, `filterProducts`).
+Perhitungan murni dipisah dari komponen di `features/*/data/*-calculations.ts`,
+misalnya `kasir-calculations.ts` (`calculateCartTotals`, `reduceStockLevels`),
+`produk-calculations.ts` (status stok, selisih opname, pagination),
+`pesanan-calculations.ts` (`calculateBonusAmount`, `collectBonusEntries`), dan
+`laporan-calculations.ts` (`buildReportData`, `buildLogUsers`).
 
 ### Saat pindah ke database
 
 1. Ganti isi `lib/store/store.ts` (load/save) dengan query database; pertahankan
    bentuk `AppDatabase` atau petakan ke tabel.
-2. Ganti isi repository per fitur (`kasir-repository.ts`, `session-repository.ts`,
-   `*-data.ts`) menjadi panggilan API. Tanda tangan fungsi dan tipe
-   `CashierData`, `TransactionResult`, dst. dipertahankan agar komponen tidak berubah.
-3. `createTransaction` sebaiknya menjadi satu transaksi database: simpan transaksi,
-   kurangi `stocks`, dan tulis `activityLogs` sekaligus.
-4. Hapus `lib/store/seed.ts` setelah data nyata tersedia.
-5. Fungsi perhitungan di `kasir-calculations.ts` tetap dipakai (murni, tanpa I/O).
+2. Ganti isi repository per fitur (`features/*/data/*-repository.ts`) menjadi
+   panggilan API. Tanda tangan fungsi dan tipe `CashierData`, `ProductRow`,
+   `ReportData`, dst. dipertahankan agar komponen tidak berubah.
+3. Fungsi `use*Data()` cukup mengembalikan data hasil query; perhitungan tetap di
+   `*-calculations.ts`. `buildReportData` bisa dipindah ke server tanpa mengubah UI.
+4. `createTransaction`, `addStockIn`, `submitOpname`, `transferStock`, dan
+   `updateSalesOrderStatus` sebaiknya menjadi satu transaksi database: simpan
+dokumen, ubah `stocks`, dan tulis `activityLogs` sekaligus.
+5. Hapus `lib/store/seed.ts` setelah data nyata tersedia.
+6. SheetJS (`xlsx`) hanya dipakai di import produk dan export laporan; saat pindah
+   ke API, import bisa divalidasi di server sebelum disimpan.
 
 ## Demo role & cabang
 
@@ -109,6 +119,54 @@ Perhitungan murni ada di `features/kasir/data/kasir-calculations.ts`
 - **Batalkan** mengosongkan keranjang setelah konfirmasi dan mencatat log.
 - Setiap aksi memberi toast sukses/gagal (`components/ui/Toast.tsx`).
 
+## Produk & Stok
+
+- Tab **Produk**: tabel dengan pencarian, filter kategori/cabang/status stok,
+  pagination, dan kartu ringkasan yang dihitung dari data.
+- Tambah/edit produk lewat drawer (nama, SKU unik, kategori, harga modal, harga
+  jual, foto, batas stok menipis). Produk yang sudah pernah terjual tidak dihapus
+  permanen, hanya dinonaktifkan (`deleteProduct` mengembalikan `mode`).
+- Tab **Kategori**: tambah/edit/hapus; kategori yang masih dipakai produk ditolak.
+- Tab **Stok Masuk** dan **Stok Opname**: input per cabang beserta tanggal dan
+  catatan, sistem menghitung selisih opname lalu menyesuaikan stok, dan riwayat
+  tersimpan di `stockIns` / `stockOpnames`.
+- Tab **Transfer Antar Cabang**: memindahkan stok, ditolak bila melebihi stok asal.
+- **Import Excel** (SheetJS): download template, preview per baris dengan error
+  validasi (SKU duplikat, kategori tidak dikenal, angka tidak valid) sebelum
+  disimpan. Template dan parser ada di `features/produk/data/produk-excel.ts`.
+
+## Pesanan Sales
+
+- Form menambah/menghapus baris produk, qty, total otomatis; tersimpan atas nama
+  sales aktif (`createSalesOrder`).
+- Status: Menunggu bayar, Lunas, Dibatalkan. Saat **Lunas** stok cabang berkurang;
+  saat **Dibatalkan** stok yang sudah terpotong dikembalikan.
+- Bonus dihitung dari pesanan lunas + transaksi kasir yang memakai sales tersebut,
+  lewat `calculateBonusAmount` yang mendukung tiga aturan di
+  `settings.salesBonus`: `per_piece`, `percent`, dan `tiered` (bertarget pcs).
+- Sales hanya melihat pesanannya sendiri; Manager/Owner/Supervisor melihat semua.
+  Kartu ringkasan dan papan peringkat dihitung dari data bulan berjalan.
+
+## Dashboard
+
+- Filter cabang (Semua Cabang atau satu cabang) untuk role yang boleh melihat
+  semua cabang; role lain terkunci ke cabangnya.
+- Semua kartu, grafik 7 hari, top sales, transaksi terakhir, dan stok menipis
+  dihitung dari store lewat `features/dashboard/data/dashboard-calculations.ts`.
+
+## Laporan
+
+- Filter periode (Hari ini / Minggu ini / Bulan ini / Custom rentang tanggal) dan
+  filter cabang.
+- Omzet, laba kotor (harga jual − harga modal), jumlah transaksi, total bonus,
+  per metode bayar, per kasir, dan produk terlaris dihitung dari store.
+- **Export Excel** memakai SheetJS (sheet Ringkasan, Metode Pembayaran, Per Kasir,
+  Produk Terlaris, Transaksi, Log Aktivitas).
+- **Export PDF** membuka dialog cetak browser dengan versi siap cetak
+  (`ReportPrintSheet` di portal `#report-print-root`).
+- Log Aktivitas memakai `activityLogs` asli dan bisa difilter per role, per user,
+  dan mengikuti filter periode/cabang.
+
 ## Struktur folder
 
 ```
@@ -123,7 +181,8 @@ components/
                          # UserBadge, AccessDenied
   ui/                    # Button, Card, StatCard, StatusBadge, DataTable, Input,
                          # Select, Textarea, Field, SearchField, ProgressBar,
-                         # Chip, Avatar, Icon, Modal, ConfirmDialog, Toast
+                         # Chip, Avatar, Icon, Modal, Drawer, ConfirmDialog,
+                         # Toast, Tabs, Pagination, DateRangePicker
 config/
   navigation.ts          # SATU sumber daftar menu sidebar
   permissions.ts         # hak aksi per role
@@ -184,16 +243,18 @@ ditampilkan sebagai placeholder "segera hadir".
   `new Date()` tidak dievaluasi saat prerender (Cache Components Next 16).
 - Sidebar menjadi drawer di bawah breakpoint `lg`; tabel lebar memakai wrapper
   `overflow-x-auto` di `DataTable`.
-- Print hanya mencetak area struk lewat portal `#receipt-print-root`.
+- Print hanya mencetak satu area: struk lewat portal `#receipt-print-root`,
+  laporan lewat `#report-print-root`.
+- Import/export Excel memakai `xlsx` yang di-`import()` dinamis agar tidak ikut
+  membebani halaman lain.
 
 ## Belum dikerjakan
 
 - Login/otorisasi nyata (role masih demo lewat dropdown) dan pembatasan data per
   karyawan di server.
-- Halaman Absensi, Karyawan & Role, Cabang, dan Pengaturan.
-- CRUD produk/karyawan/cabang/pengaturan; tombol Tambah Produk, Import, Export,
-  dan Scan Barcode masih placeholder.
-- Dashboard, Pesanan, Produk & Stok, dan Laporan masih memakai data dummy statis;
-  belum membaca store. Hanya Kasir yang sudah terhubung penuh ke store.
+- Halaman Absensi, Karyawan & Role, Cabang, dan Pengaturan (termasuk UI aturan
+  bonus sales dan ukuran struk). Fungsi bonus tiga tipe sudah siap dipakai.
+- CRUD karyawan/cabang.
 - Transaksi belum bisa dibatalkan/di-refund setelah dibayar; draft belum bisa
   diubah (hanya buka/hapus); keranjang belum dipulihkan otomatis saat refresh.
+- Scan barcode di Kasir masih placeholder.

@@ -15,9 +15,11 @@ export interface DashboardStats {
   employeesPresent: number;
   employeesTotal: number;
   employeesOnLeave: number;
+  attendanceDate: string | null;
 }
 
 export interface WeeklySale {
+  key: string;
   day: string;
   total: number;
   barHeight: number;
@@ -33,6 +35,7 @@ export interface TopSalesEntry {
 }
 
 export interface RecentTransaction {
+  id: string;
   invoiceNumber: string;
   time: string;
   cashier: string;
@@ -58,3 +61,5 @@ export interface DashboardData {
   recentTransactions: readonly RecentTransaction[];
   lowStock: readonly LowStockProduct[];
 }
+
+export type DashboardScope = string | "all";

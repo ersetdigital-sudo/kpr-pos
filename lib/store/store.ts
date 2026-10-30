@@ -1,8 +1,12 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { createSeedDatabase } from "@/lib/store/seed";
-import type { AppDatabase } from "@/lib/store/types";
+import { createSeedDatabase, DEFAULT_SALES_BONUS } from "@/lib/store/seed";
+import type {
+  AppDatabase,
+  SalesOrder,
+  StoreSettings,
+} from "@/lib/store/types";
 
 export const DB_STORAGE_KEY = "kpr-pos-db-v1";
 
@@ -12,27 +16,74 @@ const listeners = new Set<() => void>();
 let clientSnapshot: AppDatabase | null = null;
 let storageListenerAttached = false;
 
-function isAppDatabase(value: unknown): value is AppDatabase {
-  if (!value || typeof value !== "object") return false;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object";
+}
 
-  const database = value as Partial<AppDatabase>;
+/**
+ * Menormalkan data tersimpan. Data fase 1 (schemaVersion 1) dimigrasikan ke v2
+ * tanpa menghapus transaksi/draft milik pengguna.
+ */
+function normalizeDatabase(value: unknown): AppDatabase | null {
+  if (!isRecord(value)) return null;
 
-  return (
-    database.schemaVersion === 1 &&
-    Array.isArray(database.branches) &&
-    Array.isArray(database.employees) &&
-    Array.isArray(database.categories) &&
-    Array.isArray(database.products) &&
-    Array.isArray(database.stocks) &&
-    Array.isArray(database.transactions) &&
-    Array.isArray(database.drafts) &&
-    Array.isArray(database.salesOrders) &&
-    Array.isArray(database.attendance) &&
-    Array.isArray(database.activityLogs) &&
-    !!database.settings &&
-    typeof database.session?.currentEmployeeId === "string" &&
-    typeof database.session?.activeBranchId === "string"
-  );
+  const version = value.schemaVersion;
+  const coreArrays = [
+    "branches",
+    "employees",
+    "categories",
+    "products",
+    "stocks",
+    "transactions",
+    "drafts",
+    "salesOrders",
+    "attendance",
+    "activityLogs",
+  ];
+
+  if (
+    typeof version !== "number" ||
+    version < 1 ||
+    version > 2 ||
+    coreArrays.some((key) => !Array.isArray(value[key])) ||
+    !isRecord(value.settings) ||
+    !isRecord(value.session) ||
+    typeof value.session.currentEmployeeId !== "string" ||
+    typeof value.session.activeBranchId !== "string"
+  ) {
+    return null;
+  }
+
+  const database = value as unknown as AppDatabase;
+  const settings = database.settings as StoreSettings;
+
+  return {
+    ...database,
+    schemaVersion: 2,
+    products: database.products.map((product) => ({
+      ...product,
+      imageUrl: product.imageUrl || undefined,
+    })),
+    stockIns: Array.isArray(database.stockIns) ? database.stockIns : [],
+    stockOpnames: Array.isArray(database.stockOpnames)
+      ? database.stockOpnames
+      : [],
+    stockTransfers: Array.isArray(database.stockTransfers)
+      ? database.stockTransfers
+      : [],
+    salesOrders: database.salesOrders.map((order) => ({
+      ...order,
+      // Pesanan lunas dari v1 dianggap sudah memotong stok saat dibuat.
+      stockApplied:
+        typeof order.stockApplied === "boolean"
+          ? order.stockApplied
+          : order.status === "Lunas",
+    })) as SalesOrder[],
+    settings: {
+      ...settings,
+      salesBonus: settings.salesBonus ?? DEFAULT_SALES_BONUS,
+    },
+  };
 }
 
 function loadDatabase(): AppDatabase {
@@ -43,9 +94,10 @@ function loadDatabase(): AppDatabase {
 
     if (raw) {
       const parsed: unknown = JSON.parse(raw);
+      const normalized = normalizeDatabase(parsed);
 
-      if (isAppDatabase(parsed)) {
-        return parsed;
+      if (normalized) {
+        return normalized;
       }
     }
   } catch {

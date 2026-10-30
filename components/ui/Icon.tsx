@@ -67,6 +67,18 @@ const ICON_PATHS = {
       <path d="M14.5 14.5h3v3h-3zM20.5 14.5v2M20.5 20.5h-3M14.5 20.5v-2" />
     </>
   ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  edit: <path d="M4 20h4l10-10-4-4L4 16v4zM14 5l4 4" />,
+  trash: (
+    <>
+      <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+    </>
+  ),
+  download: <path d="M12 4v11M7 11l5 5 5-5M4 20h16" />,
+  upload: <path d="M12 20V9M7 13l5-5 5 5M4 4h16" />,
+  arrowLeft: <path d="M15 5l-7 7 7 7" />,
+  arrowRight: <path d="M9 5l7 7-7 7" />,
+  check: <path d="M5 12l5 5L20 7" />,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof ICON_PATHS;

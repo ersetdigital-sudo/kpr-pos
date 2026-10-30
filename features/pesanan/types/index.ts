@@ -1,11 +1,22 @@
-export type SalesOrderStatus = "Belum sinkron" | "Menunggu bayar" | "Lunas";
+import type {
+  SalesBonusSettings,
+  SalesOrderStatus,
+} from "@/lib/store/types";
 
-export interface SalesOrder {
+export interface OrderRow {
   id: string;
-  customer: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  branchId: string;
+  branchName: string;
+  salesEmployeeId: string;
+  salesName: string;
   quantity: number;
   total: number;
   status: SalesOrderStatus;
+  note: string;
+  createdAt: string;
 }
 
 export interface SalesStats {
@@ -13,12 +24,13 @@ export interface SalesStats {
   rank: number;
   totalSalespeople: number;
   runningBonus: number;
-  bonusPerPiece: number;
+  bonusRuleLabel: string;
   awaitingPaymentCount: number;
 }
 
 export interface LeaderboardEntry {
   rank: number;
+  salesEmployeeId: string;
   salesName: string;
   orderCount: number;
   soldCount: number;
@@ -29,28 +41,42 @@ export interface LeaderboardEntry {
 export interface OrderProductOption {
   id: string;
   name: string;
+  sku: string;
   price: number;
+  stock: number;
 }
 
-export interface OrderDraftItem {
+export interface SalesEmployeeOption {
+  id: string;
+  name: string;
+  branchId: string;
+}
+
+export interface NewOrderRow {
+  key: string;
   productId: string;
   quantity: number;
 }
 
-export interface OrderDraft {
-  items: readonly OrderDraftItem[];
-  totalQuantity: number;
-  totalAmount: number;
+export interface CreateOrderInput {
+  customerName: string;
+  customerPhone: string;
+  note: string;
+  branchId: string;
+  salesEmployeeId: string;
+  items: { productId: string; quantity: number }[];
 }
 
-export interface SalesOrdersData {
-  header: {
-    title: string;
-    subtitle: string;
-  };
-  stats: SalesStats;
-  orders: readonly SalesOrder[];
-  leaderboard: readonly LeaderboardEntry[];
-  productOptions: readonly OrderProductOption[];
-  draft: OrderDraft;
+export interface BonusEntry {
+  salesEmployeeId: string;
+  salesName: string;
+  orderCount: number;
+  quantity: number;
+  nominal: number;
+  bonus: number;
+}
+
+export interface BonusBoard {
+  entries: BonusEntry[];
+  settings: SalesBonusSettings;
 }

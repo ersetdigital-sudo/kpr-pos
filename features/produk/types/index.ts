@@ -1,14 +1,38 @@
-export type StockStatus = "Aman" | "Menipis" | "Habis";
+import type {
+  Branch,
+  Category,
+  StockInRecord,
+  StockOpnameRecord,
+  StockTransferRecord,
+} from "@/lib/store/types";
 
-export interface Product {
+export type StockStatus = "Aman" | "Menipis" | "Habis" | "Nonaktif";
+
+/** "all" hanya untuk role yang boleh melihat semua cabang. */
+export type StockScope = string | "all";
+
+export interface ProductRow {
   id: string;
   name: string;
   sku: string;
-  category: string;
+  categoryId: string;
+  categoryName: string;
   costPrice: number;
   price: number;
+  imageUrl?: string;
   stock: number;
+  minStock: number;
   status: StockStatus;
+  isActive: boolean;
+}
+
+export interface ProductFilters {
+  search: string;
+  categoryId: string | "all";
+  branchId: StockScope;
+  status: "all" | Exclude<StockStatus, "Nonaktif"> | "Nonaktif";
+  page: number;
+  pageSize: number;
 }
 
 export interface ProductStats {
@@ -16,21 +40,101 @@ export interface ProductStats {
   lowStockCount: number;
   outOfStockCount: number;
   incomingThisWeek: number;
+  totalProducts: number;
 }
 
 export interface ProductPagination {
-  from: number;
-  to: number;
+  page: number;
+  pageSize: number;
   total: number;
+  totalPages: number;
 }
 
-export interface ProductsData {
-  header: {
-    title: string;
-    subtitle: string;
-  };
-  stats: ProductStats;
-  categories: readonly string[];
-  products: readonly Product[];
-  pagination: ProductPagination;
+export interface ProdukData {
+  branches: Branch[];
+  categories: Category[];
+  stockIns: StockInRecord[];
+  stockOpnames: StockOpnameRecord[];
+  stockTransfers: StockTransferRecord[];
+}
+
+export interface ProductFormInput {
+  name: string;
+  sku: string;
+  categoryId: string;
+  costPrice: number;
+  price: number;
+  imageUrl?: string;
+  minStock: number;
+}
+
+export interface CategoryUsage {
+  category: Category;
+  productCount: number;
+}
+
+export interface StockInFormItem {
+  productId: string;
+  quantity: number;
+}
+
+export interface StockRowInput {
+  key: string;
+  productId: string;
+  quantity: number;
+}
+
+export interface StockProductOption {
+  id: string;
+  name: string;
+  sku: string;
+  stock: number;
+}
+
+export interface StockInInput {
+  date: string;
+  note: string;
+  items: StockInFormItem[];
+}
+
+export interface OpnameInput {
+  date: string;
+  note: string;
+  /** productId -> stok fisik hasil hitung. */
+  physical: Record<string, number>;
+}
+
+export interface TransferInput {
+  toBranchId: string;
+  date: string;
+  note: string;
+  items: StockInFormItem[];
+}
+
+export interface ImportProductRow {
+  rowNumber: number;
+  name: string;
+  sku: string;
+  categoryId: string;
+  categoryName: string;
+  costPrice: number;
+  price: number;
+  stock: number;
+  minStock: number;
+  errors: string[];
+}
+
+export interface ImportProductPayload {
+  name: string;
+  sku: string;
+  categoryId: string;
+  costPrice: number;
+  price: number;
+  stock: number;
+  minStock: number;
+}
+
+export interface DeleteProductResult {
+  mode: "deleted" | "deactivated";
+  name: string;
 }

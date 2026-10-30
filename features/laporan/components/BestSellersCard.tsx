@@ -13,6 +13,12 @@ export function BestSellersCard({ bestSellers }: BestSellersCardProps) {
         Produk Terlaris
       </h2>
 
+      {bestSellers.length === 0 ? (
+        <p className="mt-0 mb-0 text-body text-ink-muted">
+          Belum ada produk terjual pada periode ini.
+        </p>
+      ) : null}
+
       {bestSellers.map((product) => (
         <div
           key={product.rank}

@@ -1,5 +1,9 @@
 import { StatCard } from "@/components/ui/StatCard";
-import { formatNumber, formatRupiah } from "@/lib/format";
+import {
+  formatDateShort,
+  formatNumber,
+  formatRupiah,
+} from "@/lib/format";
 import type { DashboardStats as DashboardStatsData } from "@/features/dashboard/types";
 
 interface DashboardStatsProps {
@@ -12,8 +16,8 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
       <StatCard
         label="Penjualan Hari Ini"
         value={formatRupiah(stats.salesToday)}
-        hint={`+${stats.growthPercent}% dari kemarin`}
-        hintTone="success"
+        hint={`${stats.growthPercent >= 0 ? "+" : ""}${stats.growthPercent}% dari kemarin`}
+        hintTone={stats.growthPercent >= 0 ? "success" : "muted"}
       />
       <StatCard
         label="Jumlah Transaksi"
@@ -29,7 +33,11 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
       <StatCard
         label="Karyawan Hadir"
         value={`${stats.employeesPresent} / ${stats.employeesTotal}`}
-        hint={`${stats.employeesOnLeave} izin hari ini`}
+        hint={
+          stats.attendanceDate
+            ? `${stats.employeesOnLeave} izin · data ${formatDateShort(stats.attendanceDate)}`
+            : "Belum ada data absensi"
+        }
       />
     </div>
   );

@@ -17,6 +17,12 @@ export function CashierReportCard({
         Per Kasir
       </h2>
 
+      {cashiers.length === 0 ? (
+        <p className="mt-0 mb-3 text-body text-ink-muted">
+          Belum ada transaksi pada periode ini.
+        </p>
+      ) : null}
+
       {cashiers.map((cashier) => (
         <div
           key={cashier.name}

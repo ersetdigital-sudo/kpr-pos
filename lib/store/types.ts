@@ -43,6 +43,7 @@ export interface Product {
   categoryId: string;
   costPrice: number;
   price: number;
+  imageUrl?: string;
   isActive: boolean;
 }
 
@@ -76,10 +77,30 @@ export interface ReceiptSettings {
   footerText: string;
 }
 
+export type SalesBonusType = "per_piece" | "percent" | "tiered";
+
+export interface SalesBonusTier {
+  /** Target minimal pcs dalam sebulan agar tier ini berlaku. */
+  minQuantity: number;
+  amountPerPiece: number;
+}
+
+export interface SalesBonusSettings {
+  type: SalesBonusType;
+  /** Bonus tetap per pcs untuk tipe per_piece. */
+  perPieceAmount: number;
+  /** Persentase dari nominal penjualan untuk tipe percent. */
+  percentRate: number;
+  /** Tier dari target pcs terbanyak ke terkecil untuk tipe tiered. */
+  tiers: SalesBonusTier[];
+}
+
 export interface StoreSettings {
   business: BusinessProfile;
   payment: PaymentSettings;
+  /** Nilai lama, dipertahankan agar data fase 1 tetap terbaca. */
   salesBonusPerPiece: number;
+  salesBonus: SalesBonusSettings;
   receipt: ReceiptSettings;
 }
 
@@ -87,6 +108,8 @@ export interface TransactionItem {
   productId: string;
   productName: string;
   unitPrice: number;
+  /** Harga modal saat transaksi; transaksi lama bisa belum punya nilai ini. */
+  unitCost?: number;
   quantity: number;
   lineTotal: number;
 }
@@ -136,7 +159,11 @@ export interface CartDraft {
   updatedAt: string;
 }
 
-export type SalesOrderStatus = "Belum sinkron" | "Menunggu bayar" | "Lunas";
+export type SalesOrderStatus =
+  | "Belum sinkron"
+  | "Menunggu bayar"
+  | "Lunas"
+  | "Dibatalkan";
 
 export interface SalesOrderItem {
   productId: string;
@@ -155,7 +182,60 @@ export interface SalesOrder {
   items: SalesOrderItem[];
   total: number;
   status: SalesOrderStatus;
+  /** Menandai stok cabang sudah dikurangi saat pesanan dilunasi. */
+  stockApplied: boolean;
   note: string;
+  createdAt: string;
+}
+
+export interface StockInItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+}
+
+export interface StockInRecord {
+  id: string;
+  branchId: string;
+  items: StockInItem[];
+  date: string;
+  note: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface StockOpnameItem {
+  productId: string;
+  productName: string;
+  systemQuantity: number;
+  physicalQuantity: number;
+  difference: number;
+}
+
+export interface StockOpnameRecord {
+  id: string;
+  branchId: string;
+  items: StockOpnameItem[];
+  date: string;
+  note: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface StockTransferItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+}
+
+export interface StockTransferRecord {
+  id: string;
+  fromBranchId: string;
+  toBranchId: string;
+  items: StockTransferItem[];
+  date: string;
+  note: string;
+  userId: string;
   createdAt: string;
 }
 
@@ -188,12 +268,15 @@ export interface AppSession {
 }
 
 export interface AppDatabase {
-  schemaVersion: 1;
+  schemaVersion: 2;
   branches: Branch[];
   employees: Employee[];
   categories: Category[];
   products: Product[];
   stocks: StockLevel[];
+  stockIns: StockInRecord[];
+  stockOpnames: StockOpnameRecord[];
+  stockTransfers: StockTransferRecord[];
   transactions: Transaction[];
   drafts: CartDraft[];
   salesOrders: SalesOrder[];

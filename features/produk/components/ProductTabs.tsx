@@ -1,40 +1,43 @@
-import { cn } from "@/lib/cn";
+"use client";
 
-const TABS = [
-  "Daftar Produk",
-  "Kategori",
-  "Stok Masuk",
-  "Stok Opname",
-  "Transfer Antar Cabang",
-] as const;
+import { Tabs } from "@/components/ui/Tabs";
 
-export function ProductTabs() {
+export type ProductTab =
+  | "products"
+  | "categories"
+  | "stock-in"
+  | "opname"
+  | "transfer";
+
+interface ProductTabsProps {
+  value: ProductTab;
+  onChange: (tab: ProductTab) => void;
+  counts: {
+    products: number;
+    categories: number;
+    stockIn: number;
+    opname: number;
+    transfer: number;
+  };
+}
+
+export function ProductTabs({ value, onChange, counts }: ProductTabsProps) {
   return (
-    <div
-      role="tablist"
-      aria-label="Bagian stok"
-      className="flex flex-wrap gap-1 border-b border-line-strong"
-    >
-      {TABS.map((tab, index) => {
-        const active = index === 0;
-
-        return (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            className={cn(
-              "h-11 cursor-pointer border-x-0 border-t-0 border-b-[3px] bg-transparent px-4 font-sans text-body",
-              active
-                ? "border-brand font-bold text-ink"
-                : "border-transparent font-semibold text-ink-muted",
-            )}
-          >
-            {tab}
-          </button>
-        );
-      })}
-    </div>
+    <Tabs
+      ariaLabel="Bagian produk dan stok"
+      value={value}
+      onChange={onChange}
+      tabs={[
+        { id: "products", label: "Daftar Produk", badge: counts.products },
+        { id: "categories", label: "Kategori", badge: counts.categories },
+        { id: "stock-in", label: "Stok Masuk", badge: counts.stockIn },
+        { id: "opname", label: "Stok Opname", badge: counts.opname },
+        {
+          id: "transfer",
+          label: "Transfer Antar Cabang",
+          badge: counts.transfer,
+        },
+      ]}
+    />
   );
 }

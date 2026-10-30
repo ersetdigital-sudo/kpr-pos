@@ -23,7 +23,7 @@ const columns: readonly DataTableColumn<LeaderboardEntry>[] = [
   },
   {
     id: "orders",
-    header: "Pesanan",
+    header: "Transaksi",
     cell: (entry) => formatNumber(entry.orderCount),
   },
   {
@@ -43,31 +43,44 @@ const columns: readonly DataTableColumn<LeaderboardEntry>[] = [
 
 interface LeaderboardTableProps {
   entries: readonly LeaderboardEntry[];
+  periodLabel: string;
+  bonusRuleLabel: string;
 }
 
-export function LeaderboardTable({ entries }: LeaderboardTableProps) {
+export function LeaderboardTable({
+  entries,
+  periodLabel,
+  bonusRuleLabel,
+}: LeaderboardTableProps) {
   return (
     <Card className="p-5">
       <CardHeader
-        title="Papan Peringkat Sales · Oktober"
+        title={`Papan Peringkat Sales · ${periodLabel}`}
         action={
           <span className="text-meta text-ink-muted">
-            Aturan bonus diatur Owner di Pengaturan
+            Aturan: {bonusRuleLabel}
           </span>
         }
       />
-      <div className="mt-3">
-        <DataTable
-          ariaLabel="Papan peringkat sales Oktober"
-          columns={columns}
-          rows={entries}
-          rowKey={(entry) => String(entry.rank)}
-          minWidth={480}
-          rowClassName={(entry) =>
-            entry.isCurrentUser ? "bg-brand-soft" : undefined
-          }
-        />
-      </div>
+
+      {entries.length === 0 ? (
+        <div className="mt-3 rounded-control border border-dashed border-line-strong bg-canvas px-4 py-6 text-center text-body text-ink-muted">
+          Belum ada data bonus bulan ini.
+        </div>
+      ) : (
+        <div className="mt-3">
+          <DataTable
+            ariaLabel={`Papan peringkat sales ${periodLabel}`}
+            columns={columns}
+            rows={entries}
+            rowKey={(entry) => entry.salesEmployeeId}
+            minWidth={480}
+            rowClassName={(entry) =>
+              entry.isCurrentUser ? "bg-brand-soft" : undefined
+            }
+          />
+        </div>
+      )}
     </Card>
   );
 }

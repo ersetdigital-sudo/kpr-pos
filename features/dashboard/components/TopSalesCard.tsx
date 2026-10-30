@@ -29,6 +29,12 @@ export function TopSalesCard({ entries }: TopSalesCardProps) {
         }
       />
 
+      {entries.length === 0 ? (
+        <p className="mt-4 mb-0 rounded-control border border-dashed border-line-strong bg-canvas px-3 py-5 text-center text-meta text-ink-muted">
+          Belum ada penjualan sales bulan ini.
+        </p>
+      ) : null}
+
       <div className="mt-[18px] flex flex-col gap-4">
         {entries.map((entry) => (
           <div key={entry.rank}>

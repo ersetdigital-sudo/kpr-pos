@@ -12,13 +12,19 @@ export function SalesStatsCards({ stats }: SalesStatsCardsProps) {
       <StatCard
         label="Terjual Bulan Ini"
         value={`${formatNumber(stats.soldThisMonth)} pcs`}
-        hint={`Peringkat ${stats.rank} dari ${stats.totalSalespeople} sales`}
+        hint={
+          stats.rank > 0
+            ? `Peringkat ${stats.rank} dari ${stats.totalSalespeople} sales`
+            : stats.soldThisMonth > 0
+              ? `Total ${stats.totalSalespeople} sales bulan ini`
+              : "Belum ada penjualan bulan ini"
+        }
       />
       <StatCard
         label="Bonus Berjalan"
         value={formatRupiah(stats.runningBonus)}
         valueTone="success"
-        hint={`Aturan: ${formatRupiah(stats.bonusPerPiece)} per pcs`}
+        hint={`Aturan: ${stats.bonusRuleLabel}`}
       />
       <StatCard
         label="Menunggu Pembayaran"

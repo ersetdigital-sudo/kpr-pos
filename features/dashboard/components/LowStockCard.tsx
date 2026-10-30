@@ -28,6 +28,12 @@ export function LowStockCard({ products }: LowStockCardProps) {
         }
       />
 
+      {products.length === 0 ? (
+        <p className="mt-3 mb-0 rounded-control border border-dashed border-line-strong bg-canvas px-3 py-5 text-center text-meta text-ink-muted">
+          Semua stok aman pada filter ini.
+        </p>
+      ) : null}
+
       <div className="mt-3 flex flex-col">
         {products.map((product) => {
           const outOfStock = product.remaining === 0;

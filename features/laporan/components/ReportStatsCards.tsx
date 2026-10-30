@@ -17,8 +17,7 @@ export function ReportStatsCards({ stats }: ReportStatsCardsProps) {
       <StatCard
         label="Omzet"
         value={formatRupiahCompact(stats.revenue)}
-        hint="+8% dari bulan lalu"
-        hintTone="success"
+        hint={`${formatNumber(stats.transactionCount)} transaksi`}
       />
       <StatCard
         label="Laba Kotor"

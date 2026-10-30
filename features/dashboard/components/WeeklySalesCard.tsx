@@ -23,7 +23,7 @@ export function WeeklySalesCard({ sales }: WeeklySalesCardProps) {
       <div className="mt-5 flex h-[220px] items-end gap-[14px] border-b border-line pb-1">
         {sales.map((sale) => (
           <div
-            key={sale.day}
+            key={sale.key}
             className="flex flex-1 flex-col items-center gap-1.5"
           >
             <span
@@ -50,7 +50,7 @@ export function WeeklySalesCard({ sales }: WeeklySalesCardProps) {
       <div className="mt-2 flex gap-[14px] text-meta text-ink-muted">
         {sales.map((sale) => (
           <span
-            key={sale.day}
+            key={sale.key}
             className={
               sale.isCurrentDay
                 ? "flex-1 text-center font-bold text-ink"

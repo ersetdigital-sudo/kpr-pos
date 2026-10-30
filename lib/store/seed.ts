@@ -5,11 +5,26 @@ import type {
   Branch,
   Employee,
   Product,
+  SalesBonusSettings,
   SalesOrder,
   SalesOrderItem,
+  StockInRecord,
+  StockOpnameRecord,
+  StockTransferRecord,
   Transaction,
   TransactionItem,
 } from "@/lib/store/types";
+
+export const DEFAULT_SALES_BONUS: SalesBonusSettings = {
+  type: "per_piece",
+  perPieceAmount: 5_000,
+  percentRate: 2.5,
+  tiers: [
+    { minQuantity: 200, amountPerPiece: 7_500 },
+    { minQuantity: 100, amountPerPiece: 6_000 },
+    { minQuantity: 0, amountPerPiece: 5_000 },
+  ],
+};
 
 function sumItems(items: readonly { unitPrice: number; quantity: number }[]) {
   return items.reduce(
@@ -276,6 +291,7 @@ export function createSeedDatabase(): AppDatabase {
       productId,
       productName: product.name,
       unitPrice: product.price,
+      unitCost: product.costPrice,
       quantity,
       lineTotal: product.price * quantity,
     };
@@ -394,6 +410,7 @@ export function createSeedDatabase(): AppDatabase {
       items: order014Items,
       total: sumItems(order014Items),
       status: "Belum sinkron",
+      stockApplied: false,
       note: "",
       createdAt: "2026-10-29T11:40:00+07:00",
     },
@@ -407,6 +424,7 @@ export function createSeedDatabase(): AppDatabase {
       items: order013Items,
       total: sumItems(order013Items),
       status: "Menunggu bayar",
+      stockApplied: false,
       note: "Kirim sore",
       createdAt: "2026-10-29T10:20:00+07:00",
     },
@@ -420,6 +438,7 @@ export function createSeedDatabase(): AppDatabase {
       items: order011Items,
       total: sumItems(order011Items),
       status: "Lunas",
+      stockApplied: true,
       note: "",
       createdAt: "2026-10-28T15:10:00+07:00",
     },
@@ -433,8 +452,78 @@ export function createSeedDatabase(): AppDatabase {
       items: order009Items,
       total: sumItems(order009Items),
       status: "Lunas",
+      stockApplied: true,
       note: "",
       createdAt: "2026-10-27T09:45:00+07:00",
+    },
+  ];
+
+  const stockIns: StockInRecord[] = [
+    {
+      id: "si-01",
+      branchId: "br-main",
+      items: [
+        { productId: "prod-a", productName: "[Produk A]", quantity: 40 },
+        { productId: "prod-e", productName: "[Produk E]", quantity: 80 },
+      ],
+      date: "2026-10-27",
+      note: "Restock dari supplier utama",
+      userId: "emp-inventory-bayu",
+      createdAt: "2026-10-27T09:15:00+07:00",
+    },
+    {
+      id: "si-02",
+      branchId: "br-bandung",
+      items: [
+        { productId: "prod-b", productName: "[Produk B]", quantity: 24 },
+        { productId: "prod-d", productName: "[Produk D]", quantity: 12 },
+      ],
+      date: "2026-10-28",
+      note: "Kiriman gudang pusat",
+      userId: "emp-supervisor",
+      createdAt: "2026-10-28T10:40:00+07:00",
+    },
+  ];
+
+  const stockOpnames: StockOpnameRecord[] = [
+    {
+      id: "op-01",
+      branchId: "br-main",
+      items: [
+        {
+          productId: "prod-b",
+          productName: "[Produk B]",
+          systemQuantity: 8,
+          physicalQuantity: 3,
+          difference: -5,
+        },
+        {
+          productId: "prod-f",
+          productName: "[Produk F]",
+          systemQuantity: 7,
+          physicalQuantity: 5,
+          difference: -2,
+        },
+      ],
+      date: "2026-10-29",
+      note: "Koreksi opname bulanan",
+      userId: "emp-inventory-bayu",
+      createdAt: "2026-10-29T12:51:00+07:00",
+    },
+  ];
+
+  const stockTransfers: StockTransferRecord[] = [
+    {
+      id: "tr-01",
+      fromBranchId: "br-main",
+      toBranchId: "br-bandung",
+      items: [
+        { productId: "prod-a", productName: "[Produk A]", quantity: 10 },
+      ],
+      date: "2026-10-28",
+      note: "Penyeimbangan stok cabang",
+      userId: "emp-inventory-bayu",
+      createdAt: "2026-10-28T14:20:00+07:00",
     },
   ];
 
@@ -584,12 +673,15 @@ export function createSeedDatabase(): AppDatabase {
   ];
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     branches,
     employees,
     categories,
     products,
     stocks,
+    stockIns,
+    stockOpnames,
+    stockTransfers,
     transactions,
     drafts: [],
     salesOrders,
@@ -624,6 +716,7 @@ export function createSeedDatabase(): AppDatabase {
         ],
       },
       salesBonusPerPiece: 5_000,
+      salesBonus: DEFAULT_SALES_BONUS,
       receipt: {
         paperSize: 80,
         footerText:
