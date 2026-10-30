@@ -1,0 +1,51 @@
+import Link from "next/link";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { LowStockProduct } from "@/features/dashboard/types";
+
+interface LowStockCardProps {
+  products: readonly LowStockProduct[];
+}
+
+export function LowStockCard({ products }: LowStockCardProps) {
+  return (
+    <Card className="min-w-0 flex-[1_1_300px] p-5">
+      <CardHeader
+        title="Stok Menipis"
+        action={
+          <Link href="/produk" className="text-label font-semibold">
+            Kelola stok
+          </Link>
+        }
+      />
+
+      <div className="mt-3 flex flex-col">
+        {products.map((product) => {
+          const outOfStock = product.remaining === 0;
+
+          return (
+            <div
+              key={product.id}
+              className="flex items-center justify-between border-b border-line-faint py-2.5 last:border-b-0"
+            >
+              <div>
+                <div className="text-body font-semibold text-ink">
+                  {product.name}
+                </div>
+                <div className="text-meta text-ink-muted">
+                  {product.branch}
+                </div>
+              </div>
+              <StatusBadge
+                tone={outOfStock ? "danger" : "brand"}
+                strong
+              >
+                {outOfStock ? "Habis" : `Sisa ${product.remaining}`}
+              </StatusBadge>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}

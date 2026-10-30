@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laporan &amp; Log Aktivitas · POS Management System</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0;font-variant-numeric:tabular-nums}
+a{color:#C2410C}a:hover{color:#9A3412}
+</style>
+</head>
+<body>
+<div style="min-height: 1000px; display: flex; flex-wrap: wrap; background: #F1F5F9; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #0F172A">
+
+<nav aria-label="Menu utama" style="flex: 1 1 220px; max-width: 260px; background: #0F172A; padding: 20px 14px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 10px 20px; margin-bottom: 8px; border-bottom: 1px solid #1E293B; text-align: center">
+<img src="assets/logo-kpr.png" alt="Logo CV. Karya Putra Ragil" style="width: 80px; height: 84px; object-fit: contain">
+<div><div style="font-weight: 700; color: #FFFFFF; font-size: 15px; line-height: 1.3">CV. Karya Putra Ragil</div><div style="font-size: 12px; color: #94A3B8">POS Management System</div></div>
+</div>
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #94A3B8; padding: 8px 12px 4px">OPERASIONAL</div>
+<a href="dashboard.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>Dashboard</a>
+<a href="kasir.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg>Kasir</a>
+<a href="pesanan-sales.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="4" width="14" height="17" rx="2"></rect><path d="M9 4h6v3H9zM9 12h6M9 16h4"></path></svg>Pesanan Sales</a>
+<a href="produk-stok.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7l9-4 9 4-9 4-9-4z"></path><path d="M3 7v10l9 4 9-4V7M12 11v10"></path></svg>Produk &amp; Stok</a>
+<a href="#" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Absensi</a>
+<a href="laporan.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; color: #FFFFFF; background: #C2410C"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Laporan</a>
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #94A3B8; padding: 16px 12px 4px">MANAJEMEN</div>
+<a href="#" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2"></path></svg>Karyawan &amp; Role</a>
+<a href="#" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM10 20v-6h4v6"></path></svg>Cabang</a>
+<a href="#" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; box-sizing: border-box; border-radius: 8px; text-decoration: none; font-size: 14px; color: #CBD5E1"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>Pengaturan</a>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 28px; background: #FFFFFF; border-bottom: 1px solid #E2E8F0">
+<div><h1 style="margin: 0; font-size: 22px; font-weight: 700">Laporan</h1><p style="margin: 2px 0 0; font-size: 13px; color: #475569">1 – 29 Oktober 2026 · Toko Utama</p></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<div style="display: flex; border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden"><button type="button" style="height: 38px; padding: 0 12px; border: 0; background: #FFFFFF; font: inherit; font-size: 13px; font-weight: 600; color: #475569">Hari ini</button><button type="button" style="height: 38px; padding: 0 12px; border: 0; border-left: 1px solid #CBD5E1; background: #FFFFFF; font: inherit; font-size: 13px; font-weight: 600; color: #475569">Minggu ini</button><button type="button" style="height: 38px; padding: 0 12px; border: 0; border-left: 1px solid #CBD5E1; background: #0F172A; font: inherit; font-size: 13px; font-weight: 600; color: #FFFFFF">Bulan ini</button></div>
+<button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #CBD5E1; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600; color: #0F172A">Export Excel</button>
+<button type="button" style="height: 40px; padding: 0 14px; border: 1px solid #CBD5E1; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 14px; font-weight: 600; color: #0F172A">Export PDF</button>
+<div style="display: flex; align-items: center; gap: 10px; padding-left: 6px"><div style="width: 36px; height: 36px; border-radius: 50%; background: #E2E8F0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px">DW</div><div><div style="font-size: 14px; font-weight: 600">Dewi</div><div style="font-size: 12px; color: #475569">Accountant</div></div></div>
+</div>
+</header>
+
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px"><div style="font-size: 13px; color: #475569; font-weight: 500">Omzet</div><div style="font-size: 26px; font-weight: 800; margin-top: 6px">Rp 118,6 jt</div><div style="font-size: 12px; color: #166534; font-weight: 600; margin-top: 6px">+8% dari bulan lalu</div></div>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px"><div style="font-size: 13px; color: #475569; font-weight: 500">Laba Kotor</div><div style="font-size: 26px; font-weight: 800; margin-top: 6px">Rp 36,2 jt</div><div style="font-size: 12px; color: #475569; margin-top: 6px">Margin 30,5%</div></div>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px"><div style="font-size: 13px; color: #475569; font-weight: 500">Transaksi</div><div style="font-size: 26px; font-weight: 800; margin-top: 6px">2.104</div><div style="font-size: 12px; color: #475569; margin-top: 6px">Rata-rata Rp 56.400</div></div>
+<div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px"><div style="font-size: 13px; color: #475569; font-weight: 500">Total Bonus Sales</div><div style="font-size: 26px; font-weight: 800; margin-top: 6px">Rp 2,1 jt</div><div style="font-size: 12px; color: #475569; margin-top: 6px">4 sales aktif</div></div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<section style="flex: 1 1 300px; min-width: 0; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px">
+<h2 style="margin: 0 0 16px; font-size: 16px; font-weight: 700">Per Metode Pembayaran</h2>
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div><div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">Cash</span><span>Rp 54,6 jt · 46%</span></div><div style="height: 10px; background: #E2E8F0; border-radius: 99px; margin-top: 6px"><div style="width: 46%; height: 10px; background: #C2410C; border-radius: 99px"></div></div></div>
+<div><div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">QRIS</span><span>Rp 42,7 jt · 36%</span></div><div style="height: 10px; background: #E2E8F0; border-radius: 99px; margin-top: 6px"><div style="width: 36%; height: 10px; background: #C2410C; border-radius: 99px"></div></div></div>
+<div><div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">Transfer</span><span>Rp 21,3 jt · 18%</span></div><div style="height: 10px; background: #E2E8F0; border-radius: 99px; margin-top: 6px"><div style="width: 18%; height: 10px; background: #C2410C; border-radius: 99px"></div></div></div>
+</div>
+</section>
+
+<section style="flex: 1 1 300px; min-width: 0; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px">
+<h2 style="margin: 0 0 12px; font-size: 16px; font-weight: 700">Per Kasir</h2>
+<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px"><span style="font-weight: 600">Lala</span><span>1.128 trx · Rp 63,1 jt</span></div>
+<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px"><span style="font-weight: 600">Fajar</span><span>976 trx · Rp 55,5 jt</span></div>
+<div style="display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; color: #475569"><span>Selisih kas</span><span style="font-weight: 600; color: #166534">Rp 0</span></div>
+</section>
+
+<section style="flex: 1 1 300px; min-width: 0; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px">
+<h2 style="margin: 0 0 12px; font-size: 16px; font-weight: 700">Produk Terlaris</h2>
+<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px"><span><span style="color: #475569; margin-right: 8px">1</span><span style="font-weight: 600">[Produk A]</span></span><span>412 pcs</span></div>
+<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px"><span><span style="color: #475569; margin-right: 8px">2</span><span style="font-weight: 600">[Produk E]</span></span><span>356 pcs</span></div>
+<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px"><span><span style="color: #475569; margin-right: 8px">3</span><span style="font-weight: 600">[Produk D]</span></span><span>288 pcs</span></div>
+<div style="display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px"><span><span style="color: #475569; margin-right: 8px">4</span><span style="font-weight: 600">[Produk H]</span></span><span>201 pcs</span></div>
+</section>
+</div>
+
+<section style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px">
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px"><div><h2 style="margin: 0; font-size: 16px; font-weight: 700">Log Aktivitas</h2><p style="margin: 2px 0 0; font-size: 13px; color: #475569">Siapa membuka, mengubah, dan membuat data</p></div><select aria-label="Filter role" style="height: 40px; padding: 0 10px; border: 1px solid #CBD5E1; border-radius: 8px; font: inherit; font-size: 14px; color: #0F172A; background: #FFFFFF"><option>Semua role</option></select></div>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 720px">
+<thead><tr style="text-align: left; color: #475569; font-size: 12px; background: #F8FAFC"><th style="padding: 10px 8px; font-weight: 600">Waktu</th><th style="padding: 10px 8px; font-weight: 600">Pengguna</th><th style="padding: 10px 8px; font-weight: 600">Role</th><th style="padding: 10px 8px; font-weight: 600">Aksi</th><th style="padding: 10px 8px; font-weight: 600">Detail</th></tr></thead>
+<tbody>
+
+<tr style="border-top: 1px solid #F1F5F9"><td style="padding: 10px 8px; color: #475569; white-space: nowrap">29 Okt, 13:12</td><td style="padding: 10px 8px; font-weight: 600">Lala</td><td style="padding: 10px 8px; color: #334155">Cashier</td><td style="padding: 10px 8px"><span style="background: #DCFCE7; color: #166534; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600">Membuat</span></td><td style="padding: 10px 8px; color: #334155">Transaksi INV-2910-086 · Rp 185.000</td></tr>
+
+<tr style="border-top: 1px solid #F1F5F9"><td style="padding: 10px 8px; color: #475569; white-space: nowrap">29 Okt, 12:51</td><td style="padding: 10px 8px; font-weight: 600">Bayu</td><td style="padding: 10px 8px; color: #334155">Inventory</td><td style="padding: 10px 8px"><span style="background: #FEF3C7; color: #92400E; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600">Mengubah</span></td><td style="padding: 10px 8px; color: #334155">Stok [Produk B] 8 → 3 (koreksi opname)</td></tr>
+
+<tr style="border-top: 1px solid #F1F5F9"><td style="padding: 10px 8px; color: #475569; white-space: nowrap">29 Okt, 11:40</td><td style="padding: 10px 8px; font-weight: 600">Rina</td><td style="padding: 10px 8px; color: #334155">Sales</td><td style="padding: 10px 8px"><span style="background: #DCFCE7; color: #166534; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600">Membuat</span></td><td style="padding: 10px 8px; color: #334155">Pesanan SO-2910-013 · Toko Makmur</td></tr>
+
+<tr style="border-top: 1px solid #F1F5F9"><td style="padding: 10px 8px; color: #475569; white-space: nowrap">29 Okt, 10:05</td><td style="padding: 10px 8px; font-weight: 600">Hendra</td><td style="padding: 10px 8px; color: #334155">Manager</td><td style="padding: 10px 8px"><span style="background: #FEF3C7; color: #92400E; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600">Mengubah</span></td><td style="padding: 10px 8px; color: #334155">Harga jual [Produk D] Rp 60.000 → Rp 62.000</td></tr>
+
+<tr style="border-top: 1px solid #F1F5F9"><td style="padding: 10px 8px; color: #475569; white-space: nowrap">29 Okt, 09:30</td><td style="padding: 10px 8px; font-weight: 600">Fajar</td><td style="padding: 10px 8px; color: #334155">Cashier</td><td style="padding: 10px 8px"><span style="background: #FEE2E2; color: #991B1B; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600">Membatalkan</span></td><td style="padding: 10px 8px; color: #334155">Transaksi INV-2910-012 · alasan: salah input</td></tr>
+
+<tr style="border-top: 1px solid #F1F5F9"><td style="padding: 10px 8px; color: #475569; white-space: nowrap">29 Okt, 08:02</td><td style="padding: 10px 8px; font-weight: 600">Dewi</td><td style="padding: 10px 8px; color: #334155">Accountant</td><td style="padding: 10px 8px"><span style="background: #F1F5F9; color: #334155; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600">Membuka</span></td><td style="padding: 10px 8px; color: #334155">Laporan bulanan Oktober</td></tr>
+
+</tbody>
+</table>
+</div>
+</section>
+
+</div>
+</main>
+</div>
+</body>
+</html>

@@ -1,36 +1,117 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# POS Management System — CV. Karya Putra Ragil
 
-## Getting Started
+UI aplikasi POS berbasis **Next.js 16 (App Router)**, **TypeScript**, dan **Tailwind CSS 4**.
+Tahap ini fokus pada tampilan dan struktur kode: belum ada database, login, maupun API.
 
-First, run the development server:
+## Menjalankan
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka `http://localhost:3000` — otomatis diarahkan ke `/dashboard`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Perintah lain: `npm run lint`, `npm run typecheck`, `npm run build`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Halaman
 
-## Learn More
+| Route        | Isi                                                       |
+| ------------ | --------------------------------------------------------- |
+| `/dashboard` | Ringkasan penjualan, grafik 7 hari, top sales, stok menipis |
+| `/kasir`     | Katalog produk, keranjang, pembayaran Cash/QRIS/Transfer   |
+| `/pesanan`   | Input pesanan sales, daftar pesanan, papan peringkat       |
+| `/produk`    | Tab stok, ringkasan stok, tabel produk, pagination         |
+| `/laporan`   | Omzet, metode bayar, per kasir, produk terlaris, log       |
 
-To learn more about Next.js, take a look at the following resources:
+Desain mengikuti file HTML di `kpr-pos-mockup-html/`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Struktur folder
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+app/
+  (app)/                 # semua halaman yang memakai sidebar + header
+    layout.tsx           # AppShell (drawer mobile)
+    dashboard/page.tsx
+    kasir/page.tsx
+    pesanan/page.tsx
+    produk/page.tsx
+    laporan/page.tsx
+  layout.tsx             # font, metadata, body
+  globals.css            # design token Tailwind (@theme)
+components/
+  layout/                # AppShell, Sidebar, PageHeader, UserBadge
+  ui/                    # Button, Card, StatCard, StatusBadge, DataTable,
+                         # Input, Select, Textarea, Field, SearchField,
+                         # ProgressBar, Chip, Avatar, Icon
+config/
+  navigation.ts          # SATU sumber daftar menu sidebar
+constants/
+  roles.ts               # daftar role aplikasi
+features/
+  dashboard/  kasir/  pesanan/  produk/  laporan/
+    components/          # komponen khusus fitur
+    data/                # fungsi pengambil data (dummy)
+    types/               # tipe data fitur
+lib/
+  format.ts              # format rupiah, tanggal, angka, persen
+  cn.ts                  # penggabung className
+types/
+  index.ts               # tipe domain bersama (PaymentMethod, SessionUser)
+```
 
-## Deploy on Vercel
+## Design token
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Warna, ukuran font, dan radius berada di blok `@theme` pada
+[`app/globals.css`](app/globals.css) — ini konfigurasi Tailwind 4. Jangan menulis
+hex warna langsung di komponen; gunakan utilitas token seperti `bg-brand`,
+`text-ink-muted`, `border-line`, `rounded-card`, `text-stat`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Warna utama: `#C2410C` (`brand`). Font: Plus Jakarta Sans, dimuat di
+`app/layout.tsx`.
+
+## Menambah menu sidebar
+
+Cukup tambah satu objek di `config/navigation.ts`:
+
+```ts
+{
+  label: "Pelanggan",
+  href: "/pelanggan",
+  icon: "users", // pilihan ikon ada di components/ui/Icon.tsx
+  roles: [ROLES.OWNER, ROLES.MANAGER],
+},
+```
+
+Menu aktif ditentukan otomatis dari `usePathname()`. Menu tanpa `href`
+ditampilkan sebagai placeholder "segera hadir".
+
+## Menambah halaman / fitur
+
+1. Buat `features/<fitur>/types/index.ts` untuk tipe data.
+2. Buat `features/<fitur>/data/<fitur>-data.ts` yang mengekspor fungsi
+   `get<Fitur>Data()`. Komponen **tidak boleh** memanggil data dummy langsung.
+3. Buat komponen di `features/<fitur>/components/`. Pakai ulang komponen
+   `components/ui` (jangan menyalin markup tabel/kartu/tombol).
+4. Buat `app/(app)/<fitur>/page.tsx` yang memanggil data getter lalu menyusun
+   `PageHeader` dan komponen fitur.
+5. Tambahkan menu di `config/navigation.ts` dan role di `constants/roles.ts`.
+
+Saat pindah ke database/API, cukup ubah isi fungsi getter (misalnya menjadi
+`async`) dan sesuaikan pemanggilnya — struktur tampilan tidak berubah.
+
+## Catatan implementasi
+
+- Format rupiah/tanggal/angka hanya lewat `lib/format.ts`.
+- Semua data bertipe eksplisit; tidak ada `any`.
+- `PaymentSection` di halaman Kasir adalah Client Component: memilih Cash
+  menampilkan uang diterima + kembalian (kembalian dihitung otomatis), QRIS
+  menampilkan area QR, Transfer menampilkan pilihan rekening.
+- Sidebar berubah menjadi drawer di bawah breakpoint `lg`; tabel lebar memakai
+  wrapper `overflow-x-auto` di `DataTable`.
+
+## Belum dikerjakan
+
+Login/otorisasi role, database/API, CRUD nyata, aksi tombol (bayar, simpan
+draft, export, tambah produk), interaksi tambah/kurangi qty keranjang, serta
+halaman Absensi, Karyawan & Role, Cabang, dan Pengaturan.

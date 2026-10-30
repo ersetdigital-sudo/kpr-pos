@@ -1,0 +1,41 @@
+import Link from "next/link";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { formatRupiah } from "@/lib/format";
+import type { TopSalesEntry } from "@/features/dashboard/types";
+
+interface TopSalesCardProps {
+  entries: readonly TopSalesEntry[];
+}
+
+export function TopSalesCard({ entries }: TopSalesCardProps) {
+  return (
+    <Card className="min-w-0 flex-[1_1_300px] p-5">
+      <CardHeader
+        title="Top Sales Bulan Ini"
+        action={
+          <Link href="/pesanan" className="text-label font-semibold">
+            Lihat semua
+          </Link>
+        }
+      />
+
+      <div className="mt-[18px] flex flex-col gap-4">
+        {entries.map((entry) => (
+          <div key={entry.rank}>
+            <div className="flex justify-between text-body">
+              <span className="font-semibold text-ink">
+                {entry.rank}. {entry.name}
+              </span>
+              <span className="text-ink-muted">{entry.soldCount} pcs</span>
+            </div>
+            <ProgressBar value={entry.progress} className="mt-1.5" />
+            <div className="mt-1 text-meta text-ink-muted">
+              Estimasi bonus {formatRupiah(entry.bonus)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
