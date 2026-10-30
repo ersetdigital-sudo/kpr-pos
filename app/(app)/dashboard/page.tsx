@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
-import { Icon } from "@/components/ui/Icon";
 import { DashboardStats } from "@/features/dashboard/components/DashboardStats";
 import { LowStockCard } from "@/features/dashboard/components/LowStockCard";
 import { RecentTransactionsCard } from "@/features/dashboard/components/RecentTransactionsCard";
@@ -22,17 +20,10 @@ export default function DashboardPage() {
       <PageHeader
         title={data.header.title}
         subtitle={data.header.subtitle}
-        user={data.user}
         actions={
-          <>
-            <Button variant="outline" size="md" className="gap-2">
-              {data.header.branchLabel}
-              <Icon name="chevronDown" size={14} strokeWidth={2} />
-            </Button>
-            <Chip tone="success" dot>
-              Online · Tersinkron
-            </Chip>
-          </>
+          <Chip tone="success" dot>
+            Online · Tersinkron
+          </Chip>
         }
       />
 

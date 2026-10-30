@@ -1,4 +1,4 @@
-import type { PaymentMethod, SessionUser } from "@/types";
+import type { PaymentMethod } from "@/types";
 
 export interface DashboardPaymentCounts {
   cash: number;
@@ -50,10 +50,8 @@ export interface LowStockProduct {
 export interface DashboardData {
   header: {
     title: string;
-    branchLabel: string;
     subtitle: string;
   };
-  user: SessionUser;
   stats: DashboardStats;
   weeklySales: readonly WeeklySale[];
   topSales: readonly TopSalesEntry[];

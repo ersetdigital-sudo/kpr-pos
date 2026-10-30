@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { canAccessPath } from "@/config/navigation";
+import { useSession } from "@/features/session/data/session-repository";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { formatRupiah } from "@/lib/format";
 import type { TopSalesEntry } from "@/features/dashboard/types";
@@ -9,14 +13,19 @@ interface TopSalesCardProps {
 }
 
 export function TopSalesCard({ entries }: TopSalesCardProps) {
+  const { employee } = useSession();
+  const canViewOrders = canAccessPath("/pesanan", employee.role);
+
   return (
     <Card className="min-w-0 flex-[1_1_300px] p-5">
       <CardHeader
         title="Top Sales Bulan Ini"
         action={
-          <Link href="/pesanan" className="text-label font-semibold">
-            Lihat semua
-          </Link>
+          canViewOrders ? (
+            <Link href="/pesanan" className="text-label font-semibold">
+              Lihat semua
+            </Link>
+          ) : undefined
         }
       />
 

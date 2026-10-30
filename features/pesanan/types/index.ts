@@ -1,5 +1,3 @@
-import type { SessionUser } from "@/types";
-
 export type SalesOrderStatus = "Belum sinkron" | "Menunggu bayar" | "Lunas";
 
 export interface SalesOrder {
@@ -50,7 +48,6 @@ export interface SalesOrdersData {
     title: string;
     subtitle: string;
   };
-  user: SessionUser;
   stats: SalesStats;
   orders: readonly SalesOrder[];
   leaderboard: readonly LeaderboardEntry[];

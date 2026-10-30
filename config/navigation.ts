@@ -14,6 +14,19 @@ export interface NavSection {
   items: readonly NavItem[];
 }
 
+export function findNavItemByPath(pathname: string): NavItem | undefined {
+  return NAV_SECTIONS.flatMap((section) => section.items).find(
+    (item) =>
+      item.href &&
+      (pathname === item.href || pathname.startsWith(`${item.href}/`)),
+  );
+}
+
+export function canAccessPath(pathname: string, role: Role): boolean {
+  const item = findNavItemByPath(pathname);
+  return item ? item.roles.includes(role) : true;
+}
+
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     label: "OPERASIONAL",

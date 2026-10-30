@@ -18,6 +18,12 @@ const shortDateFormatter = new Intl.DateTimeFormat("id-ID", {
   month: "short",
 });
 
+const fullDateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
 export function formatNumber(value: number): string {
   return rupiahFormatter.format(value);
 }
@@ -53,6 +59,15 @@ function toDate(value: string | Date): Date {
 /** Contoh: "Kamis, 29 Oktober 2026". */
 export function formatDateLong(value: string | Date): string {
   return longDateFormatter.format(toDate(value));
+}
+
+/** Contoh: "29 Oktober 2026, 13:12". */
+export function formatDateTimeLong(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${fullDateFormatter.format(date)}, ${hours}:${minutes}`;
 }
 
 /** Contoh: "29 Okt, 13:12". */

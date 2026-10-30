@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { canAccessPath } from "@/config/navigation";
+import { useSession } from "@/features/session/data/session-repository";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { LowStockProduct } from "@/features/dashboard/types";
 
@@ -8,14 +12,19 @@ interface LowStockCardProps {
 }
 
 export function LowStockCard({ products }: LowStockCardProps) {
+  const { employee } = useSession();
+  const canViewProducts = canAccessPath("/produk", employee.role);
+
   return (
     <Card className="min-w-0 flex-[1_1_300px] p-5">
       <CardHeader
         title="Stok Menipis"
         action={
-          <Link href="/produk" className="text-label font-semibold">
-            Kelola stok
-          </Link>
+          canViewProducts ? (
+            <Link href="/produk" className="text-label font-semibold">
+              Kelola stok
+            </Link>
+          ) : undefined
         }
       />
 

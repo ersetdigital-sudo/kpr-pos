@@ -1,7 +1,12 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
-type ButtonVariant = "primary" | "outline" | "dangerOutline" | "dashed";
+type ButtonVariant =
+  | "primary"
+  | "outline"
+  | "danger"
+  | "dangerOutline"
+  | "dashed";
 type ButtonSize = "sm" | "md" | "lg" | "xl";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -13,6 +18,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary: "border-0 bg-brand font-bold text-white",
   outline:
     "border border-line-strong bg-surface font-semibold text-ink",
+  danger: "border-0 bg-danger-ink font-bold text-white",
   dangerOutline:
     "border border-danger-line bg-surface font-semibold text-danger-ink",
   dashed:

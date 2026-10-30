@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { NAV_SECTIONS, type NavItem } from "@/config/navigation";
+import { useSession } from "@/features/session/data/session-repository";
 import { cn } from "@/lib/cn";
 
 interface SidebarProps {
@@ -20,6 +21,13 @@ function isItemActive(item: NavItem, pathname: string): boolean {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { employee } = useSession();
+  const sections = NAV_SECTIONS.map((section) => ({
+    label: section.label,
+    items: section.items.filter((item) =>
+      item.roles.includes(employee.role),
+    ),
+  })).filter((section) => section.items.length > 0);
 
   return (
     <>
@@ -68,7 +76,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </div>
           </div>
 
-          {NAV_SECTIONS.map((section, sectionIndex) => (
+          {sections.map((section, sectionIndex) => (
             <Fragment key={section.label}>
               <div
                 className={cn(

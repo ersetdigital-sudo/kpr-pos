@@ -1,25 +1,21 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { SessionControls } from "@/components/layout/SessionControls";
 import { useSidebar } from "@/components/layout/sidebar-context";
 import { UserBadge } from "@/components/layout/UserBadge";
 import { Icon } from "@/components/ui/Icon";
-import type { SessionUser } from "@/types";
+import { useSession } from "@/features/session/data/session-repository";
 
 interface PageHeaderProps {
   title: string;
   subtitle: string;
-  user: SessionUser;
   actions?: ReactNode;
 }
 
-export function PageHeader({
-  title,
-  subtitle,
-  user,
-  actions,
-}: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   const { openSidebar } = useSidebar();
+  const { employee } = useSession();
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-4 py-4 lg:px-7">
@@ -41,7 +37,8 @@ export function PageHeader({
 
       <div className="flex flex-wrap items-center gap-[10px]">
         {actions}
-        <UserBadge user={user} />
+        <SessionControls />
+        <UserBadge user={employee} />
       </div>
     </header>
   );

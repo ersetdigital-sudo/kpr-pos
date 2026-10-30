@@ -1,8 +1,8 @@
 import { Avatar } from "@/components/ui/Avatar";
-import type { SessionUser } from "@/types";
+import type { Employee } from "@/lib/store/types";
 
 interface UserBadgeProps {
-  user: SessionUser;
+  user: Pick<Employee, "name" | "role" | "initials">;
 }
 
 export function UserBadge({ user }: UserBadgeProps) {

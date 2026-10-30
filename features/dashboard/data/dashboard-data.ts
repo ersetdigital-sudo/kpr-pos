@@ -1,4 +1,3 @@
-import { ROLES } from "@/constants/roles";
 import { formatDateLong } from "@/lib/format";
 import type { DashboardData } from "@/features/dashboard/types";
 
@@ -62,13 +61,7 @@ export function getDashboardData(): DashboardData {
   return {
     header: {
       title: "Dashboard",
-      branchLabel: "Semua Cabang",
       subtitle: `${formatDateLong("2026-10-29")} · Ringkasan seluruh cabang`,
-    },
-    user: {
-      name: "Nurcahyo",
-      role: ROLES.OWNER,
-      initials: "NA",
     },
     stats: {
       salesToday: 4_850_000,

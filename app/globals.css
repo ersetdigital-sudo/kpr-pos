@@ -80,3 +80,27 @@
     color: var(--color-brand-strong);
   }
 }
+
+/* Cetak hanya area struk; sisa aplikasi disembunyikan lewat portal cetak. */
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  body > * {
+    display: none !important;
+  }
+
+  body > #receipt-print-root {
+    display: block !important;
+  }
+
+  #receipt-print-root .receipt-paper {
+    margin: 0 auto;
+    box-shadow: none;
+  }
+}

@@ -1,4 +1,3 @@
-import { ROLES } from "@/constants/roles";
 import type { ProductsData } from "@/features/produk/types";
 
 const products: ProductsData["products"] = [
@@ -90,11 +89,6 @@ export function getProductsData(): ProductsData {
     header: {
       title: "Produk & Stok",
       subtitle: "128 produk · 12 kategori",
-    },
-    user: {
-      name: "Bayu",
-      role: ROLES.INVENTORY,
-      initials: "BY",
     },
     stats: {
       totalStockValue: 86_400_000,

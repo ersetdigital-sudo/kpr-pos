@@ -1,5 +1,5 @@
 import type { Role } from "@/constants/roles";
-import type { PaymentMethod, SessionUser } from "@/types";
+import type { PaymentMethod } from "@/types";
 
 export interface ReportStats {
   revenue: number;
@@ -49,7 +49,6 @@ export interface ReportsData {
     title: string;
     subtitle: string;
   };
-  user: SessionUser;
   stats: ReportStats;
   paymentBreakdown: readonly PaymentBreakdown[];
   cashiers: readonly CashierReport[];

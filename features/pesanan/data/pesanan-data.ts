@@ -1,4 +1,3 @@
-import { ROLES } from "@/constants/roles";
 import type {
   OrderDraft,
   OrderProductOption,
@@ -101,11 +100,6 @@ export function getSalesOrdersData(): SalesOrdersData {
     header: {
       title: "Pesanan Sales",
       subtitle: "Catat order yang kamu dapat, bonus dihitung otomatis",
-    },
-    user: {
-      name: "Rina",
-      role: ROLES.SALES,
-      initials: "RI",
     },
     stats: {
       soldThisMonth: 142,

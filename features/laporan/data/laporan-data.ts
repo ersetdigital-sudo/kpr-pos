@@ -77,11 +77,6 @@ export function getReportsData(): ReportsData {
       title: "Laporan",
       subtitle: "1 – 29 Oktober 2026 · Toko Utama",
     },
-    user: {
-      name: "Dewi",
-      role: ROLES.ACCOUNTANT,
-      initials: "DW",
-    },
     stats: {
       revenue: 118_600_000,
       grossProfit: 36_200_000,

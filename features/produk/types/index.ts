@@ -1,5 +1,3 @@
-import type { SessionUser } from "@/types";
-
 export type StockStatus = "Aman" | "Menipis" | "Habis";
 
 export interface Product {
@@ -31,7 +29,6 @@ export interface ProductsData {
     title: string;
     subtitle: string;
   };
-  user: SessionUser;
   stats: ProductStats;
   categories: readonly string[];
   products: readonly Product[];

@@ -10,6 +10,7 @@ interface SearchFieldProps {
   size?: SearchFieldSize;
   className?: string;
   defaultValue?: string;
+  value?: string;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
@@ -33,6 +34,7 @@ export function SearchField({
   size = "sm",
   className,
   defaultValue,
+  value,
   onChange,
 }: SearchFieldProps) {
   const styles = SIZE_CLASSES[size];
@@ -56,6 +58,7 @@ export function SearchField({
         type="search"
         placeholder={placeholder}
         defaultValue={defaultValue}
+        value={value}
         onChange={onChange}
         className="min-w-0 flex-1 border-0 bg-transparent font-sans text-body text-ink outline-none"
       />

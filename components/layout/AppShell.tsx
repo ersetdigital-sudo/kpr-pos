@@ -2,8 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { AccessDenied } from "@/components/layout/AccessDenied";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { SidebarContext } from "@/components/layout/sidebar-context";
+import { ToastProvider } from "@/components/ui/Toast";
+import { canAccessPath } from "@/config/navigation";
+import { useSession } from "@/features/session/data/session-repository";
 
 interface AppShellProps {
   children: ReactNode;
@@ -11,6 +16,9 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const { employee } = useSession();
+  const allowed = canAccessPath(pathname, employee.role);
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -36,10 +44,14 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <div className="flex min-h-screen bg-canvas text-ink">
-        <Sidebar open={sidebarOpen} onClose={closeSidebar} />
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
-      </div>
+      <ToastProvider>
+        <div className="flex min-h-screen bg-canvas text-ink">
+          <Sidebar open={sidebarOpen} onClose={closeSidebar} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            {allowed ? children : <AccessDenied />}
+          </div>
+        </div>
+      </ToastProvider>
     </SidebarContext.Provider>
   );
 }

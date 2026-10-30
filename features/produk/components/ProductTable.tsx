@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
@@ -5,6 +8,7 @@ import { SearchField } from "@/components/ui/SearchField";
 import { Select } from "@/components/ui/Select";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { BadgeTone } from "@/components/ui/badge-tone";
+import { usePermissions, useSession } from "@/features/session/data/session-repository";
 import { formatNumber, formatRupiah } from "@/lib/format";
 import type {
   Product,
@@ -18,7 +22,7 @@ const STATUS_TONES: Record<StockStatus, BadgeTone> = {
   Habis: "danger",
 };
 
-const columns: readonly DataTableColumn<Product>[] = [
+const baseColumns: readonly DataTableColumn<Product>[] = [
   {
     id: "product",
     header: "Produk",
@@ -68,17 +72,18 @@ const columns: readonly DataTableColumn<Product>[] = [
       </StatusBadge>
     ),
   },
-  {
-    id: "action",
-    header: <span className="sr-only">Aksi</span>,
-    align: "right",
-    cell: () => (
-      <Button variant="outline" size="sm" className="h-[34px] px-3">
-        Edit
-      </Button>
-    ),
-  },
 ];
+
+const actionColumn: DataTableColumn<Product> = {
+  id: "action",
+  header: <span className="sr-only">Aksi</span>,
+  align: "right",
+  cell: () => (
+    <Button variant="outline" size="sm" className="h-[34px] px-3">
+      Edit
+    </Button>
+  ),
+};
 
 interface ProductTableProps {
   products: readonly Product[];
@@ -91,6 +96,14 @@ export function ProductTable({
   categories,
   pagination,
 }: ProductTableProps) {
+  const { canManageProducts } = usePermissions();
+  const { branch } = useSession();
+  const columns = useMemo(
+    () =>
+      canManageProducts ? [...baseColumns, actionColumn] : baseColumns,
+    [canManageProducts],
+  );
+
   return (
     <Card
       role="region"
@@ -110,7 +123,7 @@ export function ProductTable({
           ))}
         </Select>
         <Select aria-label="Filter cabang" className="w-auto">
-          <option>Toko Utama</option>
+          <option>{branch.name}</option>
           <option>Semua cabang</option>
         </Select>
         <Select aria-label="Filter status stok" className="w-auto">

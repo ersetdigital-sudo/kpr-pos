@@ -1,65 +1,93 @@
 "use client";
 
-import { useState } from "react";
 import { CashPayment } from "@/features/kasir/components/CashPayment";
 import { QrisPayment } from "@/features/kasir/components/QrisPayment";
 import { TransferPayment } from "@/features/kasir/components/TransferPayment";
 import { cn } from "@/lib/cn";
-import type { BankAccount } from "@/features/kasir/types";
+import type { BankAccount } from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
-
-const PAYMENT_METHODS: readonly PaymentMethod[] = ["Cash", "QRIS", "Transfer"];
 
 interface PaymentSectionProps {
   total: number;
+  methods: readonly PaymentMethod[];
+  method: PaymentMethod;
+  onMethodChange: (method: PaymentMethod) => void;
+  cashReceived: number;
+  onCashReceivedChange: (value: number) => void;
   bankAccounts: readonly BankAccount[];
-  cashReceivedDefault: number;
+  selectedBankId: string;
+  onBankChange: (accountId: string) => void;
 }
 
 export function PaymentSection({
   total,
+  methods,
+  method,
+  onMethodChange,
+  cashReceived,
+  onCashReceivedChange,
   bankAccounts,
-  cashReceivedDefault,
+  selectedBankId,
+  onBankChange,
 }: PaymentSectionProps) {
-  const [method, setMethod] = useState<PaymentMethod>("Cash");
-
   return (
     <div className="flex flex-col gap-[10px] px-5 pb-3.5">
       <div className="text-meta font-semibold text-ink-muted">
         Metode pembayaran
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        {PAYMENT_METHODS.map((option) => {
-          const active = option === method;
+      {methods.length === 0 ? (
+        <div className="rounded-control border border-dashed border-line-strong px-3 py-3 text-center text-meta text-ink-muted">
+          Belum ada metode pembayaran aktif.
+        </div>
+      ) : (
+        <div
+          className="grid gap-2"
+          style={{
+            gridTemplateColumns: `repeat(${methods.length}, minmax(0, 1fr))`,
+          }}
+        >
+          {methods.map((option) => {
+            const active = option === method;
 
-          return (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setMethod(option)}
-              className={cn(
-                "h-[46px] cursor-pointer rounded-control-lg font-sans text-body font-bold text-ink",
-                active
-                  ? "border-2 border-brand bg-brand-soft"
-                  : "border border-line-strong bg-surface",
-              )}
-            >
-              {option}
-            </button>
-          );
-        })}
-      </div>
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onMethodChange(option)}
+                className={cn(
+                  "h-[46px] cursor-pointer rounded-control-lg font-sans text-body font-bold text-ink",
+                  active
+                    ? "border-2 border-brand bg-brand-soft"
+                    : "border border-line-strong bg-surface",
+                )}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {method === "Cash" ? (
-        <CashPayment total={total} defaultReceived={cashReceivedDefault} />
+      {method === "Cash" && methods.includes("Cash") ? (
+        <CashPayment
+          total={total}
+          received={cashReceived}
+          onReceivedChange={onCashReceivedChange}
+        />
       ) : null}
 
-      {method === "QRIS" ? <QrisPayment total={total} /> : null}
+      {method === "QRIS" && methods.includes("QRIS") ? (
+        <QrisPayment total={total} />
+      ) : null}
 
-      {method === "Transfer" ? (
-        <TransferPayment accounts={bankAccounts} />
+      {method === "Transfer" && methods.includes("Transfer") ? (
+        <TransferPayment
+          accounts={bankAccounts}
+          selectedId={selectedBankId}
+          onSelect={onBankChange}
+        />
       ) : null}
     </div>
   );

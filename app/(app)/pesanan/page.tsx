@@ -19,7 +19,6 @@ export default function PesananPage() {
       <PageHeader
         title={data.header.title}
         subtitle={data.header.subtitle}
-        user={data.user}
         actions={
           <Chip tone="warning" dot>
             Offline · 2 data menunggu sinkron

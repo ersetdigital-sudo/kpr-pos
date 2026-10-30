@@ -1,11 +1,28 @@
-import type { SessionUser } from "@/types";
+import type {
+  BankAccount,
+  Branch,
+  CartDraft,
+  DiscountType,
+  Employee,
+  ReceiptPaperSize,
+  StoreSettings,
+  Transaction,
+} from "@/lib/store/types";
+import type { PaymentMethod } from "@/types";
 
 export interface KasirProduct {
   id: string;
   name: string;
+  sku: string;
   price: number;
   stock: number;
-  category: string;
+  categoryId: string;
+  categoryName: string;
+}
+
+export interface KasirCategory {
+  id: string;
+  name: string;
 }
 
 export interface CartLine {
@@ -13,31 +30,69 @@ export interface CartLine {
   quantity: number;
 }
 
-export interface CartSummary {
-  lines: readonly CartLine[];
-  subtotal: number;
-  discount: number;
-  total: number;
+export interface CartItemInput {
+  productId: string;
+  quantity: number;
 }
 
-export interface BankAccount {
-  id: string;
-  bankName: string;
-  accountNumber: string;
-  accountHolder: string;
+export interface CartTotals {
+  subtotal: number;
+  discountAmount: number;
+  total: number;
+  itemCount: number;
+  totalQuantity: number;
+}
+
+export interface DraftSummary {
+  draft: CartDraft;
+  itemCount: number;
+  total: number;
+  cashierName: string;
 }
 
 export interface CashierData {
-  header: {
-    title: string;
-    subtitle: string;
-  };
-  user: SessionUser;
-  invoiceNumber: string;
-  salespeople: readonly string[];
-  categories: readonly string[];
-  products: readonly KasirProduct[];
-  cart: CartSummary;
-  bankAccounts: readonly BankAccount[];
-  cashReceivedDefault: number;
+  products: KasirProduct[];
+  categories: KasirCategory[];
+  salesEmployees: Employee[];
+  bankAccounts: BankAccount[];
+  enabledMethods: PaymentMethod[];
+  drafts: DraftSummary[];
+  settings: StoreSettings;
+  branch: Branch;
+  cashier: Employee;
+}
+
+export interface CreateTransactionInput {
+  items: CartItemInput[];
+  discountType: DiscountType;
+  discountValue: number;
+  paymentMethod: PaymentMethod;
+  cashReceived: number;
+  bankAccountId?: string;
+  salesEmployeeId: string | null;
+}
+
+export interface SaveDraftInput {
+  items: CartItemInput[];
+  discountType: DiscountType;
+  discountValue: number;
+  salesEmployeeId: string | null;
+}
+
+export interface TransactionResult {
+  transaction: Transaction;
+  receipt: ReceiptViewData;
+}
+
+export interface ReceiptViewData {
+  transaction: Transaction;
+  branchName: string;
+  branchAddress: string;
+  businessName: string;
+  businessPhone: string;
+  cashierName: string;
+  salesName: string | null;
+  bankName: string | null;
+  paperSize: ReceiptPaperSize;
+  footerText: string;
 }

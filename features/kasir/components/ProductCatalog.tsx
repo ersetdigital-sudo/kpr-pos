@@ -1,17 +1,34 @@
+"use client";
+
 import { Button } from "@/components/ui/Button";
 import { SearchField } from "@/components/ui/SearchField";
 import { CategoryFilter } from "@/features/kasir/components/CategoryFilter";
 import { ProductCard } from "@/features/kasir/components/ProductCard";
-import type { KasirProduct } from "@/features/kasir/types";
+import type {
+  KasirCategory,
+  KasirProduct,
+} from "@/features/kasir/types";
 
 interface ProductCatalogProps {
   products: readonly KasirProduct[];
-  categories: readonly string[];
+  categories: readonly KasirCategory[];
+  search: string;
+  activeCategoryId: string | null;
+  onSearchChange: (value: string) => void;
+  onCategoryChange: (categoryId: string | null) => void;
+  onAddProduct: (product: KasirProduct) => void;
+  onScan: () => void;
 }
 
 export function ProductCatalog({
   products,
   categories,
+  search,
+  activeCategoryId,
+  onSearchChange,
+  onCategoryChange,
+  onAddProduct,
+  onScan,
 }: ProductCatalogProps) {
   return (
     <section
@@ -24,23 +41,45 @@ export function ProductCatalog({
           placeholder="Cari nama produk atau scan barcode"
           size="md"
           className="flex-[1_1_260px]"
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
         />
         <Button
           variant="outline"
           size="xl"
           className="rounded-control-lg px-4"
+          onClick={onScan}
         >
           Scan Barcode
         </Button>
       </div>
 
-      <CategoryFilter categories={categories} />
+      <CategoryFilter
+        categories={categories}
+        activeCategoryId={activeCategoryId}
+        onSelect={onCategoryChange}
+      />
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
+      {products.length === 0 ? (
+        <div className="rounded-card border border-dashed border-line-strong bg-surface px-5 py-10 text-center">
+          <p className="m-0 text-body font-semibold text-ink">
+            Produk tidak ditemukan
+          </p>
+          <p className="mt-1 mb-0 text-label text-ink-muted">
+            Coba kata kunci atau kategori lain.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAdd={onAddProduct}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
