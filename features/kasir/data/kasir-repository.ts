@@ -1,6 +1,7 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
+import { ROLE_PERMISSIONS } from "@/config/permissions";
 import {
   appendActivity,
   createId,
@@ -20,11 +21,13 @@ import type {
   TransactionPayment,
 } from "@/lib/store/types";
 import { formatDateTimeShort, formatRupiah } from "@/lib/format";
+import { isTransactionRefunded } from "@/lib/store/transactions";
 import {
   calculateCartTotals,
   calculateDiscountAmount,
   getNextInvoiceNumber,
   reduceStockLevels,
+  restoreStockLevels,
 } from "@/features/kasir/data/kasir-calculations";
 import { selectSession } from "@/features/session/data/session-repository";
 import type {
@@ -35,7 +38,10 @@ import type {
   KasirCategory,
   KasirProduct,
   ReceiptViewData,
+  RefundTransactionInput,
+  RefundTransactionResult,
   SaveDraftInput,
+  TransactionHistoryRow,
   TransactionResult,
 } from "@/features/kasir/types";
 import type { PaymentMethod } from "@/types";
@@ -107,6 +113,40 @@ export function getTransactions(
   return database.transactions;
 }
 
+/** Riwayat transaksi satu cabang, terbaru di atas, termasuk yang sudah direfund. */
+export function getTransactionHistory(
+  database: ReturnType<typeof getDatabase>,
+  branchId: string,
+): TransactionHistoryRow[] {
+  const employeeById = new Map(
+    database.employees.map((employee) => [employee.id, employee]),
+  );
+
+  return database.transactions
+    .filter((transaction) => transaction.branchId === branchId)
+    .sort(
+      (first, second) =>
+        new Date(second.createdAt).getTime() -
+        new Date(first.createdAt).getTime(),
+    )
+    .map((transaction) => ({
+      id: transaction.id,
+      invoiceNumber: transaction.invoiceNumber,
+      createdAt: transaction.createdAt,
+      cashierName: employeeById.get(transaction.cashierId)?.name ?? "Kasir",
+      itemCount: transaction.items.reduce(
+        (total, item) => total + item.quantity,
+        0,
+      ),
+      method: transaction.payment.method,
+      total: transaction.total,
+      isRefunded: isTransactionRefunded(transaction),
+      refundedAt: transaction.refund?.at ?? null,
+      refundedByName: transaction.refund?.byName ?? null,
+      refundReason: transaction.refund?.reason ?? null,
+    }));
+}
+
 function getDraftTotal(
   database: ReturnType<typeof getDatabase>,
   draft: CartDraft,
@@ -164,6 +204,7 @@ export function useCashierData(): CashierData {
     bankAccounts: getBankAccounts(database),
     enabledMethods: getEnabledMethods(database),
     drafts: getDraftSummaries(database, branch.id),
+    transactions: getTransactionHistory(database, branch.id),
     settings: database.settings,
     branch,
     cashier: employee,
@@ -347,6 +388,84 @@ export function createTransaction(
 
   if (!result) {
     throw new Error("Transaksi gagal disimpan");
+  }
+
+  return result;
+}
+
+/**
+ * Membatalkan transaksi yang sudah dibayar: transaksi ditandai refund dan stok
+ * cabang asal dikembalikan. Nominal refund mengikuti total yang dibayar.
+ */
+export function refundTransaction(
+  input: RefundTransactionInput,
+): RefundTransactionResult {
+  let result: RefundTransactionResult | undefined;
+
+  updateDatabase((database) => {
+    const actor = database.employees.find(
+      (employee) => employee.id === database.session.currentEmployeeId,
+    );
+
+    if (!actor) {
+      throw new Error("Sesi pengguna tidak ditemukan");
+    }
+
+    if (!ROLE_PERMISSIONS[actor.role].canCancelTransaction) {
+      throw new Error("Role Anda tidak boleh membatalkan transaksi");
+    }
+
+    const transaction = database.transactions.find(
+      (item) => item.id === input.transactionId,
+    );
+
+    if (!transaction) {
+      throw new Error("Transaksi tidak ditemukan");
+    }
+
+    if (isTransactionRefunded(transaction)) {
+      throw new Error("Transaksi ini sudah direfund");
+    }
+
+    const reason = input.reason.trim();
+
+    if (reason.length < 3) {
+      throw new Error("Alasan refund minimal 3 karakter");
+    }
+
+    const refunded: Transaction = {
+      ...transaction,
+      refund: {
+        at: new Date().toISOString(),
+        byId: actor.id,
+        byName: actor.name,
+        reason,
+        amount: transaction.total,
+      },
+    };
+
+    const updated: ReturnType<typeof getDatabase> = {
+      ...database,
+      transactions: database.transactions.map((item) =>
+        item.id === refunded.id ? refunded : item,
+      ),
+      stocks: restoreStockLevels(
+        database.stocks,
+        refunded.branchId,
+        refunded.items,
+      ),
+    };
+
+    result = { transaction: refunded, refundedAmount: refunded.total };
+
+    return appendActivity(updated, {
+      action: "Refund",
+      detail: `Refund ${refunded.invoiceNumber} · ${formatRupiah(refunded.total)} · ${reason}`,
+    });
+  });
+
+  if (!result) {
+    throw new Error("Refund gagal diproses");
   }
 
   return result;

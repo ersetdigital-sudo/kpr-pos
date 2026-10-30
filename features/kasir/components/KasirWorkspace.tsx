@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
@@ -9,6 +10,8 @@ import { CartPanel } from "@/features/kasir/components/CartPanel";
 import { DraftListModal } from "@/features/kasir/components/DraftListModal";
 import { ProductCatalog } from "@/features/kasir/components/ProductCatalog";
 import { ReceiptModal } from "@/features/kasir/components/ReceiptModal";
+import { RefundDialog } from "@/features/kasir/components/RefundDialog";
+import { TransactionHistoryModal } from "@/features/kasir/components/TransactionHistoryModal";
 import {
   calculateCartTotals,
   filterProducts,
@@ -17,18 +20,21 @@ import {
   createTransaction,
   deleteDraft,
   logCartCancellation,
+  refundTransaction,
   saveDraft,
   takeDraft,
   useCashierData,
   useNextInvoiceNumber,
 } from "@/features/kasir/data/kasir-repository";
 import { usePermissions } from "@/features/session/data/session-repository";
+import { formatRupiah } from "@/lib/format";
 import type { DiscountType } from "@/lib/store/types";
 import type {
   CartItemInput,
   CartLine,
   KasirProduct,
   ReceiptViewData,
+  TransactionHistoryRow,
 } from "@/features/kasir/types";
 import type { PaymentMethod } from "@/types";
 
@@ -56,6 +62,9 @@ export function KasirWorkspace() {
   const [cashReceived, setCashReceived] = useState(0);
   const [selectedBankId, setSelectedBankId] = useState("");
   const [draftsOpen, setDraftsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [refundTarget, setRefundTarget] =
+    useState<TransactionHistoryRow | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptViewData | null>(null);
 
@@ -273,6 +282,24 @@ export function KasirWorkspace() {
     showToast("Keranjang dibatalkan", "success");
   }
 
+  function handleRefund(reason: string) {
+    if (!refundTarget) return;
+
+    try {
+      const result = refundTransaction({
+        transactionId: refundTarget.id,
+        reason,
+      });
+      setRefundTarget(null);
+      showToast(
+        `Transaksi ${result.transaction.invoiceNumber} direfund · ${formatRupiah(result.refundedAmount)}`,
+        "success",
+      );
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    }
+  }
+
   function handlePay() {
     if (totals.itemCount === 0) {
       showToast("Keranjang masih kosong", "error");
@@ -318,6 +345,13 @@ export function KasirWorkspace() {
               Online · Tersinkron
             </Chip>
             <Chip tone="neutral">Printer &amp; laci siap</Chip>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHistoryOpen(true)}
+            >
+              Riwayat Transaksi
+            </Button>
           </>
         }
       />
@@ -375,6 +409,23 @@ export function KasirWorkspace() {
         onOpenDraft={handleOpenDraft}
         onDeleteDraft={handleDeleteDraft}
       />
+
+      <TransactionHistoryModal
+        open={historyOpen}
+        transactions={data.transactions}
+        canRefund={permissions.canCancelTransaction}
+        onClose={() => setHistoryOpen(false)}
+        onRequestRefund={setRefundTarget}
+      />
+
+      {refundTarget ? (
+        <RefundDialog
+          row={refundTarget}
+          branchName={data.branch.name}
+          onClose={() => setRefundTarget(null)}
+          onConfirm={handleRefund}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={cancelOpen}

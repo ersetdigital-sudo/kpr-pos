@@ -1,5 +1,6 @@
 import { ALL_ROLES } from "@/constants/roles";
 import { formatDateRange, isWithinRange } from "@/lib/date-range";
+import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { DateRange } from "@/lib/date-range";
 import type { AppDatabase, Transaction } from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
@@ -74,6 +75,7 @@ export function buildReportData(
   );
 
   const transactions = database.transactions
+    .filter((transaction) => !isTransactionRefunded(transaction))
     .filter((transaction) => isInScope(transaction.branchId, branchScope))
     .filter((transaction) => isWithinRange(transaction.createdAt, range))
     .sort(

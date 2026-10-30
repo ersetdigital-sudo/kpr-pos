@@ -16,6 +16,7 @@ const ACTION_TONES: Record<ActivityAction, BadgeTone> = {
   Menghapus: "danger",
   Membayar: "success",
   Membatalkan: "danger",
+  Refund: "danger",
   Membuka: "neutral",
 };
 

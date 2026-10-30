@@ -9,6 +9,7 @@ export type ActivityAction =
   | "Menghapus"
   | "Membayar"
   | "Membatalkan"
+  | "Refund"
   | "Membuka";
 
 export type ReceiptPaperSize = 58 | 80;
@@ -137,6 +138,15 @@ export interface TransactionPayment {
   bankAccountId?: string;
 }
 
+export interface TransactionRefund {
+  at: string;
+  byId: string;
+  byName: string;
+  reason: string;
+  /** Nominal yang dikembalikan ke pembeli (sama dengan total transaksi). */
+  amount: number;
+}
+
 export interface Transaction {
   id: string;
   invoiceNumber: string;
@@ -149,6 +159,8 @@ export interface Transaction {
   total: number;
   payment: TransactionPayment;
   createdAt: string;
+  /** Terisi bila transaksi sudah dibatalkan dan stoknya dikembalikan. */
+  refund?: TransactionRefund;
 }
 
 export interface CartDraftItem {

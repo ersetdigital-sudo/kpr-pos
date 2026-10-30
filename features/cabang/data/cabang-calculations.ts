@@ -1,4 +1,5 @@
 import { isWithinRange, getMonthRange } from "@/lib/date-range";
+import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { AppDatabase } from "@/lib/store/types";
 import type {
   BranchFilters,
@@ -30,6 +31,7 @@ export function buildBranchRows(
         .filter(
           (transaction) =>
             transaction.branchId === branch.id &&
+            !isTransactionRefunded(transaction) &&
             isWithinRange(transaction.createdAt, monthRange),
         )
         .reduce((total, transaction) => total + transaction.total, 0);
@@ -63,8 +65,10 @@ export function calculateBranchSummary(
     totalEmployees: database.employees.filter((employee) => employee.isActive)
       .length,
     monthlyRevenue: database.transactions
-      .filter((transaction) =>
-        isWithinRange(transaction.createdAt, monthRange),
+      .filter(
+        (transaction) =>
+          !isTransactionRefunded(transaction) &&
+          isWithinRange(transaction.createdAt, monthRange),
       )
       .reduce((total, transaction) => total + transaction.total, 0),
   };

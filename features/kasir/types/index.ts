@@ -57,6 +57,7 @@ export interface CashierData {
   bankAccounts: BankAccount[];
   enabledMethods: PaymentMethod[];
   drafts: DraftSummary[];
+  transactions: TransactionHistoryRow[];
   settings: StoreSettings;
   branch: Branch;
   cashier: Employee;
@@ -82,6 +83,30 @@ export interface SaveDraftInput {
 export interface TransactionResult {
   transaction: Transaction;
   receipt: ReceiptViewData;
+}
+
+export interface TransactionHistoryRow {
+  id: string;
+  invoiceNumber: string;
+  createdAt: string;
+  cashierName: string;
+  itemCount: number;
+  method: PaymentMethod;
+  total: number;
+  isRefunded: boolean;
+  refundedAt: string | null;
+  refundedByName: string | null;
+  refundReason: string | null;
+}
+
+export interface RefundTransactionInput {
+  transactionId: string;
+  reason: string;
+}
+
+export interface RefundTransactionResult {
+  transaction: Transaction;
+  refundedAmount: number;
 }
 
 export interface ReceiptViewData {

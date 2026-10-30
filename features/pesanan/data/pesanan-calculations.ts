@@ -2,6 +2,7 @@ import { ROLES } from "@/constants/roles";
 import type { DateRange } from "@/lib/date-range";
 import { isWithinRange } from "@/lib/date-range";
 import { formatPercent, formatRupiah } from "@/lib/format";
+import { isTransactionRefunded } from "@/lib/store/transactions";
 import type {
   AppDatabase,
   Employee,
@@ -99,6 +100,7 @@ export function collectBonusEntries(
   });
 
   database.transactions.forEach((transaction) => {
+    if (isTransactionRefunded(transaction)) return;
     if (!transaction.salesEmployeeId) return;
     if (branchId && transaction.branchId !== branchId) return;
     if (!isWithinRange(transaction.createdAt, range)) return;

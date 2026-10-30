@@ -70,7 +70,7 @@ Storage, lalu refresh.
 
 | Fitur   | File                                        | Contoh fungsi                                                                 |
 | ------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| Kasir      | `features/kasir/data/kasir-repository.ts`         | `useCashierData`, `createTransaction`, `saveDraft`, `takeDraft`, `deleteDraft` |
+| Kasir      | `features/kasir/data/kasir-repository.ts`         | `useCashierData`, `createTransaction`, `refundTransaction`, `saveDraft`, `takeDraft`, `deleteDraft` |
 | Produk     | `features/produk/data/produk-repository.ts`       | `useProdukData`, `createProduct`, `updateProduct`, `deleteProduct`, `addStockIn`, `submitOpname`, `transferStock`, `importProducts` |
 | Pesanan    | `features/pesanan/data/pesanan-repository.ts`     | `usePesananData`, `createSalesOrder`, `updateSalesOrderStatus`                |
 | Dashboard  | `features/dashboard/data/dashboard-repository.ts` | `useDashboardData`                                                            |
@@ -136,6 +136,13 @@ misalnya `kasir-calculations.ts` (`calculateCartTotals`, `reduceStockLevels`),
   untuk dibuka kembali atau dihapus (dengan konfirmasi). Buka draft menyesuaikan
   qty bila stok berkurang.
 - **Batalkan** mengosongkan keranjang setelah konfirmasi dan mencatat log.
+- **Riwayat Transaksi** (tombol di header) menampilkan transaksi cabang aktif,
+  bisa dicari dan difilter status. Transaksi lunas bisa di-**refund** oleh role
+  dengan `canCancelTransaction` (Owner/Manager/Supervisor): isi alasan, lalu
+  `refundTransaction` menandai transaksi (`transaction.refund`), mengembalikan
+  stok cabang asal lewat `restoreStockLevels`, dan mencatat log `Refund`.
+  Transaksi yang sudah direfund tidak dihitung lagi di omzet, laba, bonus sales,
+  dashboard, maupun ringkasan cabang.
 - Setiap aksi memberi toast sukses/gagal (`components/ui/Toast.tsx`).
 
 ## Produk & Stok
@@ -323,7 +330,9 @@ ditampilkan sebagai placeholder "segera hadir".
   karyawan di server.
 - Login karyawan nonaktif masih bisa memakai data lama di localStorage; belum ada
   sesi server.
-- Transaksi belum bisa dibatalkan/di-refund setelah dibayar; draft belum bisa
-  diubah (hanya buka/hapus); keranjang belum dipulihkan otomatis saat refresh.
+- Refund selalu penuh (sesuai total transaksi); belum ada refund sebagian atau
+  pencatatan pengembalian uang tunai di luar sistem.
+- Draft belum bisa diubah (hanya buka/hapus); keranjang belum dipulihkan otomatis
+  saat refresh.
 - Scan barcode di Kasir masih placeholder.
 - Absensi belum memakai jadwal shift per karyawan, lembur, atau potongan gaji.

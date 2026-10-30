@@ -1,4 +1,9 @@
-import type { DiscountType, StockLevel, Transaction } from "@/lib/store/types";
+import type {
+  DiscountType,
+  StockLevel,
+  Transaction,
+  TransactionItem,
+} from "@/lib/store/types";
 import type {
   CartItemInput,
   CartLine,
@@ -98,6 +103,22 @@ export function getNextInvoiceNumber(
   }, 0);
 
   return `${prefix}${String(highestSequence + 1).padStart(3, "0")}`;
+}
+
+/** Mengembalikan stok cabang saat transaksi direfund. */
+export function restoreStockLevels(
+  stocks: readonly StockLevel[],
+  branchId: string,
+  items: readonly TransactionItem[],
+): StockLevel[] {
+  return stocks.map((stock) => {
+    if (stock.branchId !== branchId) return stock;
+
+    const item = items.find((entry) => entry.productId === stock.productId);
+    if (!item) return stock;
+
+    return { ...stock, quantity: stock.quantity + item.quantity };
+  });
 }
 
 export function reduceStockLevels(

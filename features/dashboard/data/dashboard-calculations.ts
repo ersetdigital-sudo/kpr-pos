@@ -1,5 +1,6 @@
 import { getLastDays, getMonthRange, isSameDay } from "@/lib/date-range";
 import { formatDateLong, formatTime } from "@/lib/format";
+import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { AppDatabase, AttendanceRecord } from "@/lib/store/types";
 import {
   buildLeaderboard,
@@ -32,8 +33,10 @@ export function buildDashboardData(
   scope: DashboardScope,
   today: Date,
 ): DashboardData {
-  const transactions = database.transactions.filter((transaction) =>
-    inScope(transaction.branchId, scope),
+  const transactions = database.transactions.filter(
+    (transaction) =>
+      !isTransactionRefunded(transaction) &&
+      inScope(transaction.branchId, scope),
   );
   const todayTransactions = transactions.filter((transaction) =>
     isSameDay(new Date(transaction.createdAt), today),
