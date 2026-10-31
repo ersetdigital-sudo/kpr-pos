@@ -10,9 +10,13 @@ import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ALL_ROLES, type Role } from "@/constants/roles";
 import {
-  createEmployee,
+  createEmployeeFromAccount,
   updateEmployee,
 } from "@/features/karyawan/data/karyawan-repository";
+import {
+  inviteEmployeeAction,
+  updateEmployeeAccountAction,
+} from "@/features/karyawan/actions";
 import type { EmployeeRow } from "@/features/karyawan/types";
 import type { Branch } from "@/lib/store/types";
 
@@ -31,34 +35,85 @@ export function EmployeeFormDrawer({
 }: EmployeeFormDrawerProps) {
   const { showToast } = useToast();
   const [name, setName] = useState(employee?.name ?? "");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState(employee?.phone ?? "");
   const [role, setRole] = useState<Role>(employee?.role ?? "Cashier");
   const [branchId, setBranchId] = useState(
     employee?.branchId ?? branches[0]?.id ?? "",
   );
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
   const isEditing = employee !== null;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    try {
-      const input = { name, phone, role, branchId };
+    if (pending) return;
 
+    const branch = branches.find((item) => item.id === branchId);
+    if (!branch) {
+      setError("Pilih cabang karyawan.");
+      return;
+    }
+
+    setError("");
+    setPending(true);
+
+    try {
       if (isEditing && employee) {
-        updateEmployee(employee.id, input);
+        const result = await updateEmployeeAccountAction(employee.id, {
+          name,
+          phone,
+          role,
+          branch,
+        });
+
+        if (!result.ok) {
+          setError(result.error);
+          showToast(result.error, "error");
+          return;
+        }
+
+        updateEmployee(employee.id, { name, phone, role, branchId });
         showToast(`Data ${name.trim()} diperbarui`, "success");
       } else {
-        createEmployee(input);
-        showToast(`Karyawan ${name.trim()} ditambahkan`, "success");
+        const result = await inviteEmployeeAction({
+          name,
+          email,
+          phone,
+          role,
+          branch,
+        });
+
+        if (!result.ok) {
+          setError(result.error);
+          showToast(result.error, "error");
+          return;
+        }
+
+        try {
+          createEmployeeFromAccount(result.employee);
+        } catch {
+          showToast(
+            "Undangan terkirim, tetapi data lokal gagal disimpan.",
+            "error",
+          );
+          onClose();
+          return;
+        }
+
+        showToast(`Undangan dikirim ke ${email.trim()}`, "success");
       }
+
       onClose();
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "Karyawan gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setPending(false);
     }
   }
 
@@ -66,20 +121,29 @@ export function EmployeeFormDrawer({
     <Drawer
       open={open}
       onClose={onClose}
-      title={isEditing ? "Edit Karyawan" : "Tambah Karyawan"}
+      title={isEditing ? "Edit Karyawan" : "Undang Karyawan"}
       description={
         isEditing
-          ? "Perubahan role langsung memengaruhi menu yang bisa dibuka."
-          : "Karyawan baru langsung bisa dipilih di dropdown Masuk sebagai."
+          ? "Perubahan role dan cabang langsung memengaruhi akses akun."
+          : "Undangan email dikirim. Karyawan membuat password lewat tautan undangan."
       }
       size="sm"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={pending}>
             Batal
           </Button>
-          <Button variant="primary" type="submit" form="employee-form">
-            {isEditing ? "Simpan Perubahan" : "Simpan Karyawan"}
+          <Button
+            variant="primary"
+            type="submit"
+            form="employee-form"
+            disabled={pending}
+          >
+            {pending
+              ? "Memproses…"
+              : isEditing
+                ? "Simpan Perubahan"
+                : "Kirim Undangan"}
           </Button>
         </>
       }
@@ -95,8 +159,22 @@ export function EmployeeFormDrawer({
             onChange={(event) => setName(event.target.value)}
             placeholder="Contoh: Rani Puspita"
             autoFocus
+            required
           />
         </Field>
+
+        {!isEditing ? (
+          <Field label="Email untuk undangan" labelSize="sm">
+            <Input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="nama@perusahaan.com"
+              autoComplete="email"
+              required
+            />
+          </Field>
+        ) : null}
 
         <Field label="No. HP" labelSize="sm">
           <Input

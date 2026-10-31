@@ -2,16 +2,14 @@
 
 import { ROLES } from "@/constants/roles";
 import { ROLE_PERMISSIONS, type RolePermissions } from "@/config/permissions";
-import { useDatabase, updateDatabase } from "@/lib/store/store";
-import type { AppDatabase, Branch, Employee } from "@/lib/store/types";
+import {
+  useSessionActions,
+  useSessionContext,
+} from "@/features/session/data/session-context";
+import type { SessionState } from "@/features/session/types";
+import type { AppDatabase } from "@/lib/store/types";
 
-export interface SessionState {
-  employee: Employee;
-  branch: Branch;
-  employees: Employee[];
-  branches: Branch[];
-  isOwner: boolean;
-}
+export type { SessionState } from "@/features/session/types";
 
 export function selectSession(database: AppDatabase): SessionState {
   const employees = database.employees.filter((employee) => employee.isActive);
@@ -41,8 +39,13 @@ export function selectSession(database: AppDatabase): SessionState {
 }
 
 export function useSession(): SessionState {
-  const database = useDatabase();
-  return selectSession(database);
+  const session = useSessionContext();
+
+  if (!session) {
+    throw new Error("useSession harus dipakai di dalam AuthSessionProvider");
+  }
+
+  return session;
 }
 
 export function usePermissions(): RolePermissions {
@@ -50,58 +53,7 @@ export function usePermissions(): RolePermissions {
   return ROLE_PERMISSIONS[employee.role];
 }
 
-export function setActiveEmployee(employeeId: string): void {
-  updateDatabase((database) => {
-    const employee = database.employees.find(
-      (item) => item.id === employeeId && item.isActive,
-    );
-
-    if (!employee) return database;
-
-    const preferredBranchId =
-      employee.role === ROLES.OWNER
-        ? database.session.activeBranchId
-        : employee.branchId;
-    const branch =
-      database.branches.find(
-        (item) => item.id === preferredBranchId && item.isActive,
-      ) ??
-      database.branches.find(
-        (item) => item.id === employee.branchId && item.isActive,
-      ) ??
-      database.branches.find((item) => item.isActive);
-
-    return {
-      ...database,
-      session: {
-        currentEmployeeId: employee.id,
-        activeBranchId: branch?.id ?? database.session.activeBranchId,
-      },
-    };
-  });
-}
-
-export function setActiveBranch(branchId: string): void {
-  updateDatabase((database) => {
-    const employee = database.employees.find(
-      (item) => item.id === database.session.currentEmployeeId,
-    );
-
-    // Hanya Owner yang boleh berpindah cabang secara manual.
-    if (!employee || employee.role !== ROLES.OWNER) return database;
-
-    const branch = database.branches.find(
-      (item) => item.id === branchId && item.isActive,
-    );
-
-    if (!branch) return database;
-
-    return {
-      ...database,
-      session: {
-        ...database.session,
-        activeBranchId: branch.id,
-      },
-    };
-  });
+/** Ganti cabang aktif; hanya Owner yang boleh. */
+export function useSetActiveBranch(): (branchId: string) => void {
+  return useSessionActions().setBranch;
 }

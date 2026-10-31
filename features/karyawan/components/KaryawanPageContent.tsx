@@ -17,6 +17,7 @@ import {
   setEmployeeActive,
   useKaryawanData,
 } from "@/features/karyawan/data/karyawan-repository";
+import { setEmployeeAccountActiveAction } from "@/features/karyawan/actions";
 import type {
   EmployeeFilters,
   EmployeeRow,
@@ -67,8 +68,12 @@ export function KaryawanPageContent() {
     setFormOpen(true);
   }
 
-  function applyActive(row: EmployeeRow, isActive: boolean) {
+  async function applyActive(row: EmployeeRow, isActive: boolean) {
     try {
+      const result = await setEmployeeAccountActiveAction(row.id, isActive);
+
+      if (!result.ok) throw new Error(result.error);
+
       setEmployeeActive(row.id, isActive);
       showToast(
         isActive
@@ -195,7 +200,7 @@ function KaryawanBody({
         title="Nonaktifkan karyawan?"
         description={
           deactivateTarget
-            ? `${deactivateTarget.name} tidak akan muncul di pilihan "Masuk sebagai" dan tidak bisa ditugaskan, tetapi seluruh riwayat transaksi serta absensinya tetap tersimpan.`
+            ? `${deactivateTarget.name} tidak bisa login atau ditugaskan, tetapi seluruh riwayat transaksi serta absensinya tetap tersimpan.`
             : ""
         }
         confirmLabel="Ya, nonaktifkan"

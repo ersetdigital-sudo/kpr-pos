@@ -1,4 +1,5 @@
 import type { Role } from "@/constants/roles";
+import type { Branch, Employee } from "@/lib/store/types";
 
 export interface EmployeeRow {
   id: string;
@@ -24,6 +25,29 @@ export interface EmployeeFormInput {
   role: Role;
   branchId: string;
 }
+
+export interface InviteEmployeeInput {
+  name: string;
+  email: string;
+  phone: string;
+  role: Role;
+  branch: Branch;
+}
+
+export interface EmployeeAccountInput {
+  name: string;
+  phone: string;
+  role: Role;
+  branch: Branch;
+}
+
+export type InviteEmployeeResult =
+  | { ok: true; employee: Employee }
+  | { ok: false; error: string };
+
+export type EmployeeAccountResult =
+  | { ok: true }
+  | { ok: false; error: string };
 
 export interface EmployeeStats {
   total: number;

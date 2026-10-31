@@ -1,7 +1,8 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { appendActivity, createId } from "@/lib/store/activity";
+import { appendActivity } from "@/lib/store/activity";
+import { buildInitials } from "@/lib/initials";
 import {
   updateDatabase,
   useHydratedDatabase,
@@ -13,19 +14,7 @@ export function useKaryawanData(): AppDatabase | null {
   return useHydratedDatabase();
 }
 
-export function buildInitials(name: string): string {
-  const words = name
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0);
-
-  if (words.length === 0) return "?";
-
-  return words
-    .slice(0, 2)
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("");
-}
+export { buildInitials };
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[^\d+]/g, "");
@@ -47,26 +36,32 @@ function validateInput(database: AppDatabase, input: EmployeeFormInput): void {
   }
 }
 
-export function createEmployee(input: EmployeeFormInput): void {
+/** Menyimpan karyawan yang akun Auth-nya baru diundang server action. */
+export function createEmployeeFromAccount(employee: Employee): void {
   updateDatabase((database) => {
-    validateInput(database, input);
+    const branch = database.branches.find(
+      (item) => item.id === employee.branchId,
+    );
 
-    const name = input.name.trim();
-    const employee: Employee = {
-      id: createId("emp"),
-      name,
-      phone: input.phone.trim(),
-      initials: buildInitials(name),
-      role: input.role,
-      branchId: input.branchId,
-      isActive: true,
-    };
+    if (!branch) throw new Error("Cabang karyawan tidak ditemukan");
+    if (employee.name.trim().length < 2) {
+      throw new Error("Nama karyawan minimal 2 karakter");
+    }
+
+    const exists = database.employees.some(
+      (item) => item.id === employee.id,
+    );
+    const employees = exists
+      ? database.employees.map((item) =>
+          item.id === employee.id ? { ...item, ...employee } : item,
+        )
+      : [...database.employees, employee];
 
     return appendActivity(
-      { ...database, employees: [...database.employees, employee] },
+      { ...database, employees },
       {
         action: "Membuat",
-        detail: `Karyawan ${name} (${input.role}) ditambahkan`,
+        detail: `Karyawan ${employee.name} (${employee.role}) diundang`,
       },
     );
   });
