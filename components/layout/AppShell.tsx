@@ -47,7 +47,7 @@ export function AppShell({ children }: AppShellProps) {
       <ToastProvider>
         <div className="flex min-h-screen bg-canvas text-ink">
           <Sidebar open={sidebarOpen} onClose={closeSidebar} />
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col lg:ml-[260px]">
             {allowed ? children : <AccessDenied />}
           </div>
         </div>

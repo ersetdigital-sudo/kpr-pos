@@ -78,6 +78,12 @@ const ICON_PATHS = {
   upload: <path d="M12 20V9M7 13l5-5 5 5M4 4h16" />,
   arrowLeft: <path d="M15 5l-7 7 7 7" />,
   arrowRight: <path d="M9 5l7 7-7 7" />,
+  logout: (
+    <>
+      <path d="M10 4H5v16h5" />
+      <path d="M14 8l4 4-4 4M18 12H9" />
+    </>
+  ),
   check: <path d="M5 12l5 5L20 7" />,
 } satisfies Record<string, ReactNode>;
 

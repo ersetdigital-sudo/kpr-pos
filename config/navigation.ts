@@ -29,7 +29,7 @@ export function canAccessPath(pathname: string, role: Role): boolean {
 
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
-    label: "OPERASIONAL",
+    label: "UTAMA",
     items: [
       {
         label: "Dashboard",
@@ -37,6 +37,11 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         icon: "dashboard",
         roles: ALL_ROLES,
       },
+    ],
+  },
+  {
+    label: "OPERASIONAL",
+    items: [
       {
         label: "Kasir",
         href: "/kasir",
