@@ -1,5 +1,9 @@
-import { isWithinRange, getMonthRange } from "@/lib/date-range";
-import { isTransactionRefunded } from "@/lib/store/transactions";
+import { getMonthRange } from "@/lib/date-range";
+import {
+  collectSales,
+  filterSales,
+  sumSalesAmount,
+} from "@/lib/store/sales";
 import type { AppDatabase } from "@/lib/store/types";
 import type {
   BranchFilters,
@@ -12,7 +16,7 @@ export function buildBranchRows(
   filters: BranchFilters,
   today: Date,
 ): BranchRow[] {
-  const monthRange = getMonthRange(today);
+  const monthlySales = filterSales(collectSales(database), getMonthRange(today));
 
   return database.branches
     .filter((branch) => {
@@ -27,14 +31,9 @@ export function buildBranchRows(
       const productsInStock = database.stocks.filter(
         (stock) => stock.branchId === branch.id && stock.quantity > 0,
       ).length;
-      const monthlyRevenue = database.transactions
-        .filter(
-          (transaction) =>
-            transaction.branchId === branch.id &&
-            !isTransactionRefunded(transaction) &&
-            isWithinRange(transaction.createdAt, monthRange),
-        )
-        .reduce((total, transaction) => total + transaction.total, 0);
+      const monthlyRevenue = sumSalesAmount(
+        monthlySales.filter((sale) => sale.branchId === branch.id),
+      );
 
       return {
         id: branch.id,
@@ -57,19 +56,13 @@ export function calculateBranchSummary(
   database: AppDatabase,
   today: Date,
 ): BranchSummary {
-  const monthRange = getMonthRange(today);
-
   return {
     totalBranches: database.branches.length,
     activeBranches: database.branches.filter((branch) => branch.isActive).length,
     totalEmployees: database.employees.filter((employee) => employee.isActive)
       .length,
-    monthlyRevenue: database.transactions
-      .filter(
-        (transaction) =>
-          !isTransactionRefunded(transaction) &&
-          isWithinRange(transaction.createdAt, monthRange),
-      )
-      .reduce((total, transaction) => total + transaction.total, 0),
+    monthlyRevenue: sumSalesAmount(
+      filterSales(collectSales(database), getMonthRange(today)),
+    ),
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
+import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { appendActivity, createId } from "@/lib/store/activity";
 import { updateDatabase, useHydratedDatabase } from "@/lib/store/store";
 import type {
@@ -13,6 +14,7 @@ import { formatRupiah } from "@/lib/format";
 import { selectSession } from "@/features/session/data/session-repository";
 import {
   applyOrderStock,
+  canChangeOrderStatus,
   getNextOrderNumber,
   getOrderQuantity,
   getStockShortage,
@@ -71,6 +73,7 @@ export function createSalesOrder(input: CreateOrderInput): SalesOrder {
           productId: product.id,
           productName: product.name,
           unitPrice: product.price,
+          unitCost: product.costPrice,
           quantity,
         };
       },
@@ -118,9 +121,27 @@ export function updateSalesOrderStatus(
   nextStatus: SalesOrderStatus,
 ): void {
   updateDatabase((database) => {
+    const actor = database.employees.find(
+      (employee) => employee.id === database.session.currentEmployeeId,
+    );
+
+    if (!actor) {
+      throw new Error("Sesi pengguna tidak ditemukan");
+    }
+
+    if (!ROLE_PERMISSIONS[actor.role].canManageSalesOrders) {
+      throw new Error("Role Anda tidak boleh mengubah status pesanan");
+    }
+
     const order = database.salesOrders.find((item) => item.id === orderId);
     if (!order) throw new Error("Pesanan tidak ditemukan");
     if (order.status === nextStatus) return database;
+
+    if (!canChangeOrderStatus(order.status, nextStatus)) {
+      throw new Error(
+        `Status ${order.status} tidak bisa diubah menjadi ${nextStatus}`,
+      );
+    }
 
     let stocks = database.stocks;
     let stockApplied = order.stockApplied;
@@ -139,6 +160,7 @@ export function updateSalesOrderStatus(
     }
 
     const totalQuantity = getOrderQuantity(order);
+    const changedAt = new Date().toISOString();
 
     return appendActivity(
       {
@@ -146,7 +168,12 @@ export function updateSalesOrderStatus(
         stocks,
         salesOrders: database.salesOrders.map((item) =>
           item.id === orderId
-            ? { ...item, status: nextStatus, stockApplied }
+            ? {
+                ...item,
+                status: nextStatus,
+                stockApplied,
+                paidAt: nextStatus === "Lunas" ? changedAt : undefined,
+              }
             : item,
         ),
       },

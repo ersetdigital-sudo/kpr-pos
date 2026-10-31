@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { BadgeTone } from "@/components/ui/badge-tone";
 import { formatDateTimeShort, formatNumber, formatRupiah } from "@/lib/format";
 import type { SalesOrderStatus } from "@/lib/store/types";
-import { ORDER_STATUS_OPTIONS } from "@/features/pesanan/data/pesanan-calculations";
+import { getNextOrderStatuses } from "@/features/pesanan/data/pesanan-calculations";
 import type { OrderRow } from "@/features/pesanan/types";
 
 const STATUS_TONES: Record<SalesOrderStatus, BadgeTone> = {
@@ -89,17 +89,23 @@ export function OrderTable({
     base.push({
       id: "status",
       header: "Status",
-      cell: (order) =>
-        canManage ? (
+      cell: (order) => {
+        const nextStatuses = getNextOrderStatuses(order.status);
+
+        return canManage ? (
           <Select
             aria-label={`Status pesanan ${order.orderNumber}`}
             value={order.status}
+            disabled={nextStatuses.length === 0}
             onChange={(event) =>
               onStatusChange(order, event.target.value as SalesOrderStatus)
             }
             className="h-8 w-[158px] px-1.5 text-label"
           >
-            {ORDER_STATUS_OPTIONS.map((status) => (
+            <option value={order.status} disabled>
+              {order.status}
+            </option>
+            {nextStatuses.map((status) => (
               <option key={status} value={status}>
                 {status}
               </option>
@@ -109,7 +115,8 @@ export function OrderTable({
           <StatusBadge tone={STATUS_TONES[order.status]}>
             {order.status}
           </StatusBadge>
-        ),
+        );
+      },
     });
 
     return base;

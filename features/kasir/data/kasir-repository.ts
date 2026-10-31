@@ -67,6 +67,7 @@ export function getProducts(
         name: product.name,
         sku: product.sku,
         price: product.price,
+        costPrice: product.costPrice,
         stock: stock?.quantity ?? 0,
         categoryId: product.categoryId,
         categoryName:
@@ -300,6 +301,7 @@ export function createTransaction(
         productId: product.id,
         productName: product.name,
         unitPrice: product.price,
+        unitCost: product.costPrice,
         quantity: item.quantity,
         lineTotal: product.price * item.quantity,
       };

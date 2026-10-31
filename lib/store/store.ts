@@ -2,6 +2,10 @@
 
 import { useSyncExternalStore } from "react";
 import {
+  buildProductCostLookup,
+  withUnitCostSnapshot,
+} from "@/lib/store/profit";
+import {
   createSeedDatabase,
   DEFAULT_ATTENDANCE,
   DEFAULT_SALES_BONUS,
@@ -61,6 +65,16 @@ function normalizeDatabase(value: unknown): AppDatabase | null {
 
   const database = value as unknown as AppDatabase;
   const settings = database.settings as StoreSettings;
+  const productCostById = buildProductCostLookup(database.products);
+
+  // Data lama belum menyimpan harga modal per item; isi dari costPrice produk
+  // saat migrasi agar laporan lama tidak ikut berubah ketika modal diedit.
+  const transactions = database.transactions.map((transaction) => ({
+    ...transaction,
+    items: transaction.items.map((item) =>
+      withUnitCostSnapshot(item, productCostById),
+    ),
+  }));
 
   return {
     ...database,
@@ -73,6 +87,7 @@ function normalizeDatabase(value: unknown): AppDatabase | null {
       ...product,
       imageUrl: product.imageUrl || undefined,
     })),
+    transactions,
     leaveRequests: Array.isArray(database.leaveRequests)
       ? (database.leaveRequests as LeaveRequest[])
       : [],
@@ -85,6 +100,15 @@ function normalizeDatabase(value: unknown): AppDatabase | null {
       : [],
     salesOrders: database.salesOrders.map((order) => ({
       ...order,
+      items: order.items.map((item) =>
+        withUnitCostSnapshot(item, productCostById),
+      ),
+      // Pesanan Lunas lama belum punya paidAt; createdAt dipakai sebagai
+      // perkiraan tanggal lunas agar bonus tetap masuk periode yang tepat.
+      paidAt:
+        order.status === "Lunas"
+          ? (order.paidAt ?? order.createdAt)
+          : order.paidAt,
       // Pesanan lunas dari v1 dianggap sudah memotong stok saat dibuat.
       stockApplied:
         typeof order.stockApplied === "boolean"

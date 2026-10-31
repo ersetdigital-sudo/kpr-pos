@@ -60,7 +60,8 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
 
   const transactions = XLSX.utils.aoa_to_sheet([
     [
-      "No. Struk",
+      "Sumber",
+      "No. Dokumen",
       "Tanggal",
       "Kasir",
       "Cabang",
@@ -71,6 +72,7 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
       "Laba Kotor",
     ],
     ...data.transactions.map((item) => [
+      item.source,
       item.invoiceNumber,
       formatDateTimeShort(item.createdAt),
       item.cashierName,
@@ -83,6 +85,7 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
     ]),
   ]);
   transactions["!cols"] = [
+    { wch: 14 },
     { wch: 18 },
     { wch: 20 },
     { wch: 18 },

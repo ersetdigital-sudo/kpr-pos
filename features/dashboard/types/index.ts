@@ -10,6 +10,8 @@ export interface DashboardStats {
   salesToday: number;
   growthPercent: number;
   transactionCount: number;
+  /** Pesanan sales Lunas hari ini; tidak punya metode pembayaran. */
+  salesOrderCount: number;
   paymentCounts: DashboardPaymentCounts;
   lowStockCount: number;
   employeesPresent: number;

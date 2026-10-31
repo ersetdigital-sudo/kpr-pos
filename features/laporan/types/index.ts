@@ -1,5 +1,9 @@
 import type { Role } from "@/constants/roles";
 import type { ActivityAction } from "@/lib/store/types";
+import type {
+  SalesSource,
+  SalesSourceSummary,
+} from "@/lib/store/sales";
 import type { PaymentMethod } from "@/types";
 import type { DateRange } from "@/lib/date-range";
 import type { DateRangeValue } from "@/components/ui/DateRangePicker";
@@ -52,10 +56,11 @@ export interface ReportLogUser {
 
 export interface ReportTransactionRow {
   invoiceNumber: string;
+  source: SalesSource;
   createdAt: string;
   cashierName: string;
   branchName: string;
-  method: PaymentMethod;
+  method: PaymentMethod | "-";
   subtotal: number;
   discount: number;
   total: number;
@@ -69,6 +74,7 @@ export interface ReportData {
   };
   range: DateRange;
   stats: ReportStats;
+  sourceBreakdown: readonly SalesSourceSummary[];
   paymentBreakdown: readonly PaymentBreakdown[];
   cashiers: readonly CashierReport[];
   cashDifference: number;

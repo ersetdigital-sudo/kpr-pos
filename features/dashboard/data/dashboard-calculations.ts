@@ -1,5 +1,6 @@
 import { getLastDays, getMonthRange, isSameDay } from "@/lib/date-range";
 import { formatDateLong, formatTime } from "@/lib/format";
+import { collectSales, sumSalesAmount } from "@/lib/store/sales";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { AppDatabase, AttendanceRecord } from "@/lib/store/types";
 import {
@@ -33,6 +34,20 @@ export function buildDashboardData(
   scope: DashboardScope,
   today: Date,
 ): DashboardData {
+  const sales = collectSales(database).filter((sale) =>
+    inScope(sale.branchId, scope),
+  );
+  const todaySales = sales.filter((sale) =>
+    isSameDay(new Date(sale.at), today),
+  );
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayTotal = sumSalesAmount(
+    sales.filter((sale) => isSameDay(new Date(sale.at), yesterday)),
+  );
+  const salesToday = sumSalesAmount(todaySales);
+
+  // Rincian metode bayar tetap hanya dari transaksi kasir.
   const transactions = database.transactions.filter(
     (transaction) =>
       !isTransactionRefunded(transaction) &&
@@ -40,17 +55,6 @@ export function buildDashboardData(
   );
   const todayTransactions = transactions.filter((transaction) =>
     isSameDay(new Date(transaction.createdAt), today),
-  );
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const yesterdayTotal = transactions
-    .filter((transaction) =>
-      isSameDay(new Date(transaction.createdAt), yesterday),
-    )
-    .reduce((sum, transaction) => sum + transaction.total, 0);
-  const salesToday = todayTransactions.reduce(
-    (sum, transaction) => sum + transaction.total,
-    0,
   );
   const growthPercent =
     yesterdayTotal > 0
@@ -112,11 +116,9 @@ export function buildDashboardData(
   );
 
   const weeklySales: WeeklySale[] = getLastDays(today, 7).map((day) => {
-    const total = transactions
-      .filter((transaction) =>
-        isSameDay(new Date(transaction.createdAt), day),
-      )
-      .reduce((sum, transaction) => sum + transaction.total, 0);
+    const total = sumSalesAmount(
+      sales.filter((sale) => isSameDay(new Date(sale.at), day)),
+    );
 
     return {
       key: day.toISOString(),
@@ -172,7 +174,10 @@ export function buildDashboardData(
     stats: {
       salesToday,
       growthPercent,
-      transactionCount: todayTransactions.length,
+      transactionCount: todaySales.length,
+      salesOrderCount: todaySales.filter(
+        (sale) => sale.source === "Pesanan Sales",
+      ).length,
       paymentCounts,
       lowStockCount: lowStockProductIds.size,
       employeesPresent: dayAttendance.filter(

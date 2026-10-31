@@ -15,6 +15,7 @@ export interface KasirProduct {
   name: string;
   sku: string;
   price: number;
+  costPrice: number;
   stock: number;
   categoryId: string;
   categoryName: string;

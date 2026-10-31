@@ -191,6 +191,8 @@ export interface SalesOrderItem {
   productId: string;
   productName: string;
   unitPrice: number;
+  /** Harga modal saat pesanan dibuat; pesanan lama bisa belum punya nilai ini. */
+  unitCost?: number;
   quantity: number;
 }
 
@@ -204,6 +206,8 @@ export interface SalesOrder {
   items: SalesOrderItem[];
   total: number;
   status: SalesOrderStatus;
+  /** Waktu pesanan berubah menjadi Lunas; kosong untuk status lainnya. */
+  paidAt?: string;
   /** Menandai stok cabang sudah dikurangi saat pesanan dilunasi. */
   stockApplied: boolean;
   note: string;

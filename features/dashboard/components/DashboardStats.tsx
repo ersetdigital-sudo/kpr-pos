@@ -22,7 +22,11 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
       <StatCard
         label="Jumlah Transaksi"
         value={formatNumber(stats.transactionCount)}
-        hint={`Cash ${stats.paymentCounts.cash} · QRIS ${stats.paymentCounts.qris} · Transfer ${stats.paymentCounts.transfer}`}
+        hint={`Cash ${stats.paymentCounts.cash} · QRIS ${stats.paymentCounts.qris} · Transfer ${stats.paymentCounts.transfer}${
+          stats.salesOrderCount > 0
+            ? ` · ${stats.salesOrderCount} pesanan sales`
+            : ""
+        }`}
       />
       <StatCard
         label="Stok Menipis"

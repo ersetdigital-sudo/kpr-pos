@@ -336,3 +336,7 @@ ditampilkan sebagai placeholder "segera hadir".
   saat refresh.
 - Scan barcode di Kasir masih placeholder.
 - Absensi belum memakai jadwal shift per karyawan, lembur, atau potongan gaji.
+
+## Dokumen
+
+- [Rencana migrasi ke Supabase + login & hak akses per role](docs/rencana-migrasi-database.md)

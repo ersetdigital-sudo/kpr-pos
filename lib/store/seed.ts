@@ -402,6 +402,7 @@ export function createSeedDatabase(): AppDatabase {
       productId,
       productName: product.name,
       unitPrice: product.price,
+      unitCost: product.costPrice,
       quantity,
     };
   }
@@ -456,6 +457,7 @@ export function createSeedDatabase(): AppDatabase {
       items: order011Items,
       total: sumItems(order011Items),
       status: "Lunas",
+      paidAt: "2026-10-28T15:10:00+07:00",
       stockApplied: true,
       note: "",
       createdAt: "2026-10-28T15:10:00+07:00",
@@ -470,6 +472,7 @@ export function createSeedDatabase(): AppDatabase {
       items: order009Items,
       total: sumItems(order009Items),
       status: "Lunas",
+      paidAt: "2026-10-27T09:45:00+07:00",
       stockApplied: true,
       note: "",
       createdAt: "2026-10-27T09:45:00+07:00",

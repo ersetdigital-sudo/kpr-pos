@@ -1,3 +1,4 @@
+import { getNextDailyDocumentNumber } from "@/lib/document-number";
 import type {
   DiscountType,
   StockLevel,
@@ -91,18 +92,11 @@ export function getNextInvoiceNumber(
   transactions: readonly Transaction[],
   date: Date = new Date(),
 ): string {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const prefix = `INV-${day}${month}-`;
-
-  const highestSequence = transactions.reduce((highest, transaction) => {
-    if (!transaction.invoiceNumber.startsWith(prefix)) return highest;
-
-    const sequence = Number(transaction.invoiceNumber.slice(prefix.length));
-    return Number.isFinite(sequence) ? Math.max(highest, sequence) : highest;
-  }, 0);
-
-  return `${prefix}${String(highestSequence + 1).padStart(3, "0")}`;
+  return getNextDailyDocumentNumber(
+    transactions.map((transaction) => transaction.invoiceNumber),
+    "INV",
+    date,
+  );
 }
 
 /** Mengembalikan stok cabang saat transaksi direfund. */

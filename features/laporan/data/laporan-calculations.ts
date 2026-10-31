@@ -1,8 +1,18 @@
 import { ALL_ROLES } from "@/constants/roles";
 import { formatDateRange, isWithinRange } from "@/lib/date-range";
+import {
+  buildProductCostLookup,
+  calculateGrossProfit,
+} from "@/lib/store/profit";
+import {
+  collectSales,
+  filterSales,
+  summarizeSalesBySource,
+  sumSalesAmount,
+} from "@/lib/store/sales";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { DateRange } from "@/lib/date-range";
-import type { AppDatabase, Transaction } from "@/lib/store/types";
+import type { AppDatabase } from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
 import {
   collectBonusEntries,
@@ -28,19 +38,6 @@ const PAYMENT_METHODS: readonly PaymentMethod[] = [
 
 function isInScope(branchId: string, scope: BranchScope): boolean {
   return scope === "all" || branchId === scope;
-}
-
-function transactionProfit(
-  transaction: Transaction,
-  database: AppDatabase,
-): number {
-  return transaction.items.reduce((total, item) => {
-    const product = database.products.find(
-      (candidate) => candidate.id === item.productId,
-    );
-    const unitCost = item.unitCost ?? product?.costPrice ?? 0;
-    return total + (item.unitPrice - unitCost) * item.quantity;
-  }, 0);
 }
 
 /** Pilihan filter "user" pada Log Aktivitas, diambil dari log yang tersimpan. */
@@ -73,8 +70,17 @@ export function buildReportData(
   const employeeById = new Map(
     database.employees.map((employee) => [employee.id, employee]),
   );
+  const productCostById = buildProductCostLookup(database.products);
 
-  const transactions = database.transactions
+  // Omzet, laba, jumlah transaksi, dan produk terlaris memakai semua penjualan.
+  const sales = filterSales(
+    collectSales(database),
+    range,
+    branchScope === "all" ? undefined : branchScope,
+  );
+
+  // Rincian metode bayar, kasir, dan selisih kas tetap dari transaksi kasir.
+  const cashierTransactions = database.transactions
     .filter((transaction) => !isTransactionRefunded(transaction))
     .filter((transaction) => isInScope(transaction.branchId, branchScope))
     .filter((transaction) => isWithinRange(transaction.createdAt, range))
@@ -84,15 +90,12 @@ export function buildReportData(
         new Date(first.createdAt).getTime(),
     );
 
-  const revenue = transactions.reduce(
-    (sum, transaction) => sum + transaction.total,
+  const revenue = sumSalesAmount(sales);
+  const grossProfit = sales.reduce(
+    (sum, sale) => sum + calculateGrossProfit(sale, productCostById),
     0,
   );
-  const grossProfit = transactions.reduce(
-    (sum, transaction) => sum + transactionProfit(transaction, database),
-    0,
-  );
-  const transactionCount = transactions.length;
+  const transactionCount = sales.length;
   const averageTransaction =
     transactionCount > 0 ? Math.round(revenue / transactionCount) : 0;
 
@@ -109,22 +112,28 @@ export function buildReportData(
     (entry) => entry.quantity > 0,
   ).length;
 
+  const cashierRevenue = cashierTransactions.reduce(
+    (sum, transaction) => sum + transaction.total,
+    0,
+  );
+
   const paymentBreakdown: PaymentBreakdown[] = PAYMENT_METHODS.map(
     (method) => {
-      const amount = transactions
+      const amount = cashierTransactions
         .filter((transaction) => transaction.payment.method === method)
         .reduce((sum, transaction) => sum + transaction.total, 0);
 
       return {
         method,
         amount,
-        percent: revenue > 0 ? Math.round((amount / revenue) * 100) : 0,
+        percent:
+          cashierRevenue > 0 ? Math.round((amount / cashierRevenue) * 100) : 0,
       };
     },
   );
 
   const cashierTotals = new Map<string, CashierReport>();
-  transactions.forEach((transaction) => {
+  cashierTransactions.forEach((transaction) => {
     const existing = cashierTotals.get(transaction.cashierId) ?? {
       cashierId: transaction.cashierId,
       name: employeeById.get(transaction.cashierId)?.name ?? "Kasir",
@@ -141,7 +150,7 @@ export function buildReportData(
     (first, second) => second.revenue - first.revenue,
   );
 
-  const cashDifference = transactions.reduce((total, transaction) => {
+  const cashDifference = cashierTransactions.reduce((total, transaction) => {
     if (transaction.payment.method !== "Cash") return total;
 
     return (
@@ -153,8 +162,8 @@ export function buildReportData(
   }, 0);
 
   const soldByProduct = new Map<string, { name: string; quantity: number }>();
-  transactions.forEach((transaction) => {
-    transaction.items.forEach((item) => {
+  sales.forEach((sale) => {
+    sale.items.forEach((item) => {
       const existing = soldByProduct.get(item.productId) ?? {
         name: item.productName,
         quantity: 0,
@@ -193,19 +202,20 @@ export function buildReportData(
       detail: log.detail,
     }));
 
-  const transactionRows: ReportTransactionRow[] = transactions.map(
-    (transaction) => ({
-      invoiceNumber: transaction.invoiceNumber,
-      createdAt: transaction.createdAt,
-      cashierName: employeeById.get(transaction.cashierId)?.name ?? "Kasir",
-      branchName: branchById.get(transaction.branchId)?.name ?? "-",
-      method: transaction.payment.method,
-      subtotal: transaction.subtotal,
-      discount: transaction.discount.amount,
-      total: transaction.total,
-      profit: transactionProfit(transaction, database),
-    }),
-  );
+  const transactionRows: ReportTransactionRow[] = sales.map((sale) => ({
+    invoiceNumber: sale.number,
+    source: sale.source,
+    createdAt: sale.at,
+    cashierName: sale.cashierId
+      ? (employeeById.get(sale.cashierId)?.name ?? "Kasir")
+      : "-",
+    branchName: branchById.get(sale.branchId)?.name ?? "-",
+    method: sale.method ?? "-",
+    subtotal: sale.subtotal,
+    discount: sale.discount,
+    total: sale.total,
+    profit: calculateGrossProfit(sale, productCostById),
+  }));
 
   return {
     header: {
@@ -226,6 +236,7 @@ export function buildReportData(
       totalSalesBonus,
       activeSalespeople,
     },
+    sourceBreakdown: summarizeSalesBySource(sales),
     paymentBreakdown,
     cashiers,
     cashDifference,

@@ -1,6 +1,7 @@
 import { ROLES } from "@/constants/roles";
 import type { DateRange } from "@/lib/date-range";
 import { isWithinRange } from "@/lib/date-range";
+import { getNextDailyDocumentNumber } from "@/lib/document-number";
 import { formatPercent, formatRupiah } from "@/lib/format";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type {
@@ -89,7 +90,10 @@ export function collectBonusEntries(
   database.salesOrders.forEach((order) => {
     if (order.status !== "Lunas") return;
     if (branchId && order.branchId !== branchId) return;
-    if (!isWithinRange(order.createdAt, range)) return;
+
+    // Bonus mengikuti tanggal lunas, bukan tanggal pesanan dibuat.
+    const paidAt = order.paidAt ?? order.createdAt;
+    if (!isWithinRange(paidAt, range)) return;
 
     const entry = totals.get(order.salesEmployeeId);
     if (!entry) return;
@@ -265,17 +269,11 @@ export function getNextOrderNumber(
   orders: readonly SalesOrder[],
   date: Date = new Date(),
 ): string {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const prefix = `SO-${day}${month}-`;
-
-  const highest = orders.reduce((max, order) => {
-    if (!order.orderNumber.startsWith(prefix)) return max;
-    const sequence = Number(order.orderNumber.slice(prefix.length));
-    return Number.isFinite(sequence) ? Math.max(max, sequence) : max;
-  }, 0);
-
-  return `${prefix}${String(highest + 1).padStart(3, "0")}`;
+  return getNextDailyDocumentNumber(
+    orders.map((order) => order.orderNumber),
+    "SO",
+    date,
+  );
 }
 
 export function getStockShortage(
@@ -329,9 +327,26 @@ export function restoreOrderStock(
   });
 }
 
-export const ORDER_STATUS_OPTIONS: readonly SalesOrderStatus[] = [
-  "Menunggu bayar",
-  "Lunas",
-  "Dibatalkan",
-  "Belum sinkron",
-];
+const ORDER_STATUS_TRANSITIONS: Record<
+  SalesOrderStatus,
+  readonly SalesOrderStatus[]
+> = {
+  "Belum sinkron": ["Menunggu bayar", "Dibatalkan"],
+  "Menunggu bayar": ["Lunas", "Dibatalkan"],
+  Lunas: ["Dibatalkan"],
+  Dibatalkan: [],
+};
+
+/** Status tujuan yang valid dari status pesanan saat ini. */
+export function getNextOrderStatuses(
+  status: SalesOrderStatus,
+): readonly SalesOrderStatus[] {
+  return ORDER_STATUS_TRANSITIONS[status];
+}
+
+export function canChangeOrderStatus(
+  current: SalesOrderStatus,
+  next: SalesOrderStatus,
+): boolean {
+  return ORDER_STATUS_TRANSITIONS[current].includes(next);
+}
