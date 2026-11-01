@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { EmployeeFormDrawer } from "@/features/karyawan/components/EmployeeFormDrawer";
@@ -183,6 +184,22 @@ function KaryawanBody({
             row.isActive ? onDeactivate(row) : onActivate(row)
           }
         />
+
+        {canManage ? (
+          <Card className="p-4">
+            <p className="m-0 text-label text-ink-muted">
+              <span className="font-semibold text-ink">
+                Cara karyawan login:
+              </span>{" "}
+              klik <span className="font-semibold text-ink">+ Tambah Karyawan</span>,
+              isi nama, email, dan password awal, lalu berikan email dan password
+              tersebut ke karyawan. Karyawan masuk lewat halaman{" "}
+              <span className="font-semibold text-ink">/login</span> dan bisa
+              mengganti password sendiri dari menu akun di kanan atas.
+              Karyawan nonaktif tidak bisa login.
+            </p>
+          </Card>
+        ) : null}
 
         <RoleMatrixCard />
       </div>

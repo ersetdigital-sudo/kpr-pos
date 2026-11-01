@@ -57,6 +57,67 @@ export async function logoutAction(): Promise<void> {
   redirect("/login");
 }
 
+/** Ganti password dari dalam aplikasi tanpa memaksa login ulang. */
+export async function changeOwnPasswordAction(
+  _previous: SetPasswordState,
+  formData: FormData,
+): Promise<SetPasswordState> {
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirmation = String(formData.get("confirmation") ?? "");
+
+  if (!currentPassword) {
+    return { error: "Masukkan password saat ini." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Password baru minimal 8 karakter." };
+  }
+
+  if (password !== confirmation) {
+    return { error: "Konfirmasi password tidak sama." };
+  }
+
+  if (password === currentPassword) {
+    return { error: "Password baru harus berbeda dari password lama." };
+  }
+
+  const session = await getAuthSession();
+  if (!session) {
+    return { error: "Sesi tidak ditemukan. Silakan masuk kembali." };
+  }
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.email) {
+      return { error: "Akun tidak ditemukan. Silakan masuk kembali." };
+    }
+
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      return { error: "Password saat ini salah." };
+    }
+
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+      return { error: "Password gagal disimpan. Coba lagi." };
+    }
+  } catch {
+    return { error: "Password gagal disimpan. Coba lagi." };
+  }
+
+  return { success: true };
+}
+
 export async function updatePasswordAction(
   _previous: SetPasswordState,
   formData: FormData,

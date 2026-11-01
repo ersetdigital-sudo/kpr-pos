@@ -212,8 +212,13 @@ misalnya `kasir-calculations.ts` (`calculateCartTotals`, `reduceStockLevels`),
 
 ## Karyawan & Role
 
-- Tambah, edit, dan nonaktifkan karyawan (nama, no. HP, role, cabang). Karyawan
-  nonaktif hilang dari dropdown **Masuk sebagai** dan riwayatnya tetap utuh.
+- Tambah, edit, dan nonaktifkan karyawan (nama, email, password awal, no. HP,
+  role, cabang). Akun Supabase Auth dibuat langsung lewat service role dan
+  emailnya sudah terkonfirmasi, jadi tidak ada lagi email undangan: Owner
+  menyerahkan email + password awal ke karyawan.
+- Karyawan login di `/login` dengan email dan password itu, lalu bisa mengganti
+  password sendiri lewat menu akun (avatar kanan atas) → **Ganti password**.
+  Karyawan nonaktif ditolak saat login dan sesinya tidak diterima di server.
 - Penjagaan: tidak bisa menonaktifkan akun yang sedang dipakai, dan minimal satu
   Owner harus tetap aktif.
 - Filter role, cabang, dan status; pencarian nama/no. HP/role.

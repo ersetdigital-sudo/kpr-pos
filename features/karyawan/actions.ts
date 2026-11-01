@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { ALL_ROLES, type Role } from "@/constants/roles";
 import { getAuthorizedSession } from "@/lib/auth/session";
 import { buildInitials } from "@/lib/initials";
@@ -47,17 +46,6 @@ function validateEmployeeInput(input: {
   return null;
 }
 
-async function getOrigin(): Promise<string> {
-  const headerList = await headers();
-  const host =
-    headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-
-  return host
-    ? `${protocol}://${host}`
-    : (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
-}
-
 async function ensureBranch(
   admin: ReturnType<typeof createSupabaseAdminClient>,
   branch: Branch,
@@ -90,6 +78,11 @@ export async function inviteEmployeeAction(
     return { ok: false, error: "Format email tidak valid." };
   }
 
+  const password = input.password;
+  if (password.length < 8) {
+    return { ok: false, error: "Password minimal 8 karakter." };
+  }
+
   const name = input.name.trim();
   const phone = input.phone.trim();
 
@@ -97,17 +90,18 @@ export async function inviteEmployeeAction(
     const admin = createSupabaseAdminClient();
     await ensureBranch(admin, input.branch);
 
-    const origin = await getOrigin();
     const { data: invited, error: inviteError } =
-      await admin.auth.admin.inviteUserByEmail(email, {
-        data: { name },
-        redirectTo: `${origin}/auth/hash?next=/set-password`,
+      await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { name },
       });
 
     if (inviteError || !invited.user) {
       return {
         ok: false,
-        error: "Undangan gagal dikirim. Pastikan email belum terdaftar.",
+        error: "Akun gagal dibuat. Pastikan email belum terdaftar.",
       };
     }
 

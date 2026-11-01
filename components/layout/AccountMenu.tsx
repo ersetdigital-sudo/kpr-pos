@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ChangePasswordModal } from "@/components/layout/ChangePasswordModal";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -10,6 +11,7 @@ import { useSession } from "@/features/session/data/session-repository";
 export function AccountMenu() {
   const { employee, branch } = useSession();
   const [open, setOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,7 +70,20 @@ export function AccountMenu() {
             <div className="mt-1 text-meta text-ink-muted">{branch.name}</div>
           </div>
 
-          <form action={logoutAction} className="pt-2">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setPasswordOpen(true);
+            }}
+            className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-control border-0 bg-transparent px-2 py-2 text-left font-sans text-body text-ink hover:bg-line-subtle"
+          >
+            <Icon name="settings" size={16} strokeWidth={2} />
+            Ganti password
+          </button>
+
+          <form action={logoutAction} className="pt-1">
             <Button
               variant="outline"
               size="sm"
@@ -80,6 +95,11 @@ export function AccountMenu() {
           </form>
         </div>
       ) : null}
+
+      <ChangePasswordModal
+        open={passwordOpen}
+        onClose={() => setPasswordOpen(false)}
+      />
     </div>
   );
 }

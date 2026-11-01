@@ -4,4 +4,5 @@ export interface LoginState {
 
 export interface SetPasswordState {
   error?: string;
+  success?: boolean;
 }

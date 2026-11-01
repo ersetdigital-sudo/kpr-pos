@@ -29,6 +29,7 @@ export interface EmployeeFormInput {
 export interface InviteEmployeeInput {
   name: string;
   email: string;
+  password: string;
   phone: string;
   role: Role;
   branch: Branch;

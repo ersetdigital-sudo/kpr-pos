@@ -36,6 +36,8 @@ export function EmployeeFormDrawer({
   const { showToast } = useToast();
   const [name, setName] = useState(employee?.name ?? "");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState(employee?.phone ?? "");
   const [role, setRole] = useState<Role>(employee?.role ?? "Cashier");
   const [branchId, setBranchId] = useState(
@@ -78,9 +80,15 @@ export function EmployeeFormDrawer({
         updateEmployee(employee.id, { name, phone, role, branchId });
         showToast(`Data ${name.trim()} diperbarui`, "success");
       } else {
+        if (password.length < 8) {
+          setError("Password minimal 8 karakter.");
+          return;
+        }
+
         const result = await inviteEmployeeAction({
           name,
           email,
+          password,
           phone,
           role,
           branch,
@@ -103,7 +111,10 @@ export function EmployeeFormDrawer({
           return;
         }
 
-        showToast(`Undangan dikirim ke ${email.trim()}`, "success");
+        showToast(
+          `Akun ${email.trim()} dibuat, berikan password ke karyawan`,
+          "success",
+        );
       }
 
       onClose();
@@ -121,11 +132,11 @@ export function EmployeeFormDrawer({
     <Drawer
       open={open}
       onClose={onClose}
-      title={isEditing ? "Edit Karyawan" : "Undang Karyawan"}
+      title={isEditing ? "Edit Karyawan" : "Tambah Karyawan"}
       description={
         isEditing
           ? "Perubahan role dan cabang langsung memengaruhi akses akun."
-          : "Undangan email dikirim. Karyawan membuat password lewat tautan undangan."
+          : "Akun langsung aktif. Berikan email dan password ini ke karyawan."
       }
       size="sm"
       footer={
@@ -143,7 +154,7 @@ export function EmployeeFormDrawer({
               ? "Memproses…"
               : isEditing
                 ? "Simpan Perubahan"
-                : "Kirim Undangan"}
+                : "Buat Akun"}
           </Button>
         </>
       }
@@ -164,16 +175,42 @@ export function EmployeeFormDrawer({
         </Field>
 
         {!isEditing ? (
-          <Field label="Email untuk undangan" labelSize="sm">
-            <Input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="nama@perusahaan.com"
-              autoComplete="email"
-              required
-            />
-          </Field>
+          <>
+            <Field label="Email login" labelSize="sm">
+              <Input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="nama@perusahaan.com"
+                autoComplete="off"
+                required
+              />
+            </Field>
+
+            <Field label="Password awal (min. 8 karakter)" labelSize="sm">
+              <div className="flex gap-2">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Password untuk karyawan"
+                  autoComplete="new-password"
+                  className="min-w-0 flex-1"
+                  required
+                />
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={
+                    showPassword ? "Sembunyikan password" : "Tampilkan password"
+                  }
+                >
+                  {showPassword ? "Sembunyi" : "Lihat"}
+                </Button>
+              </div>
+            </Field>
+          </>
         ) : null}
 
         <Field label="No. HP" labelSize="sm">
