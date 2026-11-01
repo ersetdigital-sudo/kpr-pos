@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -14,7 +15,7 @@ import type { SalesBonusSettings, SalesBonusType } from "@/lib/store/types";
 
 interface TierDraft {
   minQuantity: string;
-  amountPerPiece: string;
+  amountPerPiece: number;
 }
 
 interface SalesBonusCardProps {
@@ -25,24 +26,24 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
   const { showToast } = useToast();
   const [type, setType] = useState<SalesBonusType>(settings.type);
   const [perPieceAmount, setPerPieceAmount] = useState(
-    String(settings.perPieceAmount),
+    settings.perPieceAmount,
   );
   const [percentRate, setPercentRate] = useState(String(settings.percentRate));
   const [tiers, setTiers] = useState<TierDraft[]>(
     settings.tiers.map((tier) => ({
       minQuantity: String(tier.minQuantity),
-      amountPerPiece: String(tier.amountPerPiece),
+      amountPerPiece: tier.amountPerPiece,
     })),
   );
   const [error, setError] = useState("");
 
   const draft: SalesBonusSettings = {
     type,
-    perPieceAmount: Number(perPieceAmount || 0),
+    perPieceAmount,
     percentRate: Number(percentRate || 0),
     tiers: tiers.map((tier) => ({
       minQuantity: Number(tier.minQuantity || 0),
-      amountPerPiece: Number(tier.amountPerPiece || 0),
+      amountPerPiece: tier.amountPerPiece,
     })),
   };
 
@@ -95,12 +96,10 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
 
         {type === "per_piece" ? (
           <Field label="Bonus per pcs (Rp)" labelSize="sm">
-            <Input
-              type="number"
-              min={0}
-              inputMode="numeric"
+            <CurrencyInput
               value={perPieceAmount}
-              onChange={(event) => setPerPieceAmount(event.target.value)}
+              onValueChange={setPerPieceAmount}
+              placeholder="0"
             />
           </Field>
         ) : null}
@@ -146,13 +145,12 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
                   />
                 </Field>
                 <Field label="Bonus / pcs (Rp)" labelSize="xs">
-                  <Input
-                    type="number"
-                    min={0}
+                  <CurrencyInput
                     value={tier.amountPerPiece}
-                    onChange={(event) =>
-                      updateTier(index, { amountPerPiece: event.target.value })
+                    onValueChange={(value) =>
+                      updateTier(index, { amountPerPiece: value })
                     }
+                    placeholder="0"
                     className="h-10 text-label"
                   />
                 </Field>
@@ -177,7 +175,7 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
               onClick={() =>
                 setTiers((current) => [
                   ...current,
-                  { minQuantity: "", amountPerPiece: "" },
+                  { minQuantity: "", amountPerPiece: 0 },
                 ])
               }
             >

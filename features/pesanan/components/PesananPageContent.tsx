@@ -21,6 +21,7 @@ import {
   getVisibleOrders,
 } from "@/features/pesanan/data/pesanan-calculations";
 import {
+  deleteSalesOrder,
   updateSalesOrderStatus,
   usePesananData,
 } from "@/features/pesanan/data/pesanan-repository";
@@ -40,6 +41,7 @@ export function PesananPageContent() {
   const permissions = usePermissions();
   const { showToast } = useToast();
   const [pendingCancel, setPendingCancel] = useState<OrderRow | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<OrderRow | null>(null);
 
   function applyStatus(row: OrderRow, status: SalesOrderStatus) {
     try {
@@ -66,6 +68,22 @@ export function PesananPageContent() {
     applyStatus(row, status);
   }
 
+  function handleDelete() {
+    if (!pendingDelete) return;
+
+    try {
+      deleteSalesOrder(pendingDelete.id);
+      showToast(`Pesanan ${pendingDelete.orderNumber} dihapus`, "success");
+    } catch (caught) {
+      showToast(
+        caught instanceof Error ? caught.message : "Pesanan gagal dihapus",
+        "error",
+      );
+    }
+
+    setPendingDelete(null);
+  }
+
   if (!database) {
     return (
       <>
@@ -86,7 +104,9 @@ export function PesananPageContent() {
         employee={employee}
         canCreate={permissions.canCreateSalesOrder}
         canManage={permissions.canManageSalesOrders}
+        canDelete={permissions.canDeleteSalesOrder}
         onStatusChange={handleStatusChange}
+        onDelete={setPendingDelete}
       />
 
       <ConfirmDialog
@@ -104,6 +124,19 @@ export function PesananPageContent() {
           setPendingCancel(null);
         }}
       />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Hapus pesanan?"
+        description={
+          pendingDelete
+            ? `Pesanan ${pendingDelete.orderNumber} untuk ${pendingDelete.customerName} akan dihapus permanen dari daftar pesanan.`
+            : ""
+        }
+        confirmLabel="Ya, hapus"
+        onClose={() => setPendingDelete(null)}
+        onConfirm={handleDelete}
+      />
     </>
   );
 }
@@ -113,7 +146,9 @@ interface PesananBodyProps {
   employee: Employee;
   canCreate: boolean;
   canManage: boolean;
+  canDelete: boolean;
   onStatusChange: (row: OrderRow, status: SalesOrderStatus) => void;
+  onDelete: (row: OrderRow) => void;
 }
 
 function PesananBody({
@@ -121,7 +156,9 @@ function PesananBody({
   employee,
   canCreate,
   canManage,
+  canDelete,
   onStatusChange,
+  onDelete,
 }: PesananBodyProps) {
   const today = new Date();
   const monthRange = getMonthRange(today);
@@ -204,9 +241,11 @@ function PesananBody({
             <OrderTable
               rows={orderRows}
               canManage={canManage}
+              canDelete={canDelete}
               showSales={!isSales}
               title={isSales ? "Pesanan Saya" : "Semua Pesanan Sales"}
               onStatusChange={onStatusChange}
+              onDelete={onDelete}
             />
             <LeaderboardTable
               entries={leaderboard}

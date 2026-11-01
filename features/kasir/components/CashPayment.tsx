@@ -1,8 +1,7 @@
 "use client";
 
-import type { ChangeEvent } from "react";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Field } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
 import { calculateChange } from "@/features/kasir/data/kasir-calculations";
 import { formatRupiah } from "@/lib/format";
 
@@ -20,22 +19,15 @@ export function CashPayment({
   const change = calculateChange(total, received);
   const shortfall = Math.max(0, total - received);
 
-  function handleReceivedChange(event: ChangeEvent<HTMLInputElement>) {
-    // Hanya angka yang disimpan; tampilan tetap diformat sebagai rupiah.
-    const digits = event.target.value.replace(/\D/g, "");
-    onReceivedChange(digits ? Number(digits) : 0);
-  }
-
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2.5">
         <Field label="Uang diterima" className="flex-[1_1_140px]">
-          <Input
+          <CurrencyInput
             aria-label="Uang diterima"
             aria-invalid={shortfall > 0}
-            inputMode="numeric"
-            value={received ? formatRupiah(received) : ""}
-            onChange={handleReceivedChange}
+            value={received}
+            onValueChange={onReceivedChange}
             className="text-amount font-bold"
           />
         </Field>

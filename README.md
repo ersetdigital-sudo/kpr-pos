@@ -72,7 +72,7 @@ Storage, lalu refresh.
 | ------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
 | Kasir      | `features/kasir/data/kasir-repository.ts`         | `useCashierData`, `createTransaction`, `refundTransaction`, `saveDraft`, `takeDraft`, `deleteDraft` |
 | Produk     | `features/produk/data/produk-repository.ts`       | `useProdukData`, `createProduct`, `updateProduct`, `deleteProduct`, `addStockIn`, `submitOpname`, `transferStock`, `importProducts` |
-| Pesanan    | `features/pesanan/data/pesanan-repository.ts`     | `usePesananData`, `createSalesOrder`, `updateSalesOrderStatus`                |
+| Pesanan    | `features/pesanan/data/pesanan-repository.ts`     | `usePesananData`, `createSalesOrder`, `updateSalesOrderStatus`, `deleteSalesOrder` |
 | Dashboard  | `features/dashboard/data/dashboard-repository.ts` | `useDashboardData`                                                            |
 | Laporan    | `features/laporan/data/laporan-repository.ts`     | `useLaporanData`                                                              |
 | Absensi    | `features/absensi/data/absensi-repository.ts`     | `useAbsensiData`, `checkIn`, `checkOut`, `submitLeaveRequest`, `reviewLeaveRequest` |
@@ -167,6 +167,10 @@ misalnya `kasir-calculations.ts` (`calculateCartTotals`, `reduceStockLevels`),
   sales aktif (`createSalesOrder`).
 - Status: Menunggu bayar, Lunas, Dibatalkan. Saat **Lunas** stok cabang berkurang;
   saat **Dibatalkan** stok yang sudah terpotong dikembalikan.
+- Pesanan yang sudah **Dibatalkan** bisa dihapus permanen lewat tombol **Hapus**
+  (dengan konfirmasi) oleh role dengan `canDeleteSalesOrder`
+  (Owner/Manager/Supervisor). Pesanan yang masih berjalan harus dibatalkan dulu
+  agar stok dan bonus tetap konsisten.
 - Bonus dihitung dari pesanan lunas + transaksi kasir yang memakai sales tersebut,
   lewat `calculateBonusAmount` yang mendukung tiga aturan di
   `settings.salesBonus`: `per_piece`, `percent`, dan `tiered` (bertarget pcs).
@@ -312,6 +316,8 @@ ditampilkan sebagai placeholder "segera hadir".
 
 - Semua data bertipe eksplisit; tidak ada `any`.
 - Format rupiah/tanggal/angka hanya lewat `lib/format.ts`.
+- Input nominal memakai `components/ui/CurrencyInput`: nilai disimpan sebagai
+  angka, tampilan otomatis ber-separator ribuan saat mengetik (mis. `1.500.000`).
 - Nomor struk dihitung setelah store ter-hydrate (`useNextInvoiceNumber`) agar
   `new Date()` tidak dievaluasi saat prerender (Cache Components Next 16).
 - Sidebar menjadi drawer di bawah breakpoint `lg`; tabel lebar memakai wrapper

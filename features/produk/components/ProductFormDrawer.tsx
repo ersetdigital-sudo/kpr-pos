@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Drawer } from "@/components/ui/Drawer";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
@@ -38,10 +39,8 @@ export function ProductFormDrawer({
   const [categoryId, setCategoryId] = useState(
     product?.categoryId ?? categories[0]?.id ?? "",
   );
-  const [costPrice, setCostPrice] = useState(
-    product ? String(product.costPrice) : "",
-  );
-  const [price, setPrice] = useState(product ? String(product.price) : "");
+  const [costPrice, setCostPrice] = useState(product?.costPrice ?? 0);
+  const [price, setPrice] = useState(product?.price ?? 0);
   const [minStock, setMinStock] = useState(
     product ? String(product.minStock) : "5",
   );
@@ -77,8 +76,8 @@ export function ProductFormDrawer({
       name,
       sku,
       categoryId,
-      costPrice: Number(costPrice || 0),
-      price: Number(price || 0),
+      costPrice,
+      price,
       minStock: Number(minStock || 0),
       imageUrl,
     };
@@ -175,23 +174,17 @@ export function ProductFormDrawer({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Harga modal (Rp)" labelSize="sm">
-            <Input
-              type="number"
-              min={0}
-              inputMode="numeric"
+            <CurrencyInput
               value={costPrice}
-              onChange={(event) => setCostPrice(event.target.value)}
+              onValueChange={setCostPrice}
               placeholder="0"
             />
           </Field>
 
           <Field label="Harga jual (Rp)" labelSize="sm">
-            <Input
-              type="number"
-              min={0}
-              inputMode="numeric"
+            <CurrencyInput
               value={price}
-              onChange={(event) => setPrice(event.target.value)}
+              onValueChange={setPrice}
               placeholder="0"
             />
           </Field>

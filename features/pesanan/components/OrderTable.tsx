@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { Icon } from "@/components/ui/Icon";
 import { Select } from "@/components/ui/Select";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { BadgeTone } from "@/components/ui/badge-tone";
@@ -21,17 +23,21 @@ const STATUS_TONES: Record<SalesOrderStatus, BadgeTone> = {
 interface OrderTableProps {
   rows: readonly OrderRow[];
   canManage: boolean;
+  canDelete: boolean;
   showSales: boolean;
   title: string;
   onStatusChange: (row: OrderRow, status: SalesOrderStatus) => void;
+  onDelete: (row: OrderRow) => void;
 }
 
 export function OrderTable({
   rows,
   canManage,
+  canDelete,
   showSales,
   title,
   onStatusChange,
+  onDelete,
 }: OrderTableProps) {
   const columns = useMemo(() => {
     const base: DataTableColumn<OrderRow>[] = [
@@ -119,14 +125,39 @@ export function OrderTable({
       },
     });
 
+    if (canDelete) {
+      base.push({
+        id: "actions",
+        header: "Aksi",
+        align: "right",
+        cell: (order) => (
+          <Button
+            variant="dangerOutline"
+            size="sm"
+            disabled={order.status !== "Dibatalkan"}
+            title={
+              order.status === "Dibatalkan"
+                ? `Hapus pesanan ${order.orderNumber}`
+                : "Batalkan pesanan dulu untuk menghapus"
+            }
+            aria-label={`Hapus pesanan ${order.orderNumber}`}
+            onClick={() => onDelete(order)}
+          >
+            <Icon name="trash" size={14} />
+            Hapus
+          </Button>
+        ),
+      });
+    }
+
     return base;
-  }, [canManage, onStatusChange, showSales]);
+  }, [canDelete, canManage, onDelete, onStatusChange, showSales]);
 
   return (
     <Card className="p-5">
       <CardHeader
         title={title}
-        subtitle="Status lunas otomatis mengurangi stok cabang."
+        subtitle="Status lunas otomatis mengurangi stok cabang. Pesanan yang sudah dibatalkan bisa dihapus."
         className="mb-3.5"
       />
 
@@ -145,7 +176,7 @@ export function OrderTable({
           columns={columns}
           rows={rows}
           rowKey={(order) => order.id}
-          minWidth={showSales ? 760 : 560}
+          minWidth={showSales ? 860 : 680}
           density="roomy"
           headerTone="soft"
         />

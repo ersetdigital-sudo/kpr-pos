@@ -116,6 +116,40 @@ export function createSalesOrder(input: CreateOrderInput): SalesOrder {
   return created;
 }
 
+export function deleteSalesOrder(orderId: string): void {
+  updateDatabase((database) => {
+    const actor = database.employees.find(
+      (employee) => employee.id === database.session.currentEmployeeId,
+    );
+
+    if (!actor) {
+      throw new Error("Sesi pengguna tidak ditemukan");
+    }
+
+    if (!ROLE_PERMISSIONS[actor.role].canDeleteSalesOrder) {
+      throw new Error("Role Anda tidak boleh menghapus pesanan");
+    }
+
+    const order = database.salesOrders.find((item) => item.id === orderId);
+    if (!order) throw new Error("Pesanan tidak ditemukan");
+
+    if (order.status !== "Dibatalkan") {
+      throw new Error("Batalkan pesanan terlebih dahulu sebelum menghapus");
+    }
+
+    return appendActivity(
+      {
+        ...database,
+        salesOrders: database.salesOrders.filter((item) => item.id !== orderId),
+      },
+      {
+        action: "Menghapus",
+        detail: `Pesanan ${order.orderNumber} · ${order.customerName} · ${formatRupiah(order.total)}`,
+      },
+    );
+  });
+}
+
 export function updateSalesOrderStatus(
   orderId: string,
   nextStatus: SalesOrderStatus,

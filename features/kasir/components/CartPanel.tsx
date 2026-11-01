@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Field } from "@/components/ui/Field";
 import { Select } from "@/components/ui/Select";
 import { calculateLineTotal } from "@/features/kasir/data/kasir-calculations";
@@ -199,26 +200,33 @@ export function CartPanel({
                 <option value="nominal">Rp</option>
                 <option value="percent">%</option>
               </select>
-              <input
-                aria-label="Nilai diskon"
-                type="number"
-                min={0}
-                max={discountType === "percent" ? 100 : undefined}
-                value={discountValue === 0 ? "" : discountValue}
-                placeholder="0"
-                onChange={(event) => {
-                  const next = Number(event.target.value);
-                  const safeValue = Number.isFinite(next)
-                    ? Math.max(0, next)
-                    : 0;
-                  onDiscountValueChange(
-                    discountType === "percent"
-                      ? Math.min(100, safeValue)
-                      : safeValue,
-                  );
-                }}
-                className="h-8 w-[78px] rounded-control border border-line-strong bg-surface px-2 text-right font-sans text-label font-semibold text-ink"
-              />
+              {discountType === "nominal" ? (
+                <CurrencyInput
+                  aria-label="Nilai diskon"
+                  prefix={false}
+                  value={discountValue}
+                  onValueChange={onDiscountValueChange}
+                  placeholder="0"
+                  className="h-8 w-[92px] px-2 text-label font-semibold"
+                />
+              ) : (
+                <input
+                  aria-label="Nilai diskon"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={discountValue === 0 ? "" : discountValue}
+                  placeholder="0"
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    const safeValue = Number.isFinite(next)
+                      ? Math.max(0, next)
+                      : 0;
+                    onDiscountValueChange(Math.min(100, safeValue));
+                  }}
+                  className="h-8 w-[78px] rounded-control border border-line-strong bg-surface px-2 text-right font-sans text-label font-semibold text-ink"
+                />
+              )}
               <span className="min-w-[74px] text-right text-ink">
                 - {formatRupiah(totals.discountAmount)}
               </span>

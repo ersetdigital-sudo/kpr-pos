@@ -6,6 +6,7 @@ export interface RolePermissions {
   canManageProducts: boolean;
   canCreateSalesOrder: boolean;
   canManageSalesOrders: boolean;
+  canDeleteSalesOrder: boolean;
   canExportReports: boolean;
   canViewAllBranches: boolean;
   /** Melihat absensi seluruh karyawan, bukan hanya miliknya. */
@@ -23,6 +24,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: true,
     canCreateSalesOrder: true,
     canManageSalesOrders: true,
+    canDeleteSalesOrder: true,
     canExportReports: true,
     canViewAllBranches: true,
     canViewAllAttendance: true,
@@ -37,6 +39,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: true,
     canCreateSalesOrder: true,
     canManageSalesOrders: true,
+    canDeleteSalesOrder: true,
     canExportReports: true,
     canViewAllBranches: true,
     canViewAllAttendance: true,
@@ -51,6 +54,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: false,
     canCreateSalesOrder: true,
     canManageSalesOrders: true,
+    canDeleteSalesOrder: true,
     canExportReports: false,
     canViewAllBranches: true,
     canViewAllAttendance: true,
@@ -65,6 +69,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: false,
     canCreateSalesOrder: false,
     canManageSalesOrders: false,
+    canDeleteSalesOrder: false,
     canExportReports: false,
     canViewAllBranches: false,
     canViewAllAttendance: false,
@@ -79,6 +84,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: true,
     canCreateSalesOrder: false,
     canManageSalesOrders: false,
+    canDeleteSalesOrder: false,
     canExportReports: false,
     canViewAllBranches: true,
     canViewAllAttendance: false,
@@ -93,6 +99,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: false,
     canCreateSalesOrder: false,
     canManageSalesOrders: false,
+    canDeleteSalesOrder: false,
     canExportReports: true,
     canViewAllBranches: true,
     canViewAllAttendance: false,
@@ -107,6 +114,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: false,
     canCreateSalesOrder: true,
     canManageSalesOrders: false,
+    canDeleteSalesOrder: false,
     canExportReports: false,
     canViewAllBranches: false,
     canViewAllAttendance: false,
@@ -121,6 +129,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageProducts: false,
     canCreateSalesOrder: false,
     canManageSalesOrders: false,
+    canDeleteSalesOrder: false,
     canExportReports: false,
     canViewAllBranches: false,
     canViewAllAttendance: false,
