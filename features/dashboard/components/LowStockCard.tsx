@@ -16,7 +16,7 @@ export function LowStockCard({ products }: LowStockCardProps) {
   const canViewProducts = canAccessPath("/produk", employee.role);
 
   return (
-    <Card className="min-w-0 flex-[1_1_300px] p-5">
+    <Card className="min-w-0 p-5">
       <CardHeader
         title="Stok Menipis"
         action={

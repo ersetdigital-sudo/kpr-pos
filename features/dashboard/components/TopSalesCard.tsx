@@ -17,7 +17,7 @@ export function TopSalesCard({ entries }: TopSalesCardProps) {
   const canViewOrders = canAccessPath("/pesanan", employee.role);
 
   return (
-    <Card className="min-w-0 flex-[1_1_300px] p-5">
+    <Card className="min-w-0 p-5">
       <CardHeader
         title="Top Sales Bulan Ini"
         action={

@@ -10,7 +10,7 @@ export function WeeklySalesCard({ sales }: WeeklySalesCardProps) {
   const total = sales.reduce((sum, sale) => sum + sale.total, 0);
 
   return (
-    <Card className="min-w-0 flex-[2_1_480px] p-5">
+    <Card className="min-w-0 p-5">
       <CardHeader
         title="Penjualan 7 Hari Terakhir"
         action={

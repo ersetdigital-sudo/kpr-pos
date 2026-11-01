@@ -111,12 +111,12 @@ function DashboardBody({
       <div className="flex flex-col gap-5 p-4 sm:p-5 lg:px-7 lg:py-6">
         <DashboardStats stats={data.stats} />
 
-        <div className="flex flex-wrap gap-4">
+        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <WeeklySalesCard sales={data.weeklySales} />
           <TopSalesCard entries={data.topSales} />
         </div>
 
-        <div className="flex flex-wrap gap-4">
+        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <RecentTransactionsCard transactions={data.recentTransactions} />
           <LowStockCard products={data.lowStock} />
         </div>

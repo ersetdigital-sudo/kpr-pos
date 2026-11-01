@@ -17,7 +17,7 @@ const columns: readonly DataTableColumn<RecentTransaction>[] = [
     id: "invoice",
     header: "No. Struk",
     cell: (transaction) => (
-      <span className="font-semibold text-ink">
+      <span className="font-semibold whitespace-nowrap text-ink">
         {transaction.invoiceNumber}
       </span>
     ),
@@ -25,6 +25,7 @@ const columns: readonly DataTableColumn<RecentTransaction>[] = [
   {
     id: "time",
     header: "Waktu",
+    cellClassName: "whitespace-nowrap",
     cell: (transaction) => (
       <span className="text-ink-muted">{transaction.time}</span>
     ),
@@ -32,7 +33,11 @@ const columns: readonly DataTableColumn<RecentTransaction>[] = [
   {
     id: "cashier",
     header: "Kasir",
-    cell: (transaction) => transaction.cashier,
+    cell: (transaction) => (
+      <span className="block max-w-[120px] truncate">
+        {transaction.cashier}
+      </span>
+    ),
   },
   {
     id: "method",
@@ -47,6 +52,7 @@ const columns: readonly DataTableColumn<RecentTransaction>[] = [
     id: "total",
     header: "Total",
     align: "right",
+    cellClassName: "whitespace-nowrap",
     cell: (transaction) => (
       <span className="font-semibold text-ink">
         {formatRupiah(transaction.total)}
@@ -63,7 +69,7 @@ export function RecentTransactionsCard({
   transactions,
 }: RecentTransactionsCardProps) {
   return (
-    <Card className="min-w-0 flex-[2_1_480px] p-5">
+    <Card className="min-w-0 p-5">
       <CardHeader title="Transaksi Terakhir" className="mb-3.5" />
       {transactions.length === 0 ? (
         <p className="m-0 rounded-control border border-dashed border-line-strong bg-canvas px-3 py-6 text-center text-meta text-ink-muted">
@@ -75,7 +81,7 @@ export function RecentTransactionsCard({
           columns={columns}
           rows={transactions}
           rowKey={(transaction) => transaction.id}
-          minWidth={560}
+          minWidth="100%"
         />
       )}
     </Card>
