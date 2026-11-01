@@ -57,8 +57,8 @@ export function OrderTable({
         id: "customer",
         header: "Pelanggan",
         cell: (order) => (
-          <div>
-            <div className="text-ink">{order.customerName}</div>
+          <div className="min-w-0">
+            <div className="truncate text-ink">{order.customerName}</div>
             {order.customerPhone ? (
               <div className="text-meta text-ink-muted">
                 {order.customerPhone}
@@ -176,7 +176,7 @@ export function OrderTable({
           columns={columns}
           rows={rows}
           rowKey={(order) => order.id}
-          minWidth={showSales ? 860 : 680}
+          minWidth={showSales ? 720 : 560}
           density="roomy"
           headerTone="soft"
         />

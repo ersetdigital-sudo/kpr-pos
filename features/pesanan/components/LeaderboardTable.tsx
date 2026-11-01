@@ -53,7 +53,7 @@ export function LeaderboardTable({
   bonusRuleLabel,
 }: LeaderboardTableProps) {
   return (
-    <Card className="p-5">
+    <Card className="flex min-w-0 flex-[1_1_380px] flex-col p-5">
       <CardHeader
         title={`Papan Peringkat Sales · ${periodLabel}`}
         action={
@@ -68,13 +68,13 @@ export function LeaderboardTable({
           Belum ada data bonus bulan ini.
         </div>
       ) : (
-        <div className="mt-3">
+        <div className="mt-3 flex-1 overflow-y-auto" style={{ maxHeight: 420 }}>
           <DataTable
             ariaLabel={`Papan peringkat sales ${periodLabel}`}
             columns={columns}
             rows={entries}
             rowKey={(entry) => entry.salesEmployeeId}
-            minWidth={480}
+            minWidth="100%"
             rowClassName={(entry) =>
               entry.isCurrentUser ? "bg-brand-soft" : undefined
             }

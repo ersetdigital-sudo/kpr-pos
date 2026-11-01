@@ -221,7 +221,7 @@ function PesananBody({
       <div className="flex flex-col gap-5 p-4 sm:p-5 lg:px-7 lg:py-6">
         <SalesStatsCards stats={stats} />
 
-        <div className="flex flex-wrap items-start gap-4">
+        <div className="flex flex-wrap items-stretch gap-4">
           {canCreate ? (
             <NewOrderForm
               branchId={employee.branchId}
@@ -237,23 +237,22 @@ function PesananBody({
             />
           ) : null}
 
-          <div className="flex min-w-0 flex-[2_1_480px] flex-col gap-4">
-            <OrderTable
-              rows={orderRows}
-              canManage={canManage}
-              canDelete={canDelete}
-              showSales={!isSales}
-              title={isSales ? "Pesanan Saya" : "Semua Pesanan Sales"}
-              onStatusChange={onStatusChange}
-              onDelete={onDelete}
-            />
-            <LeaderboardTable
-              entries={leaderboard}
-              periodLabel={periodLabel}
-              bonusRuleLabel={describeBonusRule(database.settings.salesBonus)}
-            />
-          </div>
+          <LeaderboardTable
+            entries={leaderboard}
+            periodLabel={periodLabel}
+            bonusRuleLabel={describeBonusRule(database.settings.salesBonus)}
+          />
         </div>
+
+        <OrderTable
+          rows={orderRows}
+          canManage={canManage}
+          canDelete={canDelete}
+          showSales={!isSales}
+          title={isSales ? "Pesanan Saya" : "Semua Pesanan Sales"}
+          onStatusChange={onStatusChange}
+          onDelete={onDelete}
+        />
       </div>
     </>
   );

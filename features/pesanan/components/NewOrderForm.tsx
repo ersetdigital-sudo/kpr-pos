@@ -115,7 +115,7 @@ export function NewOrderForm({
   }
 
   return (
-    <Card className="flex min-w-0 flex-[1_1_340px] flex-col gap-3.5 p-5">
+    <Card className="flex min-w-0 flex-[1_1_380px] flex-col gap-3.5 p-5">
       <div>
         <h2 className="m-0 text-card-title font-bold text-ink">
           Input Pesanan Baru

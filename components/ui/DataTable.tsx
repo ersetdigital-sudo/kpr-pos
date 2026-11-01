@@ -14,7 +14,7 @@ interface DataTableProps<T> {
   columns: readonly DataTableColumn<T>[];
   rows: readonly T[];
   rowKey: (row: T) => string;
-  minWidth?: number;
+  minWidth?: number | string;
   density?: "compact" | "roomy";
   headerTone?: "plain" | "soft";
   rowClassName?: (row: T) => string | undefined;
@@ -43,7 +43,7 @@ export function DataTable<T>({
       <table
         aria-label={ariaLabel}
         className="w-full border-collapse text-body"
-        style={{ minWidth }}
+        style={{ minWidth: typeof minWidth === "number" ? `${minWidth}px` : minWidth }}
       >
         <thead>
           <tr
