@@ -7,6 +7,7 @@ import { SettingsBranchSyncProvider } from "@/features/pengaturan/data/SettingsB
 import { SalesSyncProvider } from "@/features/sales/data/SalesSyncProvider";
 import { AttendanceSyncProvider } from "@/features/absensi/data/AttendanceSyncProvider";
 import { ActivitySyncProvider } from "@/features/activity/data/ActivitySyncProvider";
+import { EmployeeSyncProvider } from "@/features/karyawan/data/EmployeeSyncProvider";
 import { AuthSessionProvider } from "@/features/session/data/session-context";
 import { getAuthSession } from "@/lib/auth/session";
 
@@ -27,7 +28,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <SalesSyncProvider>
             <AttendanceSyncProvider>
               <ActivitySyncProvider>
-                <AppShell>{children}</AppShell>
+                <EmployeeSyncProvider>
+                  <AppShell>{children}</AppShell>
+                </EmployeeSyncProvider>
               </ActivitySyncProvider>
             </AttendanceSyncProvider>
           </SalesSyncProvider>
