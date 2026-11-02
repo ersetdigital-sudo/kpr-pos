@@ -1,6 +1,5 @@
 "use server";
 
-import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { getAuthSession, getAuthorizedSession } from "@/lib/auth/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { SessionState } from "@/features/session/types";
@@ -109,8 +108,10 @@ function fail(error: unknown): CloudActionResult {
 }
 
 function canUseBranch(session: SessionState, branchId: string): boolean {
-  const permissions = ROLE_PERMISSIONS[session.employee.role];
-  return permissions.canViewAllBranches || branchId === session.employee.branchId;
+  return (
+    session.permissions.canViewAllBranches ||
+    branchId === session.employee.branchId
+  );
 }
 
 async function callRpc(
@@ -142,8 +143,7 @@ async function readSnapshot(
   session: SessionState,
 ): Promise<ProductStockSnapshot> {
   const admin = createSupabaseAdminClient();
-  const canManageProducts =
-    ROLE_PERMISSIONS[session.employee.role].canManageProducts;
+  const canManageProducts = session.permissions.canManageProducts;
   const branchId = session.branch.id;
 
   const [categoryResult, productResult, stockResult, stockInResult, opnameResult, transferResult] =

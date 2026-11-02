@@ -33,30 +33,6 @@ function mergeBranches(
   ];
 }
 
-function mergeEmployees(
-  localEmployees: readonly Employee[],
-  remoteEmployees: readonly Employee[],
-): Employee[] {
-  const merged = localEmployees.map((employee) => ({ ...employee }));
-  const indexById = new Map(
-    merged.map((employee, index) => [employee.id, index]),
-  );
-
-  remoteEmployees.forEach((employee) => {
-    const index = indexById.get(employee.id);
-
-    if (index === undefined) {
-      indexById.set(employee.id, merged.length);
-      merged.push(employee);
-      return;
-    }
-
-    merged[index] = { ...merged[index], ...employee };
-  });
-
-  return merged;
-}
-
 /** Sinkronkan sesi Auth ke store localStorage agar repository fitur ikut user ini. */
 function syncSessionToLocalDatabase(
   employeeId: string,
@@ -66,7 +42,7 @@ function syncSessionToLocalDatabase(
 ) {
   updateDatabase((database) => ({
     ...database,
-    employees: mergeEmployees(database.employees, employees),
+    employees: employees.map((employee) => ({ ...employee })),
     branches: mergeBranches(branches, database.branches),
     session: {
       currentEmployeeId: employeeId,

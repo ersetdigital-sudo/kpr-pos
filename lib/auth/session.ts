@@ -26,6 +26,41 @@ interface BranchRow {
   is_active: boolean;
 }
 
+interface RolePermissionsRow {
+  role: Role;
+  can_apply_discount: boolean;
+  can_cancel_transaction: boolean;
+  can_manage_products: boolean;
+  can_create_sales_order: boolean;
+  can_manage_sales_orders: boolean;
+  can_delete_sales_order: boolean;
+  can_export_reports: boolean;
+  can_view_all_branches: boolean;
+  can_view_all_attendance: boolean;
+  can_approve_leave: boolean;
+  can_manage_employees: boolean;
+  can_manage_branches: boolean;
+  can_manage_settings: boolean;
+}
+
+function mapPermissions(row: RolePermissionsRow): RolePermissions {
+  return {
+    canApplyDiscount: row.can_apply_discount,
+    canCancelTransaction: row.can_cancel_transaction,
+    canManageProducts: row.can_manage_products,
+    canCreateSalesOrder: row.can_create_sales_order,
+    canManageSalesOrders: row.can_manage_sales_orders,
+    canDeleteSalesOrder: row.can_delete_sales_order,
+    canExportReports: row.can_export_reports,
+    canViewAllBranches: row.can_view_all_branches,
+    canViewAllAttendance: row.can_view_all_attendance,
+    canApproveLeave: row.can_approve_leave,
+    canManageEmployees: row.can_manage_employees,
+    canManageBranches: row.can_manage_branches,
+    canManageSettings: row.can_manage_settings,
+  };
+}
+
 function isRole(value: string): value is Role {
   return (ALL_ROLES as readonly string[]).includes(value);
 }
@@ -64,24 +99,31 @@ export const getAuthSession = cache(async (): Promise<SessionState | null> => {
 
   if (!user) return null;
 
-  // Satu query karyawan aktif + satu query cabang, dijalankan paralel.
-  const [employeeResult, branchResult] = await Promise.all([
+  const [employeeResult, branchResult, permissionResult] = await Promise.all([
     supabase
       .from("employees")
       .select("id,user_id,name,phone,initials,role,branch_id,is_active")
-      .eq("is_active", true)
       .order("name"),
     supabase
       .from("branches")
       .select("id,name,address,phone,is_active")
       .eq("is_active", true)
       .order("name"),
+    supabase
+      .from("role_permissions")
+      .select(
+        "role,can_apply_discount,can_cancel_transaction,can_manage_products,can_create_sales_order,can_manage_sales_orders,can_delete_sales_order,can_export_reports,can_view_all_branches,can_view_all_attendance,can_approve_leave,can_manage_employees,can_manage_branches,can_manage_settings",
+      ),
   ]);
 
-  if (employeeResult.error || branchResult.error) return null;
+  if (employeeResult.error || branchResult.error || permissionResult.error) {
+    return null;
+  }
 
   const employeeRows = (employeeResult.data ?? []) as EmployeeRow[];
-  const employeeRow = employeeRows.find((row) => row.user_id === user.id);
+  const employeeRow = employeeRows.find(
+    (row) => row.user_id === user.id && row.is_active,
+  );
 
   if (!employeeRow || !isRole(employeeRow.role)) return null;
 
@@ -95,12 +137,19 @@ export const getAuthSession = cache(async (): Promise<SessionState | null> => {
     .filter((row) => isRole(row.role))
     .map(mapEmployee);
 
+  const permissionRow = ((permissionResult.data ?? []) as RolePermissionsRow[])
+    .find((row) => row.role === employeeRow.role);
+  const permissions = permissionRow
+    ? mapPermissions(permissionRow)
+    : ROLE_PERMISSIONS[employeeRow.role];
+
   return {
     employee: mapEmployee(employeeRow),
     branch,
     employees,
     branches,
     isOwner: employeeRow.role === ROLES.OWNER,
+    permissions,
   };
 });
 
@@ -110,5 +159,5 @@ export async function getAuthorizedSession(
   const session = await getAuthSession();
   if (!session) return null;
 
-  return ROLE_PERMISSIONS[session.employee.role][permission] ? session : null;
+  return session.permissions[permission] ? session : null;
 }

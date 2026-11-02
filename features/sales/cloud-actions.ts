@@ -1,7 +1,6 @@
 "use server";
 
 import { ROLES } from "@/constants/roles";
-import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { getAuthSession, getAuthorizedSession } from "@/lib/auth/session";
 import { callServiceRpc } from "@/lib/cloud/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -177,7 +176,7 @@ function fail(message: string): { ok: false; error: string } {
 
 function canAccessBranch(session: SessionState, branchId: string): boolean {
   return (
-    ROLE_PERMISSIONS[session.employee.role].canViewAllBranches ||
+    session.permissions.canViewAllBranches ||
     session.employee.branchId === branchId
   );
 }
@@ -344,7 +343,7 @@ function mapDraftJson(row: CartDraftJson): CartDraft {
 
 async function readSnapshot(session: SessionState): Promise<SalesSnapshot> {
   const admin = createSupabaseAdminClient();
-  const permissions = ROLE_PERMISSIONS[session.employee.role];
+  const permissions = session.permissions;
 
   const [transactionResult, orderResult, draftResult] = await Promise.all([
     admin
@@ -536,7 +535,7 @@ export async function deleteSalesOrderAction(
   const session = await getAuthorizedSession("canManageSalesOrders");
   if (!session) return fail("Role Anda tidak boleh menghapus pesanan");
 
-  if (!ROLE_PERMISSIONS[session.employee.role].canDeleteSalesOrder) {
+  if (!session.permissions.canDeleteSalesOrder) {
     return fail("Role Anda tidak boleh menghapus pesanan");
   }
 

@@ -20,10 +20,12 @@ interface EmployeeTableProps {
   filters: EmployeeFilters;
   branches: readonly Branch[];
   canManage: boolean;
+  canDelete: boolean;
   currentEmployeeId: string;
   onFiltersChange: (patch: Partial<EmployeeFilters>) => void;
   onEdit: (row: EmployeeRow) => void;
   onToggleActive: (row: EmployeeRow) => void;
+  onDelete: (row: EmployeeRow) => void;
 }
 
 export function EmployeeTable({
@@ -31,10 +33,12 @@ export function EmployeeTable({
   filters,
   branches,
   canManage,
+  canDelete,
   currentEmployeeId,
   onFiltersChange,
   onEdit,
   onToggleActive,
+  onDelete,
 }: EmployeeTableProps) {
   const columns: readonly DataTableColumn<EmployeeRow>[] = [
     {
@@ -117,6 +121,16 @@ export function EmployeeTable({
                     Aktifkan
                   </Button>
                 )}
+                {canDelete && row.id !== currentEmployeeId ? (
+                  <Button
+                    variant="dangerOutline"
+                    size="sm"
+                    className="h-[32px] px-2.5 text-meta"
+                    onClick={() => onDelete(row)}
+                  >
+                    Hapus
+                  </Button>
+                ) : null}
               </div>
             ),
           },

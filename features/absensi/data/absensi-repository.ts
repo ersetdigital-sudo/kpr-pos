@@ -1,13 +1,8 @@
 "use client";
 
-import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { recordActivity } from "@/lib/store/activity";
 import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
-import type {
-  AppDatabase,
-  Employee,
-  LeaveRequestStatus,
-} from "@/lib/store/types";
+import type { AppDatabase, LeaveRequestStatus } from "@/lib/store/types";
 import { toDateInputValue } from "@/lib/date-range";
 import { formatDateShort, formatTime } from "@/lib/format";
 import { isLateCheckIn } from "@/features/absensi/data/absensi-calculations";
@@ -22,15 +17,6 @@ import type { CheckInResult } from "@/features/absensi/types";
 
 export function useAbsensiData(): AppDatabase | null {
   return useHydratedDatabase();
-}
-
-function requireActor(database: AppDatabase): Employee {
-  const actor = database.employees.find(
-    (employee) => employee.id === database.session.currentEmployeeId,
-  );
-
-  if (!actor) throw new Error("Karyawan aktif tidak ditemukan");
-  return actor;
 }
 
 async function refreshAttendance(): Promise<void> {
@@ -104,12 +90,6 @@ export async function reviewLeaveRequest(
   status: Exclude<LeaveRequestStatus, "Menunggu">,
 ): Promise<void> {
   const database = getDatabase();
-  const actor = requireActor(database);
-
-  if (!ROLE_PERMISSIONS[actor.role].canApproveLeave) {
-    throw new Error("Role ini tidak bisa menyetujui izin");
-  }
-
   const request = database.leaveRequests.find((entry) => entry.id === requestId);
   if (!request) throw new Error("Pengajuan izin tidak ditemukan");
   if (request.status !== "Menunggu") {

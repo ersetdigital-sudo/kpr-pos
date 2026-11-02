@@ -1,6 +1,5 @@
 "use server";
 
-import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { getAuthSession, getAuthorizedSession } from "@/lib/auth/session";
 import { callServiceRpc } from "@/lib/cloud/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -65,7 +64,7 @@ export async function fetchActivitySnapshotAction(): Promise<ActivitySnapshot> {
   const session = await getAuthSession();
   if (!session) throw new Error("Sesi pengguna tidak ditemukan");
 
-  if (!ROLE_PERMISSIONS[session.employee.role].canExportReports) {
+  if (!session.permissions.canExportReports) {
     return { activityLogs: [], isEmpty: true };
   }
 

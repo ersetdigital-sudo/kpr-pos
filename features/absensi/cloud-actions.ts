@@ -1,6 +1,5 @@
 "use server";
 
-import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { getAuthSession, getAuthorizedSession } from "@/lib/auth/session";
 import { callServiceRpc } from "@/lib/cloud/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -120,7 +119,7 @@ function mapLeaveJson(row: LeaveJson): LeaveRequest {
 
 async function readSnapshot(session: SessionState): Promise<AttendanceSnapshot> {
   const admin = createSupabaseAdminClient();
-  const permissions = ROLE_PERMISSIONS[session.employee.role];
+  const permissions = session.permissions;
 
   const [attendanceResult, leaveResult] = await Promise.all([
     admin

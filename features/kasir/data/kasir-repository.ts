@@ -1,7 +1,6 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { recordActivity } from "@/lib/store/activity";
 import {
   getDatabase,
@@ -386,18 +385,6 @@ export async function refundTransaction(
   input: RefundTransactionInput,
 ): Promise<RefundTransactionResult> {
   const database = getDatabase();
-  const actor = database.employees.find(
-    (employee) => employee.id === database.session.currentEmployeeId,
-  );
-
-  if (!actor) {
-    throw new Error("Sesi pengguna tidak ditemukan");
-  }
-
-  if (!ROLE_PERMISSIONS[actor.role].canCancelTransaction) {
-    throw new Error("Role Anda tidak boleh membatalkan transaksi");
-  }
-
   const transaction = database.transactions.find(
     (item) => item.id === input.transactionId,
   );

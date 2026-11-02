@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -18,7 +19,10 @@ import {
   setEmployeeActive,
   useKaryawanData,
 } from "@/features/karyawan/data/karyawan-repository";
-import { setEmployeeAccountActiveAction } from "@/features/karyawan/actions";
+import {
+  deleteEmployeeAccountAction,
+  setEmployeeAccountActiveAction,
+} from "@/features/karyawan/actions";
 import type {
   EmployeeFilters,
   EmployeeRow,
@@ -34,6 +38,7 @@ export function KaryawanPageContent() {
   const { employee } = useSession();
   const permissions = usePermissions();
   const { showToast } = useToast();
+  const router = useRouter();
   const [filters, setFilters] = useState<EmployeeFilters>({
     search: "",
     role: "all",
@@ -45,6 +50,8 @@ export function KaryawanPageContent() {
   const [deactivateTarget, setDeactivateTarget] = useState<EmployeeRow | null>(
     null,
   );
+  const [deleteTarget, setDeleteTarget] = useState<EmployeeRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   if (!database) {
     return (
@@ -92,28 +99,67 @@ export function KaryawanPageContent() {
     }
   }
 
+  async function handleDelete() {
+    if (!deleteTarget || deleting) return;
+
+    setDeleting(true);
+
+    try {
+      const result = await deleteEmployeeAccountAction(deleteTarget.id);
+      if (!result.ok) throw new Error(result.error);
+      showToast(`${deleteTarget.name} dihapus permanen`, "success");
+      router.refresh();
+    } catch (caught) {
+      showToast(
+        caught instanceof Error ? caught.message : "Karyawan gagal dihapus",
+        "error",
+      );
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
+
   return (
-    <KaryawanBody
-      database={database}
-      employee={employee}
-      filters={filters}
-      onFiltersChange={(patch) =>
-        setFilters((current) => ({ ...current, ...patch }))
-      }
-      canManage={permissions.canManageEmployees}
-      onCreate={openCreate}
-      onEdit={openEdit}
-      onActivate={(row) => applyActive(row, true)}
-      onDeactivate={setDeactivateTarget}
-      formOpen={formOpen}
-      editing={editing}
-      onCloseForm={() => setFormOpen(false)}
-      deactivateTarget={deactivateTarget}
-      onCancelDeactivate={() => setDeactivateTarget(null)}
-      onConfirmDeactivate={() => {
-        if (deactivateTarget) applyActive(deactivateTarget, false);
-      }}
-    />
+    <>
+      <KaryawanBody
+        database={database}
+        employee={employee}
+        filters={filters}
+        onFiltersChange={(patch) =>
+          setFilters((current) => ({ ...current, ...patch }))
+        }
+        canManage={permissions.canManageEmployees}
+        canDelete={employee.role === "Owner"}
+        canEditRoles={employee.role === "Owner"}
+        onCreate={openCreate}
+        onEdit={openEdit}
+        onActivate={(row) => applyActive(row, true)}
+        onDeactivate={setDeactivateTarget}
+        onDelete={setDeleteTarget}
+        formOpen={formOpen}
+        editing={editing}
+        onCloseForm={() => setFormOpen(false)}
+        deactivateTarget={deactivateTarget}
+        onCancelDeactivate={() => setDeactivateTarget(null)}
+        onConfirmDeactivate={() => {
+          if (deactivateTarget) applyActive(deactivateTarget, false);
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Hapus karyawan permanen?"
+        description={
+          deleteTarget
+            ? `${deleteTarget.name} akan dihapus. Karyawan yang sudah punya riwayat transaksi/absensi tidak bisa dihapus dan harus dinonaktifkan.`
+            : ""
+        }
+        confirmLabel="Ya, hapus permanen"
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }
 
@@ -123,10 +169,13 @@ interface KaryawanBodyProps {
   filters: EmployeeFilters;
   onFiltersChange: (patch: Partial<EmployeeFilters>) => void;
   canManage: boolean;
+  canDelete: boolean;
+  canEditRoles: boolean;
   onCreate: () => void;
   onEdit: (row: EmployeeRow) => void;
   onActivate: (row: EmployeeRow) => void;
   onDeactivate: (row: EmployeeRow) => void;
+  onDelete: (row: EmployeeRow) => void;
   formOpen: boolean;
   editing: EmployeeRow | null;
   onCloseForm: () => void;
@@ -141,10 +190,13 @@ function KaryawanBody({
   filters,
   onFiltersChange,
   canManage,
+  canDelete,
+  canEditRoles,
   onCreate,
   onEdit,
   onActivate,
   onDeactivate,
+  onDelete,
   formOpen,
   editing,
   onCloseForm,
@@ -178,11 +230,13 @@ function KaryawanBody({
           branches={database.branches}
           canManage={canManage}
           currentEmployeeId={employee.id}
+          canDelete={canDelete}
           onFiltersChange={onFiltersChange}
           onEdit={onEdit}
           onToggleActive={(row) =>
             row.isActive ? onDeactivate(row) : onActivate(row)
           }
+          onDelete={onDelete}
         />
 
         {canManage ? (
@@ -201,7 +255,7 @@ function KaryawanBody({
           </Card>
         ) : null}
 
-        <RoleMatrixCard />
+        <RoleMatrixCard canEdit={canEditRoles} />
       </div>
 
       <EmployeeFormDrawer

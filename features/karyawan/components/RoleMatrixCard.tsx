@@ -1,31 +1,129 @@
-import { Card } from "@/components/ui/Card";
-import { Icon } from "@/components/ui/Icon";
-import { ALL_ROLES } from "@/constants/roles";
-import { buildRoleMatrix } from "@/features/karyawan/data/karyawan-calculations";
+"use client";
 
-export function RoleMatrixCard() {
-  const rows = buildRoleMatrix();
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { useToast } from "@/components/ui/Toast";
+import { ALL_ROLES, ROLES, type Role } from "@/constants/roles";
+import {
+  ROLE_PERMISSIONS,
+  type RolePermissions,
+} from "@/config/permissions";
+import {
+  fetchRolePermissionsAction,
+  saveRolePermissionsAction,
+} from "@/features/karyawan/actions";
+
+const PERMISSION_ROWS: readonly {
+  key: keyof RolePermissions;
+  label: string;
+}[] = [
+  { key: "canApplyDiscount", label: "Diskon kasir" },
+  { key: "canCancelTransaction", label: "Refund / void" },
+  { key: "canManageProducts", label: "Produk & stok" },
+  { key: "canCreateSalesOrder", label: "Buat pesanan" },
+  { key: "canManageSalesOrders", label: "Ubah status pesanan" },
+  { key: "canDeleteSalesOrder", label: "Hapus pesanan" },
+  { key: "canExportReports", label: "Laporan & export" },
+  { key: "canViewAllBranches", label: "Lihat semua cabang" },
+  { key: "canViewAllAttendance", label: "Absensi semua cabang" },
+  { key: "canApproveLeave", label: "Approve izin" },
+  { key: "canManageEmployees", label: "Kelola karyawan" },
+  { key: "canManageBranches", label: "Kelola cabang" },
+  { key: "canManageSettings", label: "Pengaturan" },
+];
+
+interface RoleMatrixCardProps {
+  canEdit: boolean;
+}
+
+export function RoleMatrixCard({ canEdit }: RoleMatrixCardProps) {
+  const router = useRouter();
+  const { showToast } = useToast();
+  const [matrix, setMatrix] =
+    useState<Record<Role, RolePermissions>>(ROLE_PERMISSIONS);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetchRolePermissionsAction()
+      .then((result) => {
+        if (active && result.ok) setMatrix(result.matrix);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function toggle(role: Role, key: keyof RolePermissions) {
+    if (!canEdit || role === ROLES.OWNER) return;
+
+    setMatrix((current) => ({
+      ...current,
+      [role]: {
+        ...current[role],
+        [key]: !current[role][key],
+      },
+    }));
+  }
+
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+
+    try {
+      const result = await saveRolePermissionsAction(matrix);
+      if (!result.ok) throw new Error(result.error);
+      showToast("Hak akses role disimpan", "success");
+      router.refresh();
+    } catch (caught) {
+      showToast(
+        caught instanceof Error ? caught.message : "Hak akses gagal disimpan",
+        "error",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Card className="flex flex-col gap-3.5 p-[18px]">
-      <div>
-        <h2 className="m-0 text-card-title font-bold text-ink">
-          Hak Akses per Role
-        </h2>
-        <p className="mt-0.5 mb-0 text-label text-ink-muted">
-          Menu yang bisa dibuka tiap role, diambil dari config navigasi.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="m-0 text-card-title font-bold text-ink">
+            Hak Akses per Role
+          </h2>
+          <p className="mt-0.5 mb-0 text-label text-ink-muted">
+            {canEdit
+              ? "Centang izin tiap role. Owner selalu memegang semua akses."
+              : "Hanya Owner yang bisa mengubah hak akses role."}
+          </p>
+        </div>
+        {canEdit ? (
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "Menyimpan…" : "Simpan Hak Akses"}
+          </Button>
+        ) : null}
       </div>
 
       <div className="overflow-x-auto">
         <table
           aria-label="Matriks hak akses role"
           className="w-full border-collapse text-body"
-          style={{ minWidth: 900 }}
+          style={{ minWidth: 980 }}
         >
           <thead>
             <tr className="bg-line-subtle text-left text-meta text-ink-muted">
-              <th className="px-2 py-[10px] font-semibold">Menu</th>
+              <th className="px-2 py-[10px] font-semibold">Izin</th>
               {ALL_ROLES.map((role) => (
                 <th
                   key={role}
@@ -38,37 +136,26 @@ export function RoleMatrixCard() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.menu} className="border-t border-line-faint">
+            {PERMISSION_ROWS.map((row) => (
+              <tr key={row.key} className="border-t border-line-faint">
                 <th
                   scope="row"
                   className="px-2 py-2.5 text-left font-semibold text-ink"
                 >
-                  {row.menu}
-                  <span className="ml-2 text-meta font-normal text-ink-muted">
-                    {row.section}
-                  </span>
+                  {row.label}
                 </th>
                 {ALL_ROLES.map((role) => (
                   <td key={role} className="px-2 py-2.5 text-center">
-                    {row.access[role] ? (
-                      <Icon
-                        name="check"
-                        size={16}
-                        strokeWidth={2.4}
-                        className="mx-auto text-success-ink"
-                      />
-                    ) : (
-                      <Icon
-                        name="close"
-                        size={14}
-                        strokeWidth={2}
-                        className="mx-auto text-line-dashed"
-                      />
-                    )}
-                    <span className="sr-only">
-                      {row.access[role] ? "Bisa diakses" : "Tidak bisa diakses"}
-                    </span>
+                    <input
+                      type="checkbox"
+                      aria-label={`${row.label} untuk ${role}`}
+                      checked={matrix[role][row.key]}
+                      disabled={
+                        !canEdit || role === ROLES.OWNER || saving
+                      }
+                      onChange={() => toggle(role, row.key)}
+                      className="h-4 w-4 accent-brand"
+                    />
                   </td>
                 ))}
               </tr>

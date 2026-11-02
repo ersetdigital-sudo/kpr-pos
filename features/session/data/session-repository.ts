@@ -35,6 +35,7 @@ export function selectSession(database: AppDatabase): SessionState {
     employees,
     branches,
     isOwner: employee.role === ROLES.OWNER,
+    permissions: ROLE_PERMISSIONS[employee.role],
   };
 }
 
@@ -49,8 +50,7 @@ export function useSession(): SessionState {
 }
 
 export function usePermissions(): RolePermissions {
-  const { employee } = useSession();
-  return ROLE_PERMISSIONS[employee.role];
+  return useSession().permissions;
 }
 
 /** Ganti cabang aktif; hanya Owner yang boleh. */

@@ -1,3 +1,4 @@
+import type { RolePermissions } from "@/config/permissions";
 import type { Branch, Employee } from "@/lib/store/types";
 
 /** Bentuk sesi yang dipakai seluruh komponen UI. */
@@ -7,4 +8,5 @@ export interface SessionState {
   employees: Employee[];
   branches: Branch[];
   isOwner: boolean;
+  permissions: RolePermissions;
 }

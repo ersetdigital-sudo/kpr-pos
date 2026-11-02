@@ -1,7 +1,6 @@
 "use client";
 
 import { ROLES } from "@/constants/roles";
-import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { recordActivity } from "@/lib/store/activity";
 import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
 import type {
@@ -114,18 +113,6 @@ export async function createSalesOrder(
 
 export async function deleteSalesOrder(orderId: string): Promise<void> {
   const database = getDatabase();
-  const actor = database.employees.find(
-    (employee) => employee.id === database.session.currentEmployeeId,
-  );
-
-  if (!actor) {
-    throw new Error("Sesi pengguna tidak ditemukan");
-  }
-
-  if (!ROLE_PERMISSIONS[actor.role].canDeleteSalesOrder) {
-    throw new Error("Role Anda tidak boleh menghapus pesanan");
-  }
-
   const order = database.salesOrders.find((item) => item.id === orderId);
   if (!order) throw new Error("Pesanan tidak ditemukan");
 
@@ -149,18 +136,6 @@ export async function updateSalesOrderStatus(
   nextStatus: SalesOrderStatus,
 ): Promise<void> {
   const database = getDatabase();
-  const actor = database.employees.find(
-    (employee) => employee.id === database.session.currentEmployeeId,
-  );
-
-  if (!actor) {
-    throw new Error("Sesi pengguna tidak ditemukan");
-  }
-
-  if (!ROLE_PERMISSIONS[actor.role].canManageSalesOrders) {
-    throw new Error("Role Anda tidak boleh mengubah status pesanan");
-  }
-
   const order = database.salesOrders.find((item) => item.id === orderId);
   if (!order) throw new Error("Pesanan tidak ditemukan");
   if (order.status === nextStatus) return;
