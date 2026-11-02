@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     default: "POS Management System",
     template: "%s · POS Management System",
   },
-  description: "POS Management System CV. Karya Putra Ragil",
+  description: "POS Management System",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

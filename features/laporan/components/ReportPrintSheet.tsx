@@ -27,7 +27,7 @@ export function ReportPrintSheet({ data, business }: ReportPrintSheetProps) {
         <div className="flex items-start justify-between gap-4 border-b border-ink/30 pb-3">
           <div className="flex items-start gap-3">
             <Image
-              src="/logo-kpr.png"
+              src={business.logoUrl || "/logo-kpr.png"}
               alt="Logo usaha"
               width={56}
               height={58}
@@ -201,7 +201,7 @@ export function ReportPrintSheet({ data, business }: ReportPrintSheetProps) {
         </section>
 
         <div className="mt-6 border-t border-ink/30 pt-2 text-[10px] text-ink-muted">
-          Dicetak dari POS Management System {business.name} ·{" "}
+          Dicetak dari {business.name} ·{" "}
           {data.header.subtitle}
         </div>
       </div>
