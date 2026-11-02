@@ -12,6 +12,8 @@ import { cn } from "@/lib/cn";
 
 interface SidebarProps {
   open: boolean;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onClose: () => void;
 }
 
@@ -20,7 +22,12 @@ function isItemActive(item: NavItem, pathname: string): boolean {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({
+  open,
+  collapsed,
+  onToggleCollapsed,
+  onClose,
+}: SidebarProps) {
   const pathname = usePathname();
   const permissions = usePermissions();
   const { business } = useDatabase().settings;
@@ -43,7 +50,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       <aside
         aria-label="Menu utama"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-line bg-surface transition-transform duration-200 lg:z-40 lg:translate-x-0 lg:transition-none",
+          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-line bg-surface transition-[transform,width] duration-200 lg:z-40 lg:translate-x-0",
+          collapsed ? "lg:w-20" : "lg:w-[260px]",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -56,8 +64,20 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           <Icon name="close" size={18} strokeWidth={2} />
         </button>
 
-        <nav className="sidebar-nav flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4">
-          <div className="mb-3 flex items-center gap-2.5 border-b border-line px-2 pt-1 pr-9 pb-4 lg:pr-2">
+        <nav
+          className={cn(
+            "sidebar-nav flex min-h-0 flex-1 flex-col overflow-y-auto py-4",
+            collapsed ? "px-3 lg:px-2" : "px-3",
+          )}
+        >
+          <div
+            className={cn(
+              "mb-3 flex border-b border-line pt-1 pb-4",
+              collapsed
+                ? "items-center gap-2.5 px-2 pr-9 lg:flex-col lg:gap-2 lg:px-0 lg:pr-0"
+                : "items-center gap-2.5 px-2 pr-9 lg:pr-2",
+            )}
+          >
             <Image
               src={business.logoUrl || "/logo-kpr.png"}
               alt={`Logo ${business.name}`}
@@ -67,7 +87,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               unoptimized
               className="h-[42px] w-10 shrink-0 object-contain"
             />
-            <div className="min-w-0">
+            <div
+              className={cn(
+                "min-w-0",
+                collapsed && "lg:hidden",
+              )}
+            >
               <div className="text-body leading-tight font-bold text-ink">
                 {business.name}
               </div>
@@ -75,12 +100,33 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 POS Management System
               </div>
             </div>
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              aria-label={collapsed ? "Perluas menu" : "Ciutkan menu"}
+              title={collapsed ? "Perluas menu" : "Ciutkan menu"}
+              className={cn(
+                "hidden h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-control border-0 bg-transparent text-ink-muted hover:bg-canvas lg:flex",
+                collapsed ? "lg:mx-auto" : "ml-auto",
+              )}
+            >
+              <Icon
+                name={collapsed ? "arrowRight" : "arrowLeft"}
+                size={18}
+                strokeWidth={2}
+              />
+            </button>
           </div>
 
           <div className="flex flex-col gap-4">
             {sections.map((section) => (
-              <section key={section.label}>
-                <div className="px-3 pb-1.5 text-label font-bold tracking-[.08em] text-ink-muted">
+              <section key={section.label} aria-label={section.label}>
+                <div
+                  className={cn(
+                    "px-3 pb-1.5 text-label font-bold tracking-[.08em] text-ink-muted",
+                    collapsed && "lg:hidden",
+                  )}
+                >
                   {section.label}
                 </div>
 
@@ -89,6 +135,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     const active = isItemActive(item, pathname);
                     const itemClassName = cn(
                       "flex min-h-11 items-center gap-3 rounded-control px-3 py-2.5 text-amount transition-colors",
+                      collapsed && "lg:justify-center lg:px-0",
                       active
                         ? "bg-ink font-semibold text-white"
                         : "font-medium text-ink-soft hover:bg-canvas",
@@ -96,7 +143,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     const content = (
                       <>
                         <Icon name={item.icon} size={20} strokeWidth={1.8} />
-                        <span>{item.label}</span>
+                        <span className={cn(collapsed && "lg:hidden")}>
+                          {item.label}
+                        </span>
                       </>
                     );
 
@@ -106,6 +155,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                         href={item.href}
                         onClick={onClose}
                         aria-current={active ? "page" : undefined}
+                        aria-label={item.label}
+                        title={collapsed ? item.label : undefined}
                         className={itemClassName}
                       >
                         {content}
@@ -126,14 +177,24 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
         </nav>
 
-        <div className="border-t border-line px-3 py-3">
+        <div
+          className={cn(
+            "border-t border-line py-3",
+            collapsed ? "px-3 lg:px-2" : "px-3",
+          )}
+        >
           <form action={logoutAction}>
             <button
               type="submit"
-              className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-control px-3 py-2.5 font-sans text-amount font-medium text-ink-soft transition-colors hover:bg-canvas"
+              title="Keluar"
+              aria-label="Keluar"
+              className={cn(
+                "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-control px-3 py-2.5 font-sans text-amount font-medium text-ink-soft transition-colors hover:bg-canvas",
+                collapsed && "lg:justify-center lg:px-0",
+              )}
             >
               <Icon name="logout" size={20} strokeWidth={1.8} />
-              <span>Keluar</span>
+              <span className={cn(collapsed && "lg:hidden")}>Keluar</span>
             </button>
           </form>
         </div>
