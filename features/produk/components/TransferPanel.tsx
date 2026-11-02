@@ -48,11 +48,14 @@ export function TransferPanel({
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
   const [rows, setRows] = useState<StockRowInput[]>([]);
+  const [saving, setSaving] = useState(false);
 
   const branchNameById = (id: string) =>
     branches.find((branch) => branch.id === id)?.name ?? "-";
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (saving) return;
+
     const items = rows
       .filter((row) => row.productId && row.quantity > 0)
       .map((row) => ({
@@ -60,8 +63,10 @@ export function TransferPanel({
         quantity: Math.round(row.quantity),
       }));
 
+    setSaving(true);
+
     try {
-      transferStock({ toBranchId, date, note, items });
+      await transferStock({ toBranchId, date, note, items });
       showToast("Transfer stok disimpan", "success");
       setRows([]);
       setNote("");
@@ -70,6 +75,8 @@ export function TransferPanel({
         caught instanceof Error ? caught.message : "Transfer gagal disimpan",
         "error",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -189,8 +196,9 @@ export function TransferPanel({
                 size="lg"
                 className="self-start px-5"
                 onClick={handleSubmit}
+                disabled={saving}
               >
-                Simpan Transfer
+                {saving ? "Menyimpan…" : "Simpan Transfer"}
               </Button>
             </>
           )}

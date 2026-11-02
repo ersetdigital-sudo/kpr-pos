@@ -40,8 +40,10 @@ export function StockInPanel({
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
   const [rows, setRows] = useState<StockRowInput[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (saving) return;
     const items = rows
       .filter((row) => row.productId && row.quantity > 0)
       .map((row) => ({
@@ -54,8 +56,10 @@ export function StockInPanel({
       return;
     }
 
+    setSaving(true);
+
     try {
-      addStockIn({ date, note, items });
+      await addStockIn({ date, note, items });
       showToast("Stok masuk disimpan", "success");
       setRows([]);
       setNote("");
@@ -64,6 +68,8 @@ export function StockInPanel({
         caught instanceof Error ? caught.message : "Stok masuk gagal disimpan",
         "error",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -154,8 +160,9 @@ export function StockInPanel({
             size="lg"
             className="self-start px-5"
             onClick={handleSubmit}
+            disabled={saving}
           >
-            Simpan Stok Masuk
+            {saving ? "Menyimpan…" : "Simpan Stok Masuk"}
           </Button>
         </Card>
       ) : null}

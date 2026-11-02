@@ -33,15 +33,15 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Cek optimistis dari JWT cookie; validasi karyawan tetap di layout server.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const hasSession = Boolean(claimsData?.claims?.sub);
 
   const { pathname } = request.nextUrl;
   const isPublicRoute =
     pathname === "/login" || pathname.startsWith("/auth/");
 
-  if (!user && !isPublicRoute) {
+  if (!hasSession && !isPublicRoute) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = "";

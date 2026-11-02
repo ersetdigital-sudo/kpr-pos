@@ -30,6 +30,11 @@ import {
   restoreStockLevels,
 } from "@/features/kasir/data/kasir-calculations";
 import { selectSession } from "@/features/session/data/session-repository";
+import {
+  deductStockForTransactionAction,
+  restoreStockForTransactionAction,
+} from "@/features/produk/cloud-actions";
+import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
 import type {
   CartLine,
   CashierData,
@@ -260,135 +265,160 @@ function buildReceiptView(
   };
 }
 
-/** Membuat transaksi, mengurangi stok cabang, dan mencatat log dalam satu update. */
-export function createTransaction(
+/**
+ * Membuat transaksi. Stok dipotong atomik di Supabase lebih dulu; setelah itu
+ * transaksi dicatat di cache lokal. Jika pencatatan lokal gagal, stok dikembalikan.
+ */
+export async function createTransaction(
   input: CreateTransactionInput,
-): TransactionResult {
-  let result: TransactionResult | undefined;
+): Promise<TransactionResult> {
+  const database = getDatabase();
+  const { employee, branch } = selectSession(database);
 
-  updateDatabase((database) => {
-    const { employee, branch } = selectSession(database);
+  if (input.items.length === 0) {
+    throw new Error("Keranjang masih kosong");
+  }
 
-    if (input.items.length === 0) {
-      throw new Error("Keranjang masih kosong");
+  const productMap = new Map(
+    getProducts(database, branch.id).map((product) => [product.id, product]),
+  );
+
+  const items = input.items.map((item) => {
+    const product = productMap.get(item.productId);
+
+    if (!product) {
+      throw new Error("Ada produk yang sudah tidak tersedia");
     }
 
-    const productMap = new Map(
-      getProducts(database, branch.id).map((product) => [
-        product.id,
-        product,
-      ]),
-    );
-
-    const items = input.items.map((item) => {
-      const product = productMap.get(item.productId);
-
-      if (!product) {
-        throw new Error("Ada produk yang sudah tidak tersedia");
-      }
-
-      if (item.quantity < 1) {
-        throw new Error(`Qty ${product.name} tidak valid`);
-      }
-
-      if (item.quantity > product.stock) {
-        throw new Error(
-          `Stok ${product.name} tersisa ${product.stock}`,
-        );
-      }
-
-      return {
-        productId: product.id,
-        productName: product.name,
-        unitPrice: product.price,
-        unitCost: product.costPrice,
-        quantity: item.quantity,
-        lineTotal: product.price * item.quantity,
-      };
-    });
-
-    const subtotal = items.reduce((total, item) => total + item.lineTotal, 0);
-    const discountAmount = calculateDiscountAmount(
-      subtotal,
-      input.discountType,
-      input.discountValue,
-    );
-    const total = Math.max(0, subtotal - discountAmount);
-
-    if (!database.settings.payment.enabledMethods.includes(input.paymentMethod)) {
-      throw new Error(`Metode ${input.paymentMethod} sedang tidak aktif`);
+    if (item.quantity < 1) {
+      throw new Error(`Qty ${product.name} tidak valid`);
     }
 
-    if (input.paymentMethod === "Cash" && input.cashReceived < total) {
-      throw new Error("Uang diterima kurang dari total");
+    if (item.quantity > product.stock) {
+      throw new Error(`Stok ${product.name} tersisa ${product.stock}`);
     }
 
-    if (
-      input.paymentMethod === "Transfer" &&
-      !database.settings.payment.bankAccounts.some(
-        (account) => account.id === input.bankAccountId,
-      )
-    ) {
-      throw new Error("Rekening transfer belum dipilih");
-    }
-
-    const salesEmployee = input.salesEmployeeId
-      ? database.employees.find(
-          (candidate) =>
-            candidate.id === input.salesEmployeeId &&
-            candidate.role === ROLES.SALES,
-        )
-      : undefined;
-
-    const now = new Date();
-    const invoiceNumber = getNextInvoiceNumber(database.transactions, now);
-    const payment: TransactionPayment = { method: input.paymentMethod };
-
-    if (input.paymentMethod === "Cash") {
-      payment.cashReceived = input.cashReceived;
-      payment.change = input.cashReceived - total;
-    }
-
-    if (input.paymentMethod === "Transfer" && input.bankAccountId) {
-      payment.bankAccountId = input.bankAccountId;
-    }
-
-    const transaction: Transaction = {
-      id: createId("trx"),
-      invoiceNumber,
-      branchId: branch.id,
-      cashierId: employee.id,
-      salesEmployeeId: salesEmployee?.id ?? null,
-      items,
-      subtotal,
-      discount: {
-        type: input.discountType,
-        value: input.discountValue,
-        amount: discountAmount,
-      },
-      total,
-      payment,
-      createdAt: now.toISOString(),
+    return {
+      productId: product.id,
+      productName: product.name,
+      unitPrice: product.price,
+      unitCost: product.costPrice,
+      quantity: item.quantity,
+      lineTotal: product.price * item.quantity,
     };
-
-    const updated = {
-      ...database,
-      transactions: [transaction, ...database.transactions],
-      stocks: reduceStockLevels(database.stocks, branch.id, input.items),
-    };
-
-    result = {
-      transaction,
-      receipt: buildReceiptView(updated, transaction),
-    };
-
-    return appendActivity(updated, {
-      action: "Membayar",
-      detail: `Transaksi ${invoiceNumber} · ${formatRupiah(total)} · ${items.length} item`,
-    });
   });
 
+  const subtotal = items.reduce((total, item) => total + item.lineTotal, 0);
+  const discountAmount = calculateDiscountAmount(
+    subtotal,
+    input.discountType,
+    input.discountValue,
+  );
+  const total = Math.max(0, subtotal - discountAmount);
+
+  if (!database.settings.payment.enabledMethods.includes(input.paymentMethod)) {
+    throw new Error(`Metode ${input.paymentMethod} sedang tidak aktif`);
+  }
+
+  if (input.paymentMethod === "Cash" && input.cashReceived < total) {
+    throw new Error("Uang diterima kurang dari total");
+  }
+
+  if (
+    input.paymentMethod === "Transfer" &&
+    !database.settings.payment.bankAccounts.some(
+      (account) => account.id === input.bankAccountId,
+    )
+  ) {
+    throw new Error("Rekening transfer belum dipilih");
+  }
+
+  const salesEmployee = input.salesEmployeeId
+    ? database.employees.find(
+        (candidate) =>
+          candidate.id === input.salesEmployeeId &&
+          candidate.role === ROLES.SALES,
+      )
+    : undefined;
+
+  const adjustItems = items.map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity,
+  }));
+
+  const stockResult = await deductStockForTransactionAction(
+    branch.id,
+    adjustItems,
+  );
+
+  if (!stockResult.ok) {
+    await syncProductStockFromCloud().catch(() => undefined);
+    throw new Error(stockResult.error);
+  }
+
+  let result: TransactionResult | undefined;
+
+  try {
+    updateDatabase((current) => {
+      const now = new Date();
+      const invoiceNumber = getNextInvoiceNumber(current.transactions, now);
+      const payment: TransactionPayment = { method: input.paymentMethod };
+
+      if (input.paymentMethod === "Cash") {
+        payment.cashReceived = input.cashReceived;
+        payment.change = input.cashReceived - total;
+      }
+
+      if (input.paymentMethod === "Transfer" && input.bankAccountId) {
+        payment.bankAccountId = input.bankAccountId;
+      }
+
+      const transaction: Transaction = {
+        id: createId("trx"),
+        invoiceNumber,
+        branchId: branch.id,
+        cashierId: employee.id,
+        salesEmployeeId: salesEmployee?.id ?? null,
+        items,
+        subtotal,
+        discount: {
+          type: input.discountType,
+          value: input.discountValue,
+          amount: discountAmount,
+        },
+        total,
+        payment,
+        createdAt: now.toISOString(),
+      };
+
+      const updated = {
+        ...current,
+        transactions: [transaction, ...current.transactions],
+        stocks: reduceStockLevels(current.stocks, branch.id, input.items),
+      };
+
+      result = {
+        transaction,
+        receipt: buildReceiptView(updated, transaction),
+      };
+
+      return appendActivity(updated, {
+        action: "Membayar",
+        detail: `Transaksi ${invoiceNumber} · ${formatRupiah(total)} · ${items.length} item`,
+      });
+    });
+  } catch (error) {
+    await restoreStockForTransactionAction(branch.id, adjustItems).catch(
+      () => undefined,
+    );
+    await syncProductStockFromCloud().catch(() => undefined);
+    throw error;
+  }
+
   if (!result) {
+    await restoreStockForTransactionAction(branch.id, adjustItems).catch(
+      () => undefined,
+    );
     throw new Error("Transaksi gagal disimpan");
   }
 
@@ -399,74 +429,113 @@ export function createTransaction(
  * Membatalkan transaksi yang sudah dibayar: transaksi ditandai refund dan stok
  * cabang asal dikembalikan. Nominal refund mengikuti total yang dibayar.
  */
-export function refundTransaction(
+export async function refundTransaction(
   input: RefundTransactionInput,
-): RefundTransactionResult {
+): Promise<RefundTransactionResult> {
+  const database = getDatabase();
+  const actor = database.employees.find(
+    (employee) => employee.id === database.session.currentEmployeeId,
+  );
+
+  if (!actor) {
+    throw new Error("Sesi pengguna tidak ditemukan");
+  }
+
+  if (!ROLE_PERMISSIONS[actor.role].canCancelTransaction) {
+    throw new Error("Role Anda tidak boleh membatalkan transaksi");
+  }
+
+  const transaction = database.transactions.find(
+    (item) => item.id === input.transactionId,
+  );
+
+  if (!transaction) {
+    throw new Error("Transaksi tidak ditemukan");
+  }
+
+  if (isTransactionRefunded(transaction)) {
+    throw new Error("Transaksi ini sudah direfund");
+  }
+
+  const reason = input.reason.trim();
+
+  if (reason.length < 3) {
+    throw new Error("Alasan refund minimal 3 karakter");
+  }
+
+  const adjustItems = transaction.items.map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity,
+  }));
+
+  const stockResult = await restoreStockForTransactionAction(
+    transaction.branchId,
+    adjustItems,
+  );
+
+  if (!stockResult.ok) {
+    await syncProductStockFromCloud().catch(() => undefined);
+    throw new Error(stockResult.error);
+  }
+
   let result: RefundTransactionResult | undefined;
 
-  updateDatabase((database) => {
-    const actor = database.employees.find(
-      (employee) => employee.id === database.session.currentEmployeeId,
-    );
+  try {
+    updateDatabase((current) => {
+      const currentTransaction = current.transactions.find(
+        (item) => item.id === input.transactionId,
+      );
 
-    if (!actor) {
-      throw new Error("Sesi pengguna tidak ditemukan");
-    }
+      if (!currentTransaction) {
+        throw new Error("Transaksi tidak ditemukan");
+      }
 
-    if (!ROLE_PERMISSIONS[actor.role].canCancelTransaction) {
-      throw new Error("Role Anda tidak boleh membatalkan transaksi");
-    }
+      if (isTransactionRefunded(currentTransaction)) {
+        throw new Error("Transaksi ini sudah direfund");
+      }
 
-    const transaction = database.transactions.find(
-      (item) => item.id === input.transactionId,
-    );
+      const refunded: Transaction = {
+        ...currentTransaction,
+        refund: {
+          at: new Date().toISOString(),
+          byId: actor.id,
+          byName: actor.name,
+          reason,
+          amount: currentTransaction.total,
+        },
+      };
 
-    if (!transaction) {
-      throw new Error("Transaksi tidak ditemukan");
-    }
+      const updated: ReturnType<typeof getDatabase> = {
+        ...current,
+        transactions: current.transactions.map((item) =>
+          item.id === refunded.id ? refunded : item,
+        ),
+        stocks: restoreStockLevels(
+          current.stocks,
+          refunded.branchId,
+          refunded.items,
+        ),
+      };
 
-    if (isTransactionRefunded(transaction)) {
-      throw new Error("Transaksi ini sudah direfund");
-    }
+      result = { transaction: refunded, refundedAmount: refunded.total };
 
-    const reason = input.reason.trim();
-
-    if (reason.length < 3) {
-      throw new Error("Alasan refund minimal 3 karakter");
-    }
-
-    const refunded: Transaction = {
-      ...transaction,
-      refund: {
-        at: new Date().toISOString(),
-        byId: actor.id,
-        byName: actor.name,
-        reason,
-        amount: transaction.total,
-      },
-    };
-
-    const updated: ReturnType<typeof getDatabase> = {
-      ...database,
-      transactions: database.transactions.map((item) =>
-        item.id === refunded.id ? refunded : item,
-      ),
-      stocks: restoreStockLevels(
-        database.stocks,
-        refunded.branchId,
-        refunded.items,
-      ),
-    };
-
-    result = { transaction: refunded, refundedAmount: refunded.total };
-
-    return appendActivity(updated, {
-      action: "Refund",
-      detail: `Refund ${refunded.invoiceNumber} · ${formatRupiah(refunded.total)} · ${reason}`,
+      return appendActivity(updated, {
+        action: "Refund",
+        detail: `Refund ${refunded.invoiceNumber} · ${formatRupiah(refunded.total)} · ${reason}`,
+      });
     });
-  });
+  } catch (error) {
+    await deductStockForTransactionAction(
+      transaction.branchId,
+      adjustItems,
+    ).catch(() => undefined);
+    throw error;
+  }
 
   if (!result) {
+    await deductStockForTransactionAction(transaction.branchId, adjustItems).catch(
+      () => undefined,
+    );
     throw new Error("Refund gagal diproses");
   }
 

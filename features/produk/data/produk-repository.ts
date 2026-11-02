@@ -1,26 +1,27 @@
 "use client";
 
-import { appendActivity, createId } from "@/lib/store/activity";
-import { updateDatabase, useHydratedDatabase } from "@/lib/store/store";
-import type {
-  AppDatabase,
-  Category,
-  Product,
-  StockLevel,
-} from "@/lib/store/types";
+import { recordActivity } from "@/lib/store/activity";
+import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
 import { formatNumber, formatRupiah } from "@/lib/format";
-import { toDateInputValue } from "@/lib/date-range";
 import { selectSession } from "@/features/session/data/session-repository";
+import { hasSalesHistory } from "@/features/produk/data/produk-calculations";
+import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
 import {
-  applyOpname,
-  applyStockIn,
-  applyTransfer,
-  buildOpnameItems,
-  hasSalesHistory,
-  validateSku,
-  validateTransferItems,
-} from "@/features/produk/data/produk-calculations";
+  addStockInAction,
+  createCategoryAction,
+  createProductAction,
+  deleteCategoryAction,
+  deleteProductAction,
+  importProductsAction,
+  setProductActiveAction,
+  submitOpnameAction,
+  transferStockAction,
+  updateCategoryAction,
+  updateProductAction,
+} from "@/features/produk/cloud-actions";
+import type { AppDatabase } from "@/lib/store/types";
 import type {
+  CloudActionResult,
   DeleteProductResult,
   ImportProductPayload,
   OpnameInput,
@@ -34,525 +35,171 @@ export function useProdukData(): AppDatabase | null {
   return useHydratedDatabase();
 }
 
-function assertProductInput(input: ProductFormInput): void {
-  if (!input.name.trim()) throw new Error("Nama produk wajib diisi");
-  if (!input.sku.trim()) throw new Error("SKU wajib diisi");
-  if (!input.categoryId) throw new Error("Kategori wajib dipilih");
-  if (input.costPrice < 0) throw new Error("Harga modal tidak boleh negatif");
-  if (input.price <= 0) throw new Error("Harga jual harus lebih dari 0");
-  if (input.minStock < 0) throw new Error("Batas stok tidak boleh negatif");
+function assertOk(result: CloudActionResult): void {
+  if (!result.ok) throw new Error(result.error);
 }
 
-function withStockLevels(
-  stocks: readonly StockLevel[],
-  branchIds: readonly string[],
-  items: readonly { productId: string }[],
-  minStock: number,
-): StockLevel[] {
-  const next = [...stocks];
-
-  branchIds.forEach((branchId) => {
-    items.forEach((item) => {
-      const exists = next.some(
-        (level) =>
-          level.branchId === branchId && level.productId === item.productId,
-      );
-
-      if (!exists) {
-        next.push({ branchId, productId: item.productId, quantity: 0, minStock });
-      }
-    });
-  });
-
-  return next;
+async function refreshAfterWrite(): Promise<void> {
+  try {
+    await syncProductStockFromCloud({ force: true });
+  } catch (error) {
+    console.error("Sinkronisasi setelah simpan produk/stok gagal:", error);
+  }
 }
 
-export function createProduct(input: ProductFormInput): void {
-  updateDatabase((database) => {
-    assertProductInput(input);
-
-    if (!validateSku(database, input.sku)) {
-      throw new Error(`SKU ${input.sku} sudah dipakai produk lain`);
-    }
-
-    if (
-      !database.categories.some(
-        (category) => category.id === input.categoryId,
-      )
-    ) {
-      throw new Error("Kategori tidak ditemukan");
-    }
-
-    const product: Product = {
-      id: createId("prod"),
-      name: input.name.trim(),
-      sku: input.sku.trim().toUpperCase(),
-      categoryId: input.categoryId,
-      costPrice: Math.round(input.costPrice),
-      price: Math.round(input.price),
-      imageUrl: input.imageUrl?.trim() || undefined,
-      isActive: true,
-    };
-
-    const stocks = database.branches.map((branch) => ({
-      branchId: branch.id,
-      productId: product.id,
-      quantity: 0,
-      minStock: Math.round(input.minStock),
-    }));
-
-    return appendActivity(
-      {
-        ...database,
-        products: [product, ...database.products],
-        stocks: [...database.stocks, ...stocks],
-      },
-      {
-        action: "Membuat",
-        detail: `Produk ${product.name} (${product.sku}) · ${formatRupiah(product.price)}`,
-      },
-    );
+export async function createProduct(input: ProductFormInput): Promise<void> {
+  const result = await createProductAction(input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Membuat",
+    detail: `Produk ${input.name.trim()} (${input.sku.trim().toUpperCase()}) · ${formatRupiah(input.price)}`,
   });
 }
 
-export function updateProduct(
+export async function updateProduct(
   productId: string,
   input: ProductFormInput,
-): void {
-  updateDatabase((database) => {
-    assertProductInput(input);
-
-    const existing = database.products.find(
-      (product) => product.id === productId,
-    );
-    if (!existing) throw new Error("Produk tidak ditemukan");
-
-    if (!validateSku(database, input.sku, productId)) {
-      throw new Error(`SKU ${input.sku} sudah dipakai produk lain`);
-    }
-
-    return appendActivity(
-      {
-        ...database,
-        products: database.products.map((product) =>
-          product.id === productId
-            ? {
-                ...product,
-                name: input.name.trim(),
-                sku: input.sku.trim().toUpperCase(),
-                categoryId: input.categoryId,
-                costPrice: Math.round(input.costPrice),
-                price: Math.round(input.price),
-                imageUrl: input.imageUrl?.trim() || undefined,
-              }
-            : product,
-        ),
-        stocks: database.stocks.map((level) =>
-          level.productId === productId
-            ? { ...level, minStock: Math.round(input.minStock) }
-            : level,
-        ),
-      },
-      {
-        action: "Mengubah",
-        detail: `Produk ${input.name.trim()} · harga ${formatRupiah(input.price)}`,
-      },
-    );
+): Promise<void> {
+  const result = await updateProductAction(productId, input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Produk ${input.name.trim()} · harga ${formatRupiah(input.price)}`,
   });
 }
 
-export function setProductActive(productId: string, isActive: boolean): void {
-  updateDatabase((database) => {
-    const product = database.products.find((item) => item.id === productId);
-    if (!product) throw new Error("Produk tidak ditemukan");
-
-    return appendActivity(
-      {
-        ...database,
-        products: database.products.map((item) =>
-          item.id === productId ? { ...item, isActive } : item,
-        ),
-      },
-      {
-        action: "Mengubah",
-        detail: `Produk ${product.name} ${isActive ? "diaktifkan" : "dinonaktifkan"}`,
-      },
-    );
+export async function setProductActive(
+  productId: string,
+  isActive: boolean,
+): Promise<void> {
+  const result = await setProductActiveAction(productId, isActive);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Produk ${isActive ? "diaktifkan" : "dinonaktifkan"}`,
   });
 }
 
-export function deleteProduct(productId: string): DeleteProductResult {
-  let result: DeleteProductResult | undefined;
+export async function deleteProduct(
+  productId: string,
+): Promise<DeleteProductResult> {
+  const database = getDatabase();
+  const product = database.products.find((item) => item.id === productId);
 
-  updateDatabase((database) => {
-    const product = database.products.find((item) => item.id === productId);
-    if (!product) throw new Error("Produk tidak ditemukan");
+  if (!product) throw new Error("Produk tidak ditemukan");
 
-    if (hasSalesHistory(database, productId)) {
-      result = { mode: "deactivated", name: product.name };
+  const sold = hasSalesHistory(database, productId);
+  const result = sold
+    ? await setProductActiveAction(productId, false)
+    : await deleteProductAction(productId);
 
-      return appendActivity(
-        {
-          ...database,
-          products: database.products.map((item) =>
-            item.id === productId ? { ...item, isActive: false } : item,
-          ),
-        },
-        {
-          action: "Mengubah",
-          detail: `Produk ${product.name} dinonaktifkan karena sudah pernah terjual`,
-        },
-      );
-    }
-
-    result = { mode: "deleted", name: product.name };
-
-    return appendActivity(
-      {
-        ...database,
-        products: database.products.filter((item) => item.id !== productId),
-        stocks: database.stocks.filter(
-          (level) => level.productId !== productId,
-        ),
-      },
-      {
-        action: "Menghapus",
-        detail: `Produk ${product.name} (${product.sku}) dihapus`,
-      },
-    );
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: sold ? "Mengubah" : "Menghapus",
+    detail: sold
+      ? `Produk ${product.name} dinonaktifkan karena sudah pernah terjual`
+      : `Produk ${product.name} (${product.sku}) dihapus`,
   });
 
-  if (!result) throw new Error("Produk gagal dihapus");
-  return result;
+  return {
+    mode: sold ? "deactivated" : "deleted",
+    name: product.name,
+  };
 }
 
-export function createCategory(name: string): void {
-  updateDatabase((database) => {
-    const trimmed = name.trim();
-    if (!trimmed) throw new Error("Nama kategori wajib diisi");
+export async function createCategory(name: string): Promise<void> {
+  const trimmed = name.trim();
+  const result = await createCategoryAction(trimmed);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({ action: "Membuat", detail: `Kategori ${trimmed}` });
+}
 
-    const duplicate = database.categories.some(
-      (category) =>
-        category.name.trim().toLowerCase() === trimmed.toLowerCase(),
-    );
-    if (duplicate) throw new Error("Nama kategori sudah ada");
+export async function updateCategory(
+  categoryId: string,
+  name: string,
+): Promise<void> {
+  const trimmed = name.trim();
+  const database = getDatabase();
+  const previous = database.categories.find(
+    (category) => category.id === categoryId,
+  );
 
-    const category: Category = {
-      id: createId("cat"),
-      name: trimmed,
-      isActive: true,
-    };
-
-    return appendActivity(
-      {
-        ...database,
-        categories: [...database.categories, category],
-      },
-      { action: "Membuat", detail: `Kategori ${category.name}` },
-    );
+  const result = await updateCategoryAction(categoryId, trimmed);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Kategori ${previous?.name ?? categoryId} → ${trimmed}`,
   });
 }
 
-export function updateCategory(categoryId: string, name: string): void {
-  updateDatabase((database) => {
-    const trimmed = name.trim();
-    if (!trimmed) throw new Error("Nama kategori wajib diisi");
-
-    const product = database.categories.find(
-      (category) => category.id === categoryId,
-    );
-    if (!product) throw new Error("Kategori tidak ditemukan");
-
-    const duplicate = database.categories.some(
-      (category) =>
-        category.id !== categoryId &&
-        category.name.trim().toLowerCase() === trimmed.toLowerCase(),
-    );
-    if (duplicate) throw new Error("Nama kategori sudah ada");
-
-    return appendActivity(
-      {
-        ...database,
-        categories: database.categories.map((category) =>
-          category.id === categoryId
-            ? { ...category, name: trimmed }
-            : category,
-        ),
-      },
-      { action: "Mengubah", detail: `Kategori ${product.name} → ${trimmed}` },
-    );
+export async function deleteCategory(categoryId: string): Promise<void> {
+  const database = getDatabase();
+  const category = database.categories.find((item) => item.id === categoryId);
+  const result = await deleteCategoryAction(categoryId);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Menghapus",
+    detail: `Kategori ${category?.name ?? categoryId}`,
   });
 }
 
-export function deleteCategory(categoryId: string): void {
-  updateDatabase((database) => {
-    const category = database.categories.find(
-      (item) => item.id === categoryId,
-    );
-    if (!category) throw new Error("Kategori tidak ditemukan");
-
-    const usedBy = database.products.filter(
-      (product) => product.categoryId === categoryId,
-    ).length;
-    if (usedBy > 0) {
-      throw new Error(
-        `Kategori masih dipakai ${formatNumber(usedBy)} produk dan tidak bisa dihapus`,
-      );
-    }
-
-    return appendActivity(
-      {
-        ...database,
-        categories: database.categories.filter(
-          (item) => item.id !== categoryId,
-        ),
-      },
-      { action: "Menghapus", detail: `Kategori ${category.name}` },
-    );
+export async function addStockIn(input: StockInInput): Promise<void> {
+  const { branch } = selectSession(getDatabase());
+  const total = input.items.reduce((sum, item) => sum + item.quantity, 0);
+  const result = await addStockInAction(branch.id, input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Membuat",
+    detail: `Stok masuk ${formatNumber(total)} pcs · ${branch.name}`,
   });
 }
 
-export function addStockIn(input: StockInInput): void {
-  updateDatabase((database) => {
-    const { employee, branch } = selectSession(database);
-    const items = input.items.filter((item) => item.quantity > 0);
-
-    if (items.length === 0) throw new Error("Isi jumlah stok masuk");
-    if (!input.date) throw new Error("Tanggal stok masuk wajib diisi");
-
-    const namedItems = items.map((item) => {
-      const product = database.products.find(
-        (candidate) => candidate.id === item.productId,
-      );
-      if (!product) throw new Error("Produk tidak ditemukan");
-      return {
-        productId: product.id,
-        productName: product.name,
-        quantity: Math.round(item.quantity),
-      };
-    });
-
-    const stocksWithLevels = withStockLevels(
-      database.stocks,
-      [branch.id],
-      namedItems,
-      5,
-    );
-
-    const record = {
-      id: createId("si"),
-      branchId: branch.id,
-      items: namedItems,
-      date: input.date,
-      note: input.note.trim(),
-      userId: employee.id,
-      createdAt: new Date().toISOString(),
-    };
-
-    const total = namedItems.reduce((sum, item) => sum + item.quantity, 0);
-
-    return appendActivity(
-      {
-        ...database,
-        stocks: applyStockIn(stocksWithLevels, branch.id, namedItems),
-        stockIns: [record, ...database.stockIns],
-      },
-      {
-        action: "Membuat",
-        detail: `Stok masuk ${formatNumber(total)} pcs · ${branch.name}`,
-      },
-    );
+export async function submitOpname(input: OpnameInput): Promise<void> {
+  const { branch } = selectSession(getDatabase());
+  const result = await submitOpnameAction(branch.id, input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Opname ${branch.name} · ${input.date}`,
   });
 }
 
-export function submitOpname(input: OpnameInput): void {
-  updateDatabase((database) => {
-    const { employee, branch } = selectSession(database);
+export async function transferStock(input: TransferInput): Promise<void> {
+  const database = getDatabase();
+  const { branch } = selectSession(database);
+  const target = database.branches.find(
+    (item) => item.id === input.toBranchId,
+  );
+  const total = input.items.reduce((sum, item) => sum + item.quantity, 0);
 
-    if (!input.date) throw new Error("Tanggal opname wajib diisi");
-
-    const invalid = Object.values(input.physical).some(
-      (value) => !Number.isFinite(value) || value < 0,
-    );
-    if (invalid) throw new Error("Stok fisik tidak boleh negatif");
-
-    const items = buildOpnameItems(database, branch.id, input.physical);
-
-    if (items.length === 0) {
-      throw new Error("Tidak ada selisih stok untuk dicatat");
-    }
-
-    const record = {
-      id: createId("op"),
-      branchId: branch.id,
-      items,
-      date: input.date,
-      note: input.note.trim(),
-      userId: employee.id,
-      createdAt: new Date().toISOString(),
-    };
-
-    const difference = items.reduce(
-      (total, item) => total + item.difference,
-      0,
-    );
-
-    return appendActivity(
-      {
-        ...database,
-        stocks: applyOpname(database.stocks, branch.id, items),
-        stockOpnames: [record, ...database.stockOpnames],
-      },
-      {
-        action: "Mengubah",
-        detail: `Opname ${branch.name} · selisih ${difference > 0 ? "+" : ""}${formatNumber(difference)} pcs`,
-      },
-    );
+  const result = await transferStockAction(branch.id, input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Membuat",
+    detail: `Transfer ${formatNumber(total)} pcs dari ${branch.name} ke ${target?.name ?? "cabang tujuan"}`,
   });
 }
 
-export function transferStock(input: TransferInput): void {
-  updateDatabase((database) => {
-    const { employee, branch } = selectSession(database);
-
-    if (!input.toBranchId) throw new Error("Cabang tujuan wajib dipilih");
-    if (input.toBranchId === branch.id) {
-      throw new Error("Cabang tujuan harus berbeda");
-    }
-    if (!input.date) throw new Error("Tanggal transfer wajib diisi");
-
-    const items = input.items.filter((item) => item.quantity > 0);
-    const errors = validateTransferItems(database.stocks, branch.id, items);
-    if (errors.length > 0) throw new Error(errors[0]);
-
-    const namedItems = items.map((item) => {
-      const product = database.products.find(
-        (candidate) => candidate.id === item.productId,
-      );
-      if (!product) throw new Error("Produk tidak ditemukan");
-      return {
-        productId: product.id,
-        productName: product.name,
-        quantity: Math.round(item.quantity),
-      };
-    });
-
-    const stocksWithLevels = withStockLevels(
-      database.stocks,
-      [branch.id, input.toBranchId],
-      namedItems,
-      5,
-    );
-
-    const record = {
-      id: createId("tr"),
-      fromBranchId: branch.id,
-      toBranchId: input.toBranchId,
-      items: namedItems,
-      date: input.date,
-      note: input.note.trim(),
-      userId: employee.id,
-      createdAt: new Date().toISOString(),
-    };
-
-    const total = namedItems.reduce((sum, item) => sum + item.quantity, 0);
-
-    return appendActivity(
-      {
-        ...database,
-        stocks: applyTransfer(
-          stocksWithLevels,
-          branch.id,
-          input.toBranchId,
-          namedItems,
-        ),
-        stockTransfers: [record, ...database.stockTransfers],
-      },
-      {
-        action: "Membuat",
-        detail: `Transfer ${formatNumber(total)} pcs dari ${branch.name}`,
-      },
-    );
+export async function importProducts(
+  rows: readonly ImportProductPayload[],
+): Promise<number> {
+  const { branch } = selectSession(getDatabase());
+  const result = await importProductsAction(branch.id, rows);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Membuat",
+    detail: `Import Excel ${formatNumber(rows.length)} produk · ${branch.name}`,
   });
-}
-
-export function importProducts(rows: readonly ImportProductPayload[]): number {
-  let imported = 0;
-
-  updateDatabase((database) => {
-    if (rows.length === 0) throw new Error("Tidak ada baris valid untuk diimpor");
-
-    const { employee, branch } = selectSession(database);
-    const newProducts: Product[] = [];
-    const newStocks: StockLevel[] = [];
-    const stockItems: { productId: string; productName: string; quantity: number }[] =
-      [];
-
-    rows.forEach((row) => {
-      if (!validateSku({ ...database, products: [...database.products, ...newProducts] }, row.sku)) {
-        throw new Error(`SKU ${row.sku} duplikat saat impor`);
-      }
-
-      const product: Product = {
-        id: createId("prod"),
-        name: row.name.trim(),
-        sku: row.sku.trim().toUpperCase(),
-        categoryId: row.categoryId,
-        costPrice: Math.round(row.costPrice),
-        price: Math.round(row.price),
-        isActive: true,
-      };
-
-      newProducts.push(product);
-
-      database.branches.forEach((targetBranch) => {
-        newStocks.push({
-          branchId: targetBranch.id,
-          productId: product.id,
-          quantity: targetBranch.id === branch.id ? Math.round(row.stock) : 0,
-          minStock: Math.round(row.minStock),
-        });
-      });
-
-      if (row.stock > 0) {
-        stockItems.push({
-          productId: product.id,
-          productName: product.name,
-          quantity: Math.round(row.stock),
-        });
-      }
-    });
-
-    imported = newProducts.length;
-
-    const stockRecord =
-      stockItems.length > 0
-        ? {
-            id: createId("si"),
-            branchId: branch.id,
-            items: stockItems,
-            date: toDateInputValue(new Date()),
-            note: "Stok awal dari import Excel",
-            userId: employee.id,
-            createdAt: new Date().toISOString(),
-          }
-        : null;
-
-    return appendActivity(
-      {
-        ...database,
-        products: [...newProducts, ...database.products],
-        stocks: [...newStocks, ...database.stocks],
-        stockIns: stockRecord
-          ? [stockRecord, ...database.stockIns]
-          : database.stockIns,
-      },
-      {
-        action: "Membuat",
-        detail: `Import Excel ${formatNumber(newProducts.length)} produk`,
-      },
-    );
-  });
-
-  return imported;
+  return rows.length;
 }

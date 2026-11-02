@@ -67,6 +67,8 @@ export function KasirWorkspace() {
     useState<TransactionHistoryRow | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptViewData | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [refunding, setRefunding] = useState(false);
 
   const products = data.products;
   const productMap = useMemo(
@@ -282,11 +284,13 @@ export function KasirWorkspace() {
     showToast("Keranjang dibatalkan", "success");
   }
 
-  function handleRefund(reason: string) {
-    if (!refundTarget) return;
+  async function handleRefund(reason: string) {
+    if (!refundTarget || refunding) return;
+
+    setRefunding(true);
 
     try {
-      const result = refundTransaction({
+      const result = await refundTransaction({
         transactionId: refundTarget.id,
         reason,
       });
@@ -297,10 +301,14 @@ export function KasirWorkspace() {
       );
     } catch (error) {
       showToast(getErrorMessage(error), "error");
+    } finally {
+      setRefunding(false);
     }
   }
 
-  function handlePay() {
+  async function handlePay() {
+    if (paying) return;
+
     if (totals.itemCount === 0) {
       showToast("Keranjang masih kosong", "error");
       return;
@@ -311,8 +319,10 @@ export function KasirWorkspace() {
       return;
     }
 
+    setPaying(true);
+
     try {
-      const result = createTransaction({
+      const result = await createTransaction({
         items,
         discountType: activeDiscountType,
         discountValue: activeDiscountValue,
@@ -331,6 +341,8 @@ export function KasirWorkspace() {
       );
     } catch (error) {
       showToast(getErrorMessage(error), "error");
+    } finally {
+      setPaying(false);
     }
   }
 
@@ -390,7 +402,7 @@ export function KasirWorkspace() {
           bankAccounts={data.bankAccounts}
           selectedBankId={activeBankId}
           onBankChange={setSelectedBankId}
-          canPay={canPay}
+          canPay={canPay && !paying}
           canCancel={permissions.canCancelTransaction}
           draftCount={data.drafts.length}
           onOpenDrafts={() => setDraftsOpen(true)}

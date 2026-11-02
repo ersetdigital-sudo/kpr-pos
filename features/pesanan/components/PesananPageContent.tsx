@@ -43,9 +43,9 @@ export function PesananPageContent() {
   const [pendingCancel, setPendingCancel] = useState<OrderRow | null>(null);
   const [pendingDelete, setPendingDelete] = useState<OrderRow | null>(null);
 
-  function applyStatus(row: OrderRow, status: SalesOrderStatus) {
+  async function applyStatus(row: OrderRow, status: SalesOrderStatus) {
     try {
-      updateSalesOrderStatus(row.id, status);
+      await updateSalesOrderStatus(row.id, status);
       showToast(
         status === "Lunas"
           ? `Pesanan ${row.orderNumber} lunas, stok cabang berkurang`

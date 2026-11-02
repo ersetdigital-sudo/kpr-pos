@@ -28,6 +28,7 @@ export function CategoryPanel({ usages, canManage }: CategoryPanelProps) {
   const [editing, setEditing] = useState<CategoryUsage | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CategoryUsage | null>(null);
 
   function openCreate() {
@@ -44,20 +45,24 @@ export function CategoryPanel({ usages, canManage }: CategoryPanelProps) {
     setFormOpen(true);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (saving) return;
 
     if (!name.trim()) {
       setError("Nama kategori wajib diisi");
       return;
     }
 
+    setSaving(true);
+
     try {
       if (editing) {
-        updateCategory(editing.category.id, name);
+        await updateCategory(editing.category.id, name);
         showToast("Kategori diperbarui", "success");
       } else {
-        createCategory(name);
+        await createCategory(name);
         showToast("Kategori ditambahkan", "success");
       }
       setFormOpen(false);
@@ -66,14 +71,18 @@ export function CategoryPanel({ usages, canManage }: CategoryPanelProps) {
         caught instanceof Error ? caught.message : "Kategori gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
-  function handleDelete() {
-    if (!deleteTarget) return;
+  async function handleDelete() {
+    if (!deleteTarget || saving) return;
+
+    setSaving(true);
 
     try {
-      deleteCategory(deleteTarget.category.id);
+      await deleteCategory(deleteTarget.category.id);
       showToast(`Kategori ${deleteTarget.category.name} dihapus`, "success");
     } catch (caught) {
       showToast(
@@ -81,6 +90,7 @@ export function CategoryPanel({ usages, canManage }: CategoryPanelProps) {
         "error",
       );
     } finally {
+      setSaving(false);
       setDeleteTarget(null);
     }
   }
@@ -123,13 +133,21 @@ export function CategoryPanel({ usages, canManage }: CategoryPanelProps) {
                   variant="dangerOutline"
                   size="sm"
                   className="h-[32px] px-2.5 text-meta"
-                  disabled={usage.productCount > 0}
                   title={
                     usage.productCount > 0
                       ? "Kategori masih dipakai produk"
                       : undefined
                   }
-                  onClick={() => setDeleteTarget(usage)}
+                  onClick={() => {
+                    if (usage.productCount > 0) {
+                      showToast(
+                        `Kategori ${usage.category.name} masih dipakai ${usage.productCount} produk`,
+                        "error",
+                      );
+                      return;
+                    }
+                    setDeleteTarget(usage);
+                  }}
                 >
                   Hapus
                 </Button>
@@ -184,11 +202,20 @@ export function CategoryPanel({ usages, canManage }: CategoryPanelProps) {
         size="sm"
         footer={
           <>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setFormOpen(false)}
+              disabled={saving}
+            >
               Batal
             </Button>
-            <Button variant="primary" type="submit" form="category-form">
-              Simpan
+            <Button
+              variant="primary"
+              type="submit"
+              form="category-form"
+              disabled={saving}
+            >
+              {saving ? "Menyimpan…" : "Simpan"}
             </Button>
           </>
         }

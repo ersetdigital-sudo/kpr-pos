@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -42,8 +41,6 @@ export async function loginAction(
       await supabase.auth.signOut();
       return { error: LOGIN_ERROR };
     }
-
-    revalidatePath("/", "layout");
   } catch {
     return { error: "Login gagal. Coba lagi." };
   }
@@ -146,8 +143,6 @@ export async function updatePasswordAction(
     if (error) {
       return { error: "Password gagal disimpan. Coba lagi." };
     }
-
-    revalidatePath("/", "layout");
   } catch {
     return { error: "Password gagal disimpan. Coba lagi." };
   }

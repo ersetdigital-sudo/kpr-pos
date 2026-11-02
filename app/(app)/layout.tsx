@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AppShell } from "@/components/layout/AppShell";
+import { ProductStockSyncProvider } from "@/features/produk/data/ProductStockSyncProvider";
 import { AuthSessionProvider } from "@/features/session/data/session-context";
 import { getAuthSession } from "@/lib/auth/session";
 
@@ -17,7 +18,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <AuthSessionProvider session={session}>
-      <AppShell>{children}</AppShell>
+      <ProductStockSyncProvider>
+        <AppShell>{children}</AppShell>
+      </ProductStockSyncProvider>
     </AuthSessionProvider>
   );
 }

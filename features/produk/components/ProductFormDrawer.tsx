@@ -47,6 +47,7 @@ export function ProductFormDrawer({
   const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
   const [imageError, setImageError] = useState(false);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const isEditing = product !== null;
 
@@ -69,8 +70,10 @@ export function ProductFormDrawer({
     reader.readAsDataURL(file);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (saving) return;
 
     const input: ProductFormInput = {
       name,
@@ -95,12 +98,14 @@ export function ProductFormDrawer({
       return setError("Batas stok menipis tidak boleh negatif");
     }
 
+    setSaving(true);
+
     try {
       if (isEditing && product) {
-        updateProduct(product.id, input);
+        await updateProduct(product.id, input);
         showToast(`Produk ${name.trim()} diperbarui`, "success");
       } else {
-        createProduct(input);
+        await createProduct(input);
         showToast(`Produk ${name.trim()} ditambahkan`, "success");
       }
       onClose();
@@ -109,6 +114,8 @@ export function ProductFormDrawer({
         caught instanceof Error ? caught.message : "Produk gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -125,11 +132,20 @@ export function ProductFormDrawer({
       size="md"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
             Batal
           </Button>
-          <Button variant="primary" type="submit" form="product-form">
-            {isEditing ? "Simpan Perubahan" : "Simpan Produk"}
+          <Button
+            variant="primary"
+            type="submit"
+            form="product-form"
+            disabled={saving}
+          >
+            {saving
+              ? "Menyimpan…"
+              : isEditing
+                ? "Simpan Perubahan"
+                : "Simpan Produk"}
           </Button>
         </>
       }

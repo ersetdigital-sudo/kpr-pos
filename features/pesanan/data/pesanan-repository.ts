@@ -3,7 +3,11 @@
 import { ROLES } from "@/constants/roles";
 import { ROLE_PERMISSIONS } from "@/config/permissions";
 import { appendActivity, createId } from "@/lib/store/activity";
-import { updateDatabase, useHydratedDatabase } from "@/lib/store/store";
+import {
+  getDatabase,
+  updateDatabase,
+  useHydratedDatabase,
+} from "@/lib/store/store";
 import type {
   AppDatabase,
   SalesOrder,
@@ -12,6 +16,11 @@ import type {
 } from "@/lib/store/types";
 import { formatRupiah } from "@/lib/format";
 import { selectSession } from "@/features/session/data/session-repository";
+import {
+  deductStockForOrderAction,
+  restoreStockForOrderAction,
+} from "@/features/produk/cloud-actions";
+import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
 import {
   applyOrderStock,
   canChangeOrderStatus,
@@ -150,71 +159,114 @@ export function deleteSalesOrder(orderId: string): void {
   });
 }
 
-export function updateSalesOrderStatus(
+export async function updateSalesOrderStatus(
   orderId: string,
   nextStatus: SalesOrderStatus,
-): void {
-  updateDatabase((database) => {
-    const actor = database.employees.find(
-      (employee) => employee.id === database.session.currentEmployeeId,
+): Promise<void> {
+  const database = getDatabase();
+  const actor = database.employees.find(
+    (employee) => employee.id === database.session.currentEmployeeId,
+  );
+
+  if (!actor) {
+    throw new Error("Sesi pengguna tidak ditemukan");
+  }
+
+  if (!ROLE_PERMISSIONS[actor.role].canManageSalesOrders) {
+    throw new Error("Role Anda tidak boleh mengubah status pesanan");
+  }
+
+  const order = database.salesOrders.find((item) => item.id === orderId);
+  if (!order) throw new Error("Pesanan tidak ditemukan");
+  if (order.status === nextStatus) return;
+
+  if (!canChangeOrderStatus(order.status, nextStatus)) {
+    throw new Error(
+      `Status ${order.status} tidak bisa diubah menjadi ${nextStatus}`,
     );
+  }
 
-    if (!actor) {
-      throw new Error("Sesi pengguna tidak ditemukan");
+  const stockItems = order.items.map((item) => ({
+    productId: item.productId,
+    quantity: item.quantity,
+  }));
+  const shouldDeduct = nextStatus === "Lunas" && !order.stockApplied;
+  const shouldRestore = order.stockApplied && nextStatus !== "Lunas";
+
+  if (shouldDeduct) {
+    const shortage = getStockShortage(database, order);
+    if (shortage) throw new Error(shortage);
+
+    const result = await deductStockForOrderAction(order.branchId, stockItems);
+    if (!result.ok) {
+      await syncProductStockFromCloud().catch(() => undefined);
+      throw new Error(result.error);
     }
+  }
 
-    if (!ROLE_PERMISSIONS[actor.role].canManageSalesOrders) {
-      throw new Error("Role Anda tidak boleh mengubah status pesanan");
+  if (shouldRestore) {
+    const result = await restoreStockForOrderAction(order.branchId, stockItems);
+    if (!result.ok) {
+      await syncProductStockFromCloud().catch(() => undefined);
+      throw new Error(result.error);
     }
+  }
 
-    const order = database.salesOrders.find((item) => item.id === orderId);
-    if (!order) throw new Error("Pesanan tidak ditemukan");
-    if (order.status === nextStatus) return database;
+  try {
+    updateDatabase((current) => {
+      const currentOrder = current.salesOrders.find(
+        (item) => item.id === orderId,
+      );
 
-    if (!canChangeOrderStatus(order.status, nextStatus)) {
-      throw new Error(
-        `Status ${order.status} tidak bisa diubah menjadi ${nextStatus}`,
+      if (!currentOrder || currentOrder.status !== order.status) {
+        throw new Error("Status pesanan sudah berubah. Muat ulang data.");
+      }
+
+      let stocks = current.stocks;
+      let stockApplied = currentOrder.stockApplied;
+
+      if (nextStatus === "Lunas" && !currentOrder.stockApplied) {
+        stocks = applyOrderStock(stocks, currentOrder);
+        stockApplied = true;
+      } else if (currentOrder.stockApplied && nextStatus !== "Lunas") {
+        stocks = restoreOrderStock(stocks, currentOrder);
+        stockApplied = false;
+      }
+
+      const totalQuantity = getOrderQuantity(currentOrder);
+      const changedAt = new Date().toISOString();
+
+      return appendActivity(
+        {
+          ...current,
+          stocks,
+          salesOrders: current.salesOrders.map((item) =>
+            item.id === orderId
+              ? {
+                  ...item,
+                  status: nextStatus,
+                  stockApplied,
+                  paidAt: nextStatus === "Lunas" ? changedAt : undefined,
+                }
+              : item,
+          ),
+        },
+        {
+          action: nextStatus === "Dibatalkan" ? "Membatalkan" : "Mengubah",
+          detail: `Pesanan ${currentOrder.orderNumber} · ${currentOrder.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} pcs` : ""}`,
+        },
+      );
+    });
+  } catch (error) {
+    if (shouldDeduct) {
+      await restoreStockForOrderAction(order.branchId, stockItems).catch(
+        () => undefined,
+      );
+    } else if (shouldRestore) {
+      await deductStockForOrderAction(order.branchId, stockItems).catch(
+        () => undefined,
       );
     }
-
-    let stocks = database.stocks;
-    let stockApplied = order.stockApplied;
-
-    if (nextStatus === "Lunas") {
-      const shortage = getStockShortage(database, order);
-      if (shortage) throw new Error(shortage);
-
-      if (!order.stockApplied) {
-        stocks = applyOrderStock(stocks, order);
-        stockApplied = true;
-      }
-    } else if (order.stockApplied) {
-      stocks = restoreOrderStock(stocks, order);
-      stockApplied = false;
-    }
-
-    const totalQuantity = getOrderQuantity(order);
-    const changedAt = new Date().toISOString();
-
-    return appendActivity(
-      {
-        ...database,
-        stocks,
-        salesOrders: database.salesOrders.map((item) =>
-          item.id === orderId
-            ? {
-                ...item,
-                status: nextStatus,
-                stockApplied,
-                paidAt: nextStatus === "Lunas" ? changedAt : undefined,
-              }
-            : item,
-        ),
-      },
-      {
-        action: nextStatus === "Dibatalkan" ? "Membatalkan" : "Mengubah",
-        detail: `Pesanan ${order.orderNumber} · ${order.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} pcs` : ""}`,
-      },
-    );
-  });
+    throw error;
+  }
 }

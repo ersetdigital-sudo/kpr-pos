@@ -9,6 +9,7 @@ import type { SessionState } from "@/features/session/types";
 
 interface EmployeeRow {
   id: string;
+  user_id: string;
   name: string;
   phone: string | null;
   initials: string;
@@ -63,44 +64,36 @@ export const getAuthSession = cache(async (): Promise<SessionState | null> => {
 
   if (!user) return null;
 
-  const { data: employeeData, error: employeeError } = await supabase
-    .from("employees")
-    .select("id,name,phone,initials,role,branch_id,is_active")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // Satu query karyawan aktif + satu query cabang, dijalankan paralel.
+  const [employeeResult, branchResult] = await Promise.all([
+    supabase
+      .from("employees")
+      .select("id,user_id,name,phone,initials,role,branch_id,is_active")
+      .eq("is_active", true)
+      .order("name"),
+    supabase
+      .from("branches")
+      .select("id,name,address,phone,is_active")
+      .eq("is_active", true)
+      .order("name"),
+  ]);
 
-  if (employeeError || !employeeData) return null;
+  if (employeeResult.error || branchResult.error) return null;
 
-  const employeeRow = employeeData as EmployeeRow;
-  if (!employeeRow.is_active || !isRole(employeeRow.role)) return null;
+  const employeeRows = (employeeResult.data ?? []) as EmployeeRow[];
+  const employeeRow = employeeRows.find((row) => row.user_id === user.id);
 
-  const { data: branchData, error: branchError } = await supabase
-    .from("branches")
-    .select("id,name,address,phone,is_active")
-    .eq("is_active", true)
-    .order("name");
+  if (!employeeRow || !isRole(employeeRow.role)) return null;
 
-  if (branchError) return null;
-
-  const branches = ((branchData ?? []) as BranchRow[]).map(mapBranch);
+  const branches = ((branchResult.data ?? []) as BranchRow[]).map(mapBranch);
   const branch =
     branches.find((item) => item.id === employeeRow.branch_id) ?? branches[0];
 
   if (!branch) return null;
 
-  const { data: employeeListData } = await supabase
-    .from("employees")
-    .select("id,name,phone,initials,role,branch_id,is_active")
-    .eq("is_active", true)
-    .order("name");
-
-  const employees = ((employeeListData ?? []) as EmployeeRow[])
+  const employees = employeeRows
     .filter((row) => isRole(row.role))
     .map(mapEmployee);
-
-  if (!employees.some((item) => item.id === employeeRow.id)) {
-    employees.push(mapEmployee(employeeRow));
-  }
 
   return {
     employee: mapEmployee(employeeRow),

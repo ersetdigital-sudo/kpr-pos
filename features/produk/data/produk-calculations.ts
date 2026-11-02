@@ -176,11 +176,18 @@ export function calculateIncomingThisWeek(
 }
 
 export function buildCategoryUsage(database: AppDatabase): CategoryUsage[] {
+  const countByCategory = new Map<string, number>();
+
+  database.products.forEach((product) => {
+    countByCategory.set(
+      product.categoryId,
+      (countByCategory.get(product.categoryId) ?? 0) + 1,
+    );
+  });
+
   return database.categories.map((category) => ({
     category,
-    productCount: database.products.filter(
-      (product) => product.categoryId === category.id,
-    ).length,
+    productCount: countByCategory.get(category.id) ?? 0,
   }));
 }
 

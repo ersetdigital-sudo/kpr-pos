@@ -86,11 +86,11 @@ export function ProductPageContent() {
     setFormOpen(true);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return;
 
     try {
-      const result = deleteProduct(deleteTarget.id);
+      const result = await deleteProduct(deleteTarget.id);
       showToast(
         result.mode === "deleted"
           ? `Produk ${result.name} dihapus`
@@ -107,9 +107,9 @@ export function ProductPageContent() {
     }
   }
 
-  function handleReactivate(product: ProductRow) {
+  async function handleReactivate(product: ProductRow) {
     try {
-      setProductActive(product.id, true);
+      await setProductActive(product.id, true);
       showToast(`Produk ${product.name} diaktifkan`, "success");
     } catch (caught) {
       showToast(

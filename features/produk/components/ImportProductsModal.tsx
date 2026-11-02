@@ -133,14 +133,16 @@ export function ImportProductsModal({
     }
   }
 
-  function handleImport() {
-    if (validRows.length === 0) {
+  async function handleImport() {
+    if (validRows.length === 0 || loading) {
       showToast("Tidak ada baris valid untuk diimpor", "error");
       return;
     }
 
+    setLoading(true);
+
     try {
-      const count = importProducts(validRows.map(toImportPayload));
+      const count = await importProducts(validRows.map(toImportPayload));
       showToast(`${count} produk berhasil diimpor`, "success");
       handleClose();
     } catch (caught) {
@@ -148,6 +150,8 @@ export function ImportProductsModal({
         caught instanceof Error ? caught.message : "Import gagal",
         "error",
       );
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -169,9 +173,9 @@ export function ImportProductsModal({
           <Button
             variant="primary"
             onClick={handleImport}
-            disabled={validRows.length === 0}
+            disabled={validRows.length === 0 || loading}
           >
-            Import {validRows.length} Produk
+            {loading ? "Mengimpor…" : `Import ${validRows.length} Produk`}
           </Button>
         </>
       }

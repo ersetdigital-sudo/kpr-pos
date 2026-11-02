@@ -33,10 +33,14 @@ export function OpnamePanel({
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
   const [physical, setPhysical] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (saving) return;
+    setSaving(true);
+
     try {
-      submitOpname({ date, note, physical });
+      await submitOpname({ date, note, physical });
       showToast("Stok opname disimpan dan stok disesuaikan", "success");
       setNote("");
       setPhysical({});
@@ -45,6 +49,8 @@ export function OpnamePanel({
         caught instanceof Error ? caught.message : "Opname gagal disimpan",
         "error",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -226,9 +232,9 @@ export function OpnamePanel({
             size="lg"
             className="self-start px-5"
             onClick={handleSubmit}
-            disabled={products.length === 0}
+            disabled={products.length === 0 || saving}
           >
-            Simpan Opname
+            {saving ? "Menyimpan…" : "Simpan Opname"}
           </Button>
         </Card>
       ) : null}

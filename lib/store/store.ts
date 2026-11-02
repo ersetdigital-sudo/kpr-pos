@@ -24,6 +24,7 @@ const listeners = new Set<() => void>();
 
 let clientSnapshot: AppDatabase | null = null;
 let storageListenerAttached = false;
+let storedDatabaseFound = false;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object";
@@ -134,6 +135,7 @@ function loadDatabase(): AppDatabase {
     const raw = window.localStorage.getItem(DB_STORAGE_KEY);
 
     if (raw) {
+      storedDatabaseFound = true;
       const parsed: unknown = JSON.parse(raw);
       const normalized = normalizeDatabase(parsed);
 
@@ -181,6 +183,12 @@ export function getDatabase(): AppDatabase {
   }
 
   return clientSnapshot;
+}
+
+/** True jika perangkat ini sudah pernah menyimpan data POS sebelumnya. */
+export function hasStoredDatabase(): boolean {
+  getDatabase();
+  return storedDatabaseFound;
 }
 
 export function useDatabase(): AppDatabase {
