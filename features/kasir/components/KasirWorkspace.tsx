@@ -62,6 +62,7 @@ export function KasirWorkspace() {
   const [cashReceived, setCashReceived] = useState(0);
   const [selectedBankId, setSelectedBankId] = useState("");
   const [draftsOpen, setDraftsOpen] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [refundTarget, setRefundTarget] =
     useState<TransactionHistoryRow | null>(null);
@@ -196,14 +197,18 @@ export function KasirWorkspace() {
     setCashReceived(0);
   }
 
-  function handleSaveDraft() {
+  async function handleSaveDraft() {
+    if (draftSaving) return;
+
     if (items.length === 0) {
       showToast("Keranjang masih kosong", "error");
       return;
     }
 
+    setDraftSaving(true);
+
     try {
-      saveDraft({
+      await saveDraft({
         items,
         discountType: activeDiscountType,
         discountValue: activeDiscountValue,
@@ -213,10 +218,14 @@ export function KasirWorkspace() {
       showToast("Draft berhasil disimpan", "success");
     } catch (error) {
       showToast(getErrorMessage(error), "error");
+    } finally {
+      setDraftSaving(false);
     }
   }
 
-  function handleOpenDraft(draftId: string) {
+  async function handleOpenDraft(draftId: string) {
+    if (draftSaving) return;
+
     const summary = data.drafts.find((item) => item.draft.id === draftId);
 
     if (!summary) {
@@ -248,24 +257,42 @@ export function KasirWorkspace() {
       return;
     }
 
-    // Draft baru dihapus dari daftar setelah isinya berhasil dimuat.
-    takeDraft(draftId);
-    setDraftsOpen(false);
-    setItems(restored);
-    setDiscountType(draft.discountType);
-    setDiscountValue(draft.discountValue);
-    setSalesEmployeeId(draft.salesEmployeeId ?? "");
-    showToast(
-      adjusted
-        ? "Draft dibuka, sebagian qty disesuaikan dengan stok"
-        : "Draft dibuka",
-      adjusted ? "info" : "success",
-    );
+    setDraftSaving(true);
+
+    try {
+      // Draft baru dihapus dari daftar setelah isinya berhasil dimuat.
+      await takeDraft(draftId);
+      setDraftsOpen(false);
+      setItems(restored);
+      setDiscountType(draft.discountType);
+      setDiscountValue(draft.discountValue);
+      setSalesEmployeeId(draft.salesEmployeeId ?? "");
+      showToast(
+        adjusted
+          ? "Draft dibuka, sebagian qty disesuaikan dengan stok"
+          : "Draft dibuka",
+        adjusted ? "info" : "success",
+      );
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    } finally {
+      setDraftSaving(false);
+    }
   }
 
-  function handleDeleteDraft(draftId: string) {
-    deleteDraft(draftId);
-    showToast("Draft dihapus", "success");
+  async function handleDeleteDraft(draftId: string) {
+    if (draftSaving) return;
+
+    setDraftSaving(true);
+
+    try {
+      await deleteDraft(draftId);
+      showToast("Draft dihapus", "success");
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    } finally {
+      setDraftSaving(false);
+    }
   }
 
   function handleCancelCart() {

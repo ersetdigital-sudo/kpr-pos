@@ -2,160 +2,145 @@
 
 import { ROLES } from "@/constants/roles";
 import { ROLE_PERMISSIONS } from "@/config/permissions";
-import { appendActivity, createId } from "@/lib/store/activity";
-import {
-  getDatabase,
-  updateDatabase,
-  useHydratedDatabase,
-} from "@/lib/store/store";
+import { recordActivity } from "@/lib/store/activity";
+import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
 import type {
   AppDatabase,
   SalesOrder,
-  SalesOrderItem,
   SalesOrderStatus,
 } from "@/lib/store/types";
 import { formatRupiah } from "@/lib/format";
 import { selectSession } from "@/features/session/data/session-repository";
 import {
-  deductStockForOrderAction,
-  restoreStockForOrderAction,
-} from "@/features/produk/cloud-actions";
-import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
-import {
-  applyOrderStock,
   canChangeOrderStatus,
-  getNextOrderNumber,
   getOrderQuantity,
   getStockShortage,
-  restoreOrderStock,
 } from "@/features/pesanan/data/pesanan-calculations";
+import {
+  createSalesOrderAction,
+  deleteSalesOrderAction,
+  updateSalesOrderStatusAction,
+} from "@/features/sales/cloud-actions";
+import { syncSalesFromCloud } from "@/features/sales/data/sales-cloud";
+import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
 import type { CreateOrderInput } from "@/features/pesanan/types";
 
 export function usePesananData(): AppDatabase | null {
   return useHydratedDatabase();
 }
 
-export function createSalesOrder(input: CreateOrderInput): SalesOrder {
-  let created: SalesOrder | undefined;
-
-  updateDatabase((database) => {
-    const { employee } = selectSession(database);
-    const customerName = input.customerName.trim();
-
-    if (!customerName) throw new Error("Nama pelanggan wajib diisi");
-    if (input.items.length === 0) throw new Error("Tambahkan minimal satu produk");
-    if (!database.branches.some((branch) => branch.id === input.branchId)) {
-      throw new Error("Cabang pesanan tidak ditemukan");
-    }
-
-    // Sales hanya bisa membuat pesanan atas namanya sendiri.
-    const salesEmployeeId =
-      employee.role === ROLES.SALES ? employee.id : input.salesEmployeeId;
-    const salesEmployee = database.employees.find(
-      (candidate) =>
-        candidate.id === salesEmployeeId &&
-        candidate.role === ROLES.SALES &&
-        candidate.isActive,
-    );
-
-    if (!salesEmployee) throw new Error("Pilih sales yang valid");
-
-    const merged = new Map<string, number>();
-    input.items.forEach((item) => {
-      if (item.quantity <= 0) return;
-      merged.set(
-        item.productId,
-        (merged.get(item.productId) ?? 0) + Math.round(item.quantity),
-      );
+async function refreshAfterOrder(includeStock = false): Promise<void> {
+  await Promise.allSettled([
+    syncSalesFromCloud({ force: true }),
+    includeStock
+      ? syncProductStockFromCloud({ force: true })
+      : Promise.resolve(),
+  ]).then((results) => {
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        console.error("Sinkronisasi setelah pesanan gagal:", result.reason);
+      }
     });
+  });
+}
 
-    if (merged.size === 0) throw new Error("Jumlah produk harus lebih dari 0");
+export async function createSalesOrder(
+  input: CreateOrderInput,
+): Promise<SalesOrder> {
+  const database = getDatabase();
+  const { employee } = selectSession(database);
+  const customerName = input.customerName.trim();
 
-    const items: SalesOrderItem[] = [...merged.entries()].map(
-      ([productId, quantity]) => {
-        const product = database.products.find(
-          (candidate) => candidate.id === productId && candidate.isActive,
-        );
-        if (!product) throw new Error("Ada produk yang tidak tersedia");
+  if (!customerName) throw new Error("Nama pelanggan wajib diisi");
+  if (input.items.length === 0) throw new Error("Tambahkan minimal satu produk");
+  if (!database.branches.some((branch) => branch.id === input.branchId)) {
+    throw new Error("Cabang pesanan tidak ditemukan");
+  }
 
-        return {
-          productId: product.id,
-          productName: product.name,
-          unitPrice: product.price,
-          unitCost: product.costPrice,
-          quantity,
-        };
-      },
-    );
+  // Sales hanya bisa membuat pesanan atas namanya sendiri.
+  const salesEmployeeId =
+    employee.role === ROLES.SALES ? employee.id : input.salesEmployeeId;
+  const salesEmployee = database.employees.find(
+    (candidate) =>
+      candidate.id === salesEmployeeId &&
+      candidate.role === ROLES.SALES &&
+      candidate.isActive,
+  );
 
-    const total = items.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0,
-    );
-    const order: SalesOrder = {
-      id: createId("so"),
-      orderNumber: getNextOrderNumber(database.salesOrders, new Date()),
-      customerName,
-      customerPhone: input.customerPhone.trim(),
-      branchId: input.branchId,
-      salesEmployeeId: salesEmployee.id,
-      items,
-      total,
-      status: "Menunggu bayar",
-      stockApplied: false,
-      note: input.note.trim(),
-      createdAt: new Date().toISOString(),
-    };
+  if (!salesEmployee) throw new Error("Pilih sales yang valid");
 
-    created = order;
-
-    return appendActivity(
-      {
-        ...database,
-        salesOrders: [order, ...database.salesOrders],
-      },
-      {
-        action: "Membuat",
-        detail: `Pesanan ${order.orderNumber} · ${customerName} · ${formatRupiah(total)}`,
-      },
+  const merged = new Map<string, number>();
+  input.items.forEach((item) => {
+    if (item.quantity <= 0) return;
+    merged.set(
+      item.productId,
+      (merged.get(item.productId) ?? 0) + Math.round(item.quantity),
     );
   });
 
-  if (!created) throw new Error("Pesanan gagal disimpan");
-  return created;
+  if (merged.size === 0) throw new Error("Jumlah produk harus lebih dari 0");
+
+  merged.forEach((quantity, productId) => {
+    const product = database.products.find(
+      (candidate) => candidate.id === productId && candidate.isActive,
+    );
+    if (!product) throw new Error("Ada produk yang tidak tersedia");
+    if (quantity <= 0) throw new Error("Jumlah produk harus lebih dari 0");
+  });
+
+  const result = await createSalesOrderAction({
+    branchId: input.branchId,
+    salesEmployeeId: salesEmployee.id,
+    customerName,
+    customerPhone: input.customerPhone.trim(),
+    note: input.note.trim(),
+    items: [...merged.entries()].map(([productId, quantity]) => ({
+      productId,
+      quantity,
+    })),
+  });
+
+  if (!result.ok) throw new Error(result.error);
+
+  await refreshAfterOrder();
+
+  recordActivity({
+    action: "Membuat",
+    detail: `Pesanan ${result.data.orderNumber} · ${customerName} · ${formatRupiah(result.data.total)}`,
+  });
+
+  return result.data;
 }
 
-export function deleteSalesOrder(orderId: string): void {
-  updateDatabase((database) => {
-    const actor = database.employees.find(
-      (employee) => employee.id === database.session.currentEmployeeId,
-    );
+export async function deleteSalesOrder(orderId: string): Promise<void> {
+  const database = getDatabase();
+  const actor = database.employees.find(
+    (employee) => employee.id === database.session.currentEmployeeId,
+  );
 
-    if (!actor) {
-      throw new Error("Sesi pengguna tidak ditemukan");
-    }
+  if (!actor) {
+    throw new Error("Sesi pengguna tidak ditemukan");
+  }
 
-    if (!ROLE_PERMISSIONS[actor.role].canDeleteSalesOrder) {
-      throw new Error("Role Anda tidak boleh menghapus pesanan");
-    }
+  if (!ROLE_PERMISSIONS[actor.role].canDeleteSalesOrder) {
+    throw new Error("Role Anda tidak boleh menghapus pesanan");
+  }
 
-    const order = database.salesOrders.find((item) => item.id === orderId);
-    if (!order) throw new Error("Pesanan tidak ditemukan");
+  const order = database.salesOrders.find((item) => item.id === orderId);
+  if (!order) throw new Error("Pesanan tidak ditemukan");
 
-    if (order.status !== "Dibatalkan") {
-      throw new Error("Batalkan pesanan terlebih dahulu sebelum menghapus");
-    }
+  if (order.status !== "Dibatalkan") {
+    throw new Error("Batalkan pesanan terlebih dahulu sebelum menghapus");
+  }
 
-    return appendActivity(
-      {
-        ...database,
-        salesOrders: database.salesOrders.filter((item) => item.id !== orderId),
-      },
-      {
-        action: "Menghapus",
-        detail: `Pesanan ${order.orderNumber} · ${order.customerName} · ${formatRupiah(order.total)}`,
-      },
-    );
+  const result = await deleteSalesOrderAction(orderId);
+  if (!result.ok) throw new Error(result.error);
+
+  await refreshAfterOrder();
+
+  recordActivity({
+    action: "Menghapus",
+    detail: `Pesanan ${order.orderNumber} · ${order.customerName} · ${formatRupiah(order.total)}`,
   });
 }
 
@@ -186,87 +171,19 @@ export async function updateSalesOrderStatus(
     );
   }
 
-  const stockItems = order.items.map((item) => ({
-    productId: item.productId,
-    quantity: item.quantity,
-  }));
-  const shouldDeduct = nextStatus === "Lunas" && !order.stockApplied;
-  const shouldRestore = order.stockApplied && nextStatus !== "Lunas";
-
-  if (shouldDeduct) {
+  if (nextStatus === "Lunas" && !order.stockApplied) {
     const shortage = getStockShortage(database, order);
     if (shortage) throw new Error(shortage);
-
-    const result = await deductStockForOrderAction(order.branchId, stockItems);
-    if (!result.ok) {
-      await syncProductStockFromCloud().catch(() => undefined);
-      throw new Error(result.error);
-    }
   }
 
-  if (shouldRestore) {
-    const result = await restoreStockForOrderAction(order.branchId, stockItems);
-    if (!result.ok) {
-      await syncProductStockFromCloud().catch(() => undefined);
-      throw new Error(result.error);
-    }
-  }
+  const totalQuantity = getOrderQuantity(order);
+  const result = await updateSalesOrderStatusAction(orderId, nextStatus);
+  if (!result.ok) throw new Error(result.error);
 
-  try {
-    updateDatabase((current) => {
-      const currentOrder = current.salesOrders.find(
-        (item) => item.id === orderId,
-      );
+  await refreshAfterOrder(true);
 
-      if (!currentOrder || currentOrder.status !== order.status) {
-        throw new Error("Status pesanan sudah berubah. Muat ulang data.");
-      }
-
-      let stocks = current.stocks;
-      let stockApplied = currentOrder.stockApplied;
-
-      if (nextStatus === "Lunas" && !currentOrder.stockApplied) {
-        stocks = applyOrderStock(stocks, currentOrder);
-        stockApplied = true;
-      } else if (currentOrder.stockApplied && nextStatus !== "Lunas") {
-        stocks = restoreOrderStock(stocks, currentOrder);
-        stockApplied = false;
-      }
-
-      const totalQuantity = getOrderQuantity(currentOrder);
-      const changedAt = new Date().toISOString();
-
-      return appendActivity(
-        {
-          ...current,
-          stocks,
-          salesOrders: current.salesOrders.map((item) =>
-            item.id === orderId
-              ? {
-                  ...item,
-                  status: nextStatus,
-                  stockApplied,
-                  paidAt: nextStatus === "Lunas" ? changedAt : undefined,
-                }
-              : item,
-          ),
-        },
-        {
-          action: nextStatus === "Dibatalkan" ? "Membatalkan" : "Mengubah",
-          detail: `Pesanan ${currentOrder.orderNumber} · ${currentOrder.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} pcs` : ""}`,
-        },
-      );
-    });
-  } catch (error) {
-    if (shouldDeduct) {
-      await restoreStockForOrderAction(order.branchId, stockItems).catch(
-        () => undefined,
-      );
-    } else if (shouldRestore) {
-      await deductStockForOrderAction(order.branchId, stockItems).catch(
-        () => undefined,
-      );
-    }
-    throw error;
-  }
+  recordActivity({
+    action: nextStatus === "Dibatalkan" ? "Membatalkan" : "Mengubah",
+    detail: `Pesanan ${order.orderNumber} · ${order.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} pcs` : ""}`,
+  });
 }

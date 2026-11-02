@@ -18,7 +18,6 @@ import type {
   ProductFormInput,
   ProductStockBootstrapPayload,
   ProductStockSnapshot,
-  StockAdjustItem,
   StockInInput,
   OpnameInput,
   TransferInput,
@@ -473,59 +472,3 @@ export async function importProductsAction(
   });
 }
 
-function mapAdjustItems(items: readonly StockAdjustItem[]) {
-  return items.map((item) => ({
-    product_id: item.productId,
-    quantity: item.quantity,
-  }));
-}
-
-async function adjustStock(
-  session: SessionState,
-  branchId: string,
-  items: readonly StockAdjustItem[],
-  direction: "deduct" | "restore",
-): Promise<CloudActionResult> {
-  if (!canUseBranch(session, branchId)) return fail("Cabang tidak sesuai akses Anda.");
-  return callRpc("fn_adjust_stock", {
-    p_branch_id: branchId,
-    p_items: mapAdjustItems(items),
-    p_direction: direction,
-  });
-}
-
-export async function deductStockForTransactionAction(
-  branchId: string,
-  items: readonly StockAdjustItem[],
-): Promise<CloudActionResult> {
-  const session = await getAuthSession();
-  if (!session) return fail("Sesi pengguna tidak ditemukan");
-  return adjustStock(session, branchId, items, "deduct");
-}
-
-export async function restoreStockForTransactionAction(
-  branchId: string,
-  items: readonly StockAdjustItem[],
-): Promise<CloudActionResult> {
-  const session = await getAuthorizedSession("canCancelTransaction");
-  if (!session) return fail("Role Anda tidak boleh membatalkan transaksi");
-  return adjustStock(session, branchId, items, "restore");
-}
-
-export async function deductStockForOrderAction(
-  branchId: string,
-  items: readonly StockAdjustItem[],
-): Promise<CloudActionResult> {
-  const session = await getAuthorizedSession("canManageSalesOrders");
-  if (!session) return fail("Role Anda tidak boleh mengubah status pesanan");
-  return adjustStock(session, branchId, items, "deduct");
-}
-
-export async function restoreStockForOrderAction(
-  branchId: string,
-  items: readonly StockAdjustItem[],
-): Promise<CloudActionResult> {
-  const session = await getAuthorizedSession("canManageSalesOrders");
-  if (!session) return fail("Role Anda tidak boleh mengubah status pesanan");
-  return adjustStock(session, branchId, items, "restore");
-}

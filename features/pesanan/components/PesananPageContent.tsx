@@ -68,20 +68,20 @@ export function PesananPageContent() {
     applyStatus(row, status);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!pendingDelete) return;
 
     try {
-      deleteSalesOrder(pendingDelete.id);
+      await deleteSalesOrder(pendingDelete.id);
       showToast(`Pesanan ${pendingDelete.orderNumber} dihapus`, "success");
     } catch (caught) {
       showToast(
         caught instanceof Error ? caught.message : "Pesanan gagal dihapus",
         "error",
       );
+    } finally {
+      setPendingDelete(null);
     }
-
-    setPendingDelete(null);
   }
 
   if (!database) {

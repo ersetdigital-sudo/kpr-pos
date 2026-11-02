@@ -50,6 +50,7 @@ export function NewOrderForm({
   const [rows, setRows] = useState<NewOrderRow[]>(() =>
     productOptions[0] ? [createRow(productOptions[0].id)] : [],
   );
+  const [saving, setSaving] = useState(false);
 
   const activeSalesId = salesOptions.some((sales) => sales.id === salesId)
     ? salesId
@@ -70,8 +71,9 @@ export function NewOrderForm({
     );
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
 
     if (!customerName.trim()) {
       showToast("Nama pelanggan wajib diisi", "error");
@@ -86,8 +88,10 @@ export function NewOrderForm({
       return;
     }
 
+    setSaving(true);
+
     try {
-      const order = createSalesOrder({
+      const order = await createSalesOrder({
         customerName,
         customerPhone,
         note,
@@ -111,6 +115,8 @@ export function NewOrderForm({
         caught instanceof Error ? caught.message : "Pesanan gagal disimpan",
         "error",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -280,9 +286,9 @@ export function NewOrderForm({
           variant="primary"
           type="submit"
           className="h-[50px] rounded-card text-amount"
-          disabled={productOptions.length === 0}
+          disabled={productOptions.length === 0 || saving}
         >
-          Simpan Pesanan
+          {saving ? "Menyimpan…" : "Simpan Pesanan"}
         </Button>
       </form>
 

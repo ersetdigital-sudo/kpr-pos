@@ -262,7 +262,3 @@ export type CloudActionResult =
   | { ok: true }
   | { ok: false; error: string };
 
-export interface StockAdjustItem {
-  productId: string;
-  quantity: number;
-}

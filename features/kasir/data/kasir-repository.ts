@@ -2,14 +2,9 @@
 
 import { ROLES } from "@/constants/roles";
 import { ROLE_PERMISSIONS } from "@/config/permissions";
-import {
-  appendActivity,
-  createId,
-  recordActivity,
-} from "@/lib/store/activity";
+import { recordActivity } from "@/lib/store/activity";
 import {
   getDatabase,
-  updateDatabase,
   useDatabase,
   useHydratedDatabase,
 } from "@/lib/store/store";
@@ -18,7 +13,6 @@ import type {
   CartDraft,
   Employee,
   Transaction,
-  TransactionPayment,
 } from "@/lib/store/types";
 import { formatDateTimeShort, formatRupiah } from "@/lib/format";
 import { isTransactionRefunded } from "@/lib/store/transactions";
@@ -26,14 +20,16 @@ import {
   calculateCartTotals,
   calculateDiscountAmount,
   getNextInvoiceNumber,
-  reduceStockLevels,
-  restoreStockLevels,
 } from "@/features/kasir/data/kasir-calculations";
 import { selectSession } from "@/features/session/data/session-repository";
 import {
-  deductStockForTransactionAction,
-  restoreStockForTransactionAction,
-} from "@/features/produk/cloud-actions";
+  createTransactionAction,
+  deleteDraftAction,
+  refundTransactionAction,
+  saveDraftAction,
+  takeDraftAction,
+} from "@/features/sales/cloud-actions";
+import { syncSalesFromCloud } from "@/features/sales/data/sales-cloud";
 import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
 import type {
   CartLine,
@@ -265,9 +261,22 @@ function buildReceiptView(
   };
 }
 
+async function refreshAfterSale(): Promise<void> {
+  await Promise.allSettled([
+    syncSalesFromCloud({ force: true }),
+    syncProductStockFromCloud({ force: true }),
+  ]).then((results) => {
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        console.error("Sinkronisasi setelah transaksi gagal:", result.reason);
+      }
+    });
+  });
+}
+
 /**
- * Membuat transaksi. Stok dipotong atomik di Supabase lebih dulu; setelah itu
- * transaksi dicatat di cache lokal. Jika pencatatan lokal gagal, stok dikembalikan.
+ * Membuat transaksi. Nomor, stok, dan item dihitung atomik di Supabase;
+ * cache lokal diperbarui lewat sinkronisasi snapshot.
  */
 export async function createTransaction(
   input: CreateTransactionInput,
@@ -341,93 +350,37 @@ export async function createTransaction(
       )
     : undefined;
 
-  const adjustItems = items.map((item) => ({
-    productId: item.productId,
-    quantity: item.quantity,
-  }));
+  const result = await createTransactionAction({
+    branchId: branch.id,
+    cashierId: employee.id,
+    salesEmployeeId: salesEmployee?.id ?? null,
+    items: input.items,
+    discountType: input.discountType,
+    discountValue: input.discountValue,
+    paymentMethod: input.paymentMethod,
+    cashReceived: input.cashReceived,
+    bankAccountId: input.bankAccountId,
+  });
 
-  const stockResult = await deductStockForTransactionAction(
-    branch.id,
-    adjustItems,
-  );
+  if (!result.ok) throw new Error(result.error);
 
-  if (!stockResult.ok) {
-    await syncProductStockFromCloud().catch(() => undefined);
-    throw new Error(stockResult.error);
-  }
+  const transaction = result.data;
+  await refreshAfterSale();
 
-  let result: TransactionResult | undefined;
+  recordActivity({
+    action: "Membayar",
+    detail: `Transaksi ${transaction.invoiceNumber} · ${formatRupiah(transaction.total)} · ${transaction.items.length} item`,
+  });
 
-  try {
-    updateDatabase((current) => {
-      const now = new Date();
-      const invoiceNumber = getNextInvoiceNumber(current.transactions, now);
-      const payment: TransactionPayment = { method: input.paymentMethod };
-
-      if (input.paymentMethod === "Cash") {
-        payment.cashReceived = input.cashReceived;
-        payment.change = input.cashReceived - total;
-      }
-
-      if (input.paymentMethod === "Transfer" && input.bankAccountId) {
-        payment.bankAccountId = input.bankAccountId;
-      }
-
-      const transaction: Transaction = {
-        id: createId("trx"),
-        invoiceNumber,
-        branchId: branch.id,
-        cashierId: employee.id,
-        salesEmployeeId: salesEmployee?.id ?? null,
-        items,
-        subtotal,
-        discount: {
-          type: input.discountType,
-          value: input.discountValue,
-          amount: discountAmount,
-        },
-        total,
-        payment,
-        createdAt: now.toISOString(),
-      };
-
-      const updated = {
-        ...current,
-        transactions: [transaction, ...current.transactions],
-        stocks: reduceStockLevels(current.stocks, branch.id, input.items),
-      };
-
-      result = {
-        transaction,
-        receipt: buildReceiptView(updated, transaction),
-      };
-
-      return appendActivity(updated, {
-        action: "Membayar",
-        detail: `Transaksi ${invoiceNumber} · ${formatRupiah(total)} · ${items.length} item`,
-      });
-    });
-  } catch (error) {
-    await restoreStockForTransactionAction(branch.id, adjustItems).catch(
-      () => undefined,
-    );
-    await syncProductStockFromCloud().catch(() => undefined);
-    throw error;
-  }
-
-  if (!result) {
-    await restoreStockForTransactionAction(branch.id, adjustItems).catch(
-      () => undefined,
-    );
-    throw new Error("Transaksi gagal disimpan");
-  }
-
-  return result;
+  return {
+    transaction,
+    receipt: buildReceiptView(getDatabase(), transaction),
+  };
 }
 
 /**
  * Membatalkan transaksi yang sudah dibayar: transaksi ditandai refund dan stok
- * cabang asal dikembalikan. Nominal refund mengikuti total yang dibayar.
+ * cabang asal dikembalikan secara atomik di Supabase.
  */
 export async function refundTransaction(
   input: RefundTransactionInput,
@@ -463,177 +416,91 @@ export async function refundTransaction(
     throw new Error("Alasan refund minimal 3 karakter");
   }
 
-  const adjustItems = transaction.items.map((item) => ({
-    productId: item.productId,
-    quantity: item.quantity,
-  }));
+  const result = await refundTransactionAction(input.transactionId, reason);
+  if (!result.ok) throw new Error(result.error);
 
-  const stockResult = await restoreStockForTransactionAction(
-    transaction.branchId,
-    adjustItems,
+  await refreshAfterSale();
+
+  recordActivity({
+    action: "Refund",
+    detail: `Refund ${transaction.invoiceNumber} · ${formatRupiah(transaction.total)} · ${reason}`,
+  });
+
+  return {
+    transaction: result.data,
+    refundedAmount: result.data.total,
+  };
+}
+
+export async function saveDraft(input: SaveDraftInput): Promise<CartDraft> {
+  const database = getDatabase();
+  const { employee, branch } = selectSession(database);
+
+  if (input.items.length === 0) {
+    throw new Error("Keranjang masih kosong");
+  }
+
+  const productMap = new Map(
+    getProducts(database, branch.id).map((product) => [product.id, product]),
   );
 
-  if (!stockResult.ok) {
-    await syncProductStockFromCloud().catch(() => undefined);
-    throw new Error(stockResult.error);
-  }
-
-  let result: RefundTransactionResult | undefined;
-
-  try {
-    updateDatabase((current) => {
-      const currentTransaction = current.transactions.find(
-        (item) => item.id === input.transactionId,
-      );
-
-      if (!currentTransaction) {
-        throw new Error("Transaksi tidak ditemukan");
-      }
-
-      if (isTransactionRefunded(currentTransaction)) {
-        throw new Error("Transaksi ini sudah direfund");
-      }
-
-      const refunded: Transaction = {
-        ...currentTransaction,
-        refund: {
-          at: new Date().toISOString(),
-          byId: actor.id,
-          byName: actor.name,
-          reason,
-          amount: currentTransaction.total,
-        },
-      };
-
-      const updated: ReturnType<typeof getDatabase> = {
-        ...current,
-        transactions: current.transactions.map((item) =>
-          item.id === refunded.id ? refunded : item,
-        ),
-        stocks: restoreStockLevels(
-          current.stocks,
-          refunded.branchId,
-          refunded.items,
-        ),
-      };
-
-      result = { transaction: refunded, refundedAmount: refunded.total };
-
-      return appendActivity(updated, {
-        action: "Refund",
-        detail: `Refund ${refunded.invoiceNumber} · ${formatRupiah(refunded.total)} · ${reason}`,
-      });
-    });
-  } catch (error) {
-    await deductStockForTransactionAction(
-      transaction.branchId,
-      adjustItems,
-    ).catch(() => undefined);
-    throw error;
-  }
-
-  if (!result) {
-    await deductStockForTransactionAction(transaction.branchId, adjustItems).catch(
-      () => undefined,
-    );
-    throw new Error("Refund gagal diproses");
-  }
-
-  return result;
-}
-
-export function saveDraft(input: SaveDraftInput): CartDraft {
-  let created: CartDraft | undefined;
-
-  updateDatabase((database) => {
-    const { employee, branch } = selectSession(database);
-
-    if (input.items.length === 0) {
-      throw new Error("Keranjang masih kosong");
+  input.items.forEach((item) => {
+    const product = productMap.get(item.productId);
+    if (!product) throw new Error("Ada produk yang sudah tidak tersedia");
+    if (item.quantity > product.stock) {
+      throw new Error(`Stok ${product.name} tersisa ${product.stock}`);
     }
-
-    const productMap = new Map(
-      getProducts(database, branch.id).map((product) => [
-        product.id,
-        product,
-      ]),
-    );
-
-    input.items.forEach((item) => {
-      const product = productMap.get(item.productId);
-      if (!product) throw new Error("Ada produk yang sudah tidak tersedia");
-      if (item.quantity > product.stock) {
-        throw new Error(`Stok ${product.name} tersisa ${product.stock}`);
-      }
-    });
-
-    const now = new Date();
-    const totalQuantity = input.items.reduce(
-      (total, item) => total + item.quantity,
-      0,
-    );
-    const label = `Draft ${formatDateTimeShort(now)} · ${totalQuantity} item`;
-    const draft: CartDraft = {
-      id: createId("draft"),
-      label,
-      branchId: branch.id,
-      cashierId: employee.id,
-      salesEmployeeId: input.salesEmployeeId,
-      items: input.items,
-      discountType: input.discountType,
-      discountValue: input.discountValue,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    };
-
-    created = draft;
-
-    return appendActivity(
-      { ...database, drafts: [draft, ...database.drafts] },
-      { action: "Membuat", detail: label },
-    );
   });
 
-  if (!created) {
-    throw new Error("Draft gagal disimpan");
+  const totalQuantity = input.items.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
+  const label = `Draft ${formatDateTimeShort(new Date())} · ${totalQuantity} item`;
+
+  const result = await saveDraftAction({
+    branchId: branch.id,
+    cashierId: employee.id,
+    salesEmployeeId: input.salesEmployeeId,
+    label,
+    discountType: input.discountType,
+    discountValue: input.discountValue,
+    items: input.items,
+  });
+
+  if (!result.ok) throw new Error(result.error);
+
+  await syncSalesFromCloud({ force: true }).catch(() => undefined);
+
+  recordActivity({ action: "Membuat", detail: label });
+
+  return result.data;
+}
+
+export async function takeDraft(draftId: string): Promise<CartDraft | null> {
+  const result = await takeDraftAction(draftId);
+
+  if (!result.ok) {
+    if (result.error === "Draft tidak ditemukan") return null;
+    throw new Error(result.error);
   }
 
-  return created;
+  await syncSalesFromCloud({ force: true }).catch(() => undefined);
+  recordActivity({ action: "Membuka", detail: result.data.label });
+
+  return result.data;
 }
 
-export function takeDraft(draftId: string): CartDraft | null {
-  let taken: CartDraft | undefined;
+export async function deleteDraft(draftId: string): Promise<void> {
+  const draft = getDatabase().drafts.find((item) => item.id === draftId);
+  const result = await deleteDraftAction(draftId);
 
-  updateDatabase((database) => {
-    const draft = database.drafts.find((item) => item.id === draftId);
-    if (!draft) return database;
+  if (!result.ok) throw new Error(result.error);
 
-    taken = draft;
-
-    return appendActivity(
-      {
-        ...database,
-        drafts: database.drafts.filter((item) => item.id !== draftId),
-      },
-      { action: "Membuka", detail: draft.label },
-    );
-  });
-
-  return taken ?? null;
-}
-
-export function deleteDraft(draftId: string): void {
-  updateDatabase((database) => {
-    const draft = database.drafts.find((item) => item.id === draftId);
-    if (!draft) return database;
-
-    return appendActivity(
-      {
-        ...database,
-        drafts: database.drafts.filter((item) => item.id !== draftId),
-      },
-      { action: "Menghapus", detail: draft.label },
-    );
+  await syncSalesFromCloud({ force: true }).catch(() => undefined);
+  recordActivity({
+    action: "Menghapus",
+    detail: draft?.label ?? draftId,
   });
 }
 
