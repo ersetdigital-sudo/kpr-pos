@@ -30,20 +30,24 @@ export function BranchFormDrawer({
   const [address, setAddress] = useState(branch?.address ?? "");
   const [phone, setPhone] = useState(branch?.phone ?? "");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const isEditing = branch !== null;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
 
     try {
       const input = { name, address, phone };
 
       if (isEditing && branch) {
-        updateBranch(branch.id, input);
+        await updateBranch(branch.id, input);
         showToast(`Cabang ${name.trim()} diperbarui`, "success");
       } else {
-        createBranch(input);
+        await createBranch(input);
         showToast(
           `Cabang ${name.trim()} ditambahkan dengan stok 0 untuk semua produk`,
           "success",
@@ -55,6 +59,8 @@ export function BranchFormDrawer({
         caught instanceof Error ? caught.message : "Cabang gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -71,11 +77,20 @@ export function BranchFormDrawer({
       size="sm"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
             Batal
           </Button>
-          <Button variant="primary" type="submit" form="branch-form">
-            {isEditing ? "Simpan Perubahan" : "Simpan Cabang"}
+          <Button
+            variant="primary"
+            type="submit"
+            form="branch-form"
+            disabled={saving}
+          >
+            {saving
+              ? "Menyimpan…"
+              : isEditing
+                ? "Simpan Perubahan"
+                : "Simpan Cabang"}
           </Button>
         </>
       }

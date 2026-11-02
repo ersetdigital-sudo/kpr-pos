@@ -30,6 +30,7 @@ export function ReceiptSettingsCard({
   const [footerText, setFooterText] = useState(settings.footerText);
   const [error, setError] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const previewReceipt: ReceiptViewData = {
     ...preview,
@@ -37,11 +38,14 @@ export function ReceiptSettingsCard({
     footerText,
   };
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
 
     try {
-      updateReceiptSettings({ paperSize, footerText });
+      await updateReceiptSettings({ paperSize, footerText });
       showToast(`Pengaturan struk ${paperSize}mm disimpan`, "success");
       setError("");
     } catch (caught) {
@@ -49,6 +53,8 @@ export function ReceiptSettingsCard({
         caught instanceof Error ? caught.message : "Struk gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -107,11 +113,12 @@ export function ReceiptSettingsCard({
               variant="outline"
               size="md"
               onClick={() => setPreviewOpen(true)}
+              disabled={saving}
             >
               Preview Struk
             </Button>
-            <Button variant="primary" size="md" type="submit">
-              Simpan Struk
+            <Button variant="primary" size="md" type="submit" disabled={saving}>
+              {saving ? "Menyimpan…" : "Simpan Struk"}
             </Button>
           </div>
         </form>

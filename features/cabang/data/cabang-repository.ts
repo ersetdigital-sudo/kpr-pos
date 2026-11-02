@@ -1,15 +1,40 @@
 "use client";
 
-import { appendActivity, createId } from "@/lib/store/activity";
-import {
-  updateDatabase,
-  useHydratedDatabase,
-} from "@/lib/store/store";
-import type { AppDatabase, Branch } from "@/lib/store/types";
+import { recordActivity } from "@/lib/store/activity";
+import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
+import type { AppDatabase } from "@/lib/store/types";
 import type { BranchFormInput } from "@/features/cabang/types";
+import {
+  createBranchAction,
+  setBranchActiveAction,
+  updateBranchAction,
+} from "@/features/cabang/cloud-actions";
+import { syncSettingsBranchFromCloud } from "@/features/pengaturan/data/settings-cloud";
+import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
+import type { CloudActionResult } from "@/lib/cloud/result";
 
 export function useCabangData(): AppDatabase | null {
   return useHydratedDatabase();
+}
+
+function assertOk(result: CloudActionResult): void {
+  if (!result.ok) throw new Error(result.error);
+}
+
+async function refreshAfterWrite(includeStocks = false): Promise<void> {
+  try {
+    await syncSettingsBranchFromCloud({ force: true });
+  } catch (error) {
+    console.error("Sinkronisasi setelah simpan cabang gagal:", error);
+  }
+
+  if (includeStocks) {
+    try {
+      await syncProductStockFromCloud({ force: true });
+    } catch (error) {
+      console.error("Sinkronisasi stok cabang baru gagal:", error);
+    }
+  }
 }
 
 function validateFields(input: BranchFormInput): void {
@@ -38,103 +63,71 @@ function assertNameAvailable(
   if (duplicate) throw new Error("Nama cabang sudah dipakai");
 }
 
-export function createBranch(input: BranchFormInput): void {
-  updateDatabase((database) => {
-    validateFields(input);
-    assertNameAvailable(database, input.name);
+export async function createBranch(input: BranchFormInput): Promise<void> {
+  const database = getDatabase();
+  validateFields(input);
+  assertNameAvailable(database, input.name);
 
-    const name = input.name.trim();
-    const branch: Branch = {
-      id: createId("br"),
-      name,
-      address: input.address.trim(),
-      phone: input.phone.trim(),
-      isActive: true,
-    };
-
-    // Cabang baru mulai dengan stok 0 untuk semua produk.
-    const stocks = database.products.map((product) => ({
-      branchId: branch.id,
-      productId: product.id,
-      quantity: 0,
-      minStock: 5,
-    }));
-
-    return appendActivity(
-      {
-        ...database,
-        branches: [...database.branches, branch],
-        stocks: [...database.stocks, ...stocks],
-      },
-      { action: "Membuat", detail: `Cabang ${name} ditambahkan` },
-    );
+  const result = await createBranchAction(input);
+  assertOk(result);
+  await refreshAfterWrite(true);
+  recordActivity({
+    action: "Membuat",
+    detail: `Cabang ${input.name.trim()} ditambahkan`,
   });
 }
 
-export function updateBranch(
+export async function updateBranch(
   branchId: string,
   input: BranchFormInput,
-): void {
-  updateDatabase((database) => {
-    const target = database.branches.find((branch) => branch.id === branchId);
+): Promise<void> {
+  const database = getDatabase();
+  const target = database.branches.find((branch) => branch.id === branchId);
 
-    if (!target) throw new Error("Cabang tidak ditemukan");
+  if (!target) throw new Error("Cabang tidak ditemukan");
 
-    validateFields(input);
-    assertNameAvailable(database, input.name, branchId);
+  validateFields(input);
+  assertNameAvailable(database, input.name, branchId);
 
-    return appendActivity(
-      {
-        ...database,
-        branches: database.branches.map((branch) =>
-          branch.id === branchId
-            ? {
-                ...branch,
-                name: input.name.trim(),
-                address: input.address.trim(),
-                phone: input.phone.trim(),
-              }
-            : branch,
-        ),
-      },
-      { action: "Mengubah", detail: `Data cabang ${target.name} diperbarui` },
-    );
+  const result = await updateBranchAction(branchId, input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Data cabang ${target.name} diperbarui`,
   });
 }
 
-export function setBranchActive(branchId: string, isActive: boolean): void {
-  updateDatabase((database) => {
-    const target = database.branches.find((branch) => branch.id === branchId);
+export async function setBranchActive(
+  branchId: string,
+  isActive: boolean,
+): Promise<void> {
+  const database = getDatabase();
+  const target = database.branches.find((branch) => branch.id === branchId);
 
-    if (!target) throw new Error("Cabang tidak ditemukan");
+  if (!target) throw new Error("Cabang tidak ditemukan");
 
-    if (!isActive) {
-      const activeBranches = database.branches.filter(
-        (branch) => branch.isActive,
-      );
+  if (!isActive) {
+    const activeBranches = database.branches.filter(
+      (branch) => branch.isActive,
+    );
 
-      if (activeBranches.length <= 1) {
-        throw new Error("Minimal harus ada satu cabang aktif");
-      }
-
-      if (branchId === database.session.activeBranchId) {
-        throw new Error(
-          "Pindah ke cabang lain dulu sebelum menonaktifkan cabang ini",
-        );
-      }
+    if (activeBranches.length <= 1) {
+      throw new Error("Minimal harus ada satu cabang aktif");
     }
 
-    return appendActivity(
-      {
-        ...database,
-        branches: database.branches.map((branch) =>
-          branch.id === branchId ? { ...branch, isActive } : branch,
-        ),
-      },
-      {
-        action: "Mengubah",
-        detail: `Cabang ${target.name} ${isActive ? "diaktifkan" : "dinonaktifkan"}`,
-      },
-    );
+    if (branchId === database.session.activeBranchId) {
+      throw new Error(
+        "Pindah ke cabang lain dulu sebelum menonaktifkan cabang ini",
+      );
+    }
+  }
+
+  const result = await setBranchActiveAction(branchId, isActive);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Cabang ${target.name} ${isActive ? "diaktifkan" : "dinonaktifkan"}`,
   });
 }

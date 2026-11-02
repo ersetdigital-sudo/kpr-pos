@@ -34,10 +34,14 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
   const [accountHolder, setAccountHolder] = useState("");
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<BankAccount | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  function handleToggle(method: PaymentMethod, enabled: boolean) {
+  async function handleToggle(method: PaymentMethod, enabled: boolean) {
+    if (saving) return;
+    setSaving(true);
+
     try {
-      togglePaymentMethod(method, enabled);
+      await togglePaymentMethod(method, enabled);
       showToast(
         `Metode ${method} ${enabled ? "diaktifkan" : "dinonaktifkan"}`,
         "success",
@@ -47,6 +51,8 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
         caught instanceof Error ? caught.message : "Metode gagal diubah",
         "error",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -68,17 +74,20 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
     setFormOpen(true);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
 
     try {
       const input = { bankName, accountNumber, accountHolder };
 
       if (editing) {
-        updateBankAccount(editing.id, input);
+        await updateBankAccount(editing.id, input);
         showToast(`Rekening ${bankName.trim()} diperbarui`, "success");
       } else {
-        addBankAccount(input);
+        await addBankAccount(input);
         showToast(`Rekening ${bankName.trim()} ditambahkan`, "success");
       }
       setFormOpen(false);
@@ -87,14 +96,18 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
         caught instanceof Error ? caught.message : "Rekening gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
-  function handleDelete() {
-    if (!deleteTarget) return;
+  async function handleDelete() {
+    if (!deleteTarget || saving) return;
+
+    setSaving(true);
 
     try {
-      deleteBankAccount(deleteTarget.id);
+      await deleteBankAccount(deleteTarget.id);
       showToast(`Rekening ${deleteTarget.bankName} dihapus`, "success");
     } catch (caught) {
       showToast(
@@ -102,6 +115,7 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
         "error",
       );
     } finally {
+      setSaving(false);
       setDeleteTarget(null);
     }
   }
@@ -130,6 +144,7 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
                 <input
                   type="checkbox"
                   checked={enabled}
+                  disabled={saving}
                   onChange={(event) =>
                     handleToggle(method, event.target.checked)
                   }
@@ -146,7 +161,12 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
             <span className="text-label font-semibold text-ink-soft">
               Rekening transfer
             </span>
-            <Button variant="outline" size="sm" onClick={openCreate}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openCreate}
+              disabled={saving}
+            >
               + Tambah rekening
             </Button>
           </div>
@@ -181,6 +201,7 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
                       size="sm"
                       className="h-[30px] px-2.5 text-meta"
                       onClick={() => openEdit(account)}
+                      disabled={saving}
                     >
                       Edit
                     </Button>
@@ -189,6 +210,7 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
                       size="sm"
                       className="h-[30px] px-2.5 text-meta"
                       onClick={() => setDeleteTarget(account)}
+                      disabled={saving}
                     >
                       Hapus
                     </Button>
@@ -208,11 +230,20 @@ export function PaymentSettingsCard({ payment }: PaymentSettingsCardProps) {
         size="sm"
         footer={
           <>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setFormOpen(false)}
+              disabled={saving}
+            >
               Batal
             </Button>
-            <Button variant="primary" type="submit" form="bank-form">
-              Simpan
+            <Button
+              variant="primary"
+              type="submit"
+              form="bank-form"
+              disabled={saving}
+            >
+              {saving ? "Menyimpan…" : "Simpan"}
             </Button>
           </>
         }

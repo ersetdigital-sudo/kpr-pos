@@ -21,12 +21,16 @@ export function AttendanceSettingsCard({
   const [workStartTime, setWorkStartTime] = useState(settings.workStartTime);
   const [workEndTime, setWorkEndTime] = useState(settings.workEndTime);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
 
     try {
-      updateAttendanceSettings({ workStartTime, workEndTime });
+      await updateAttendanceSettings({ workStartTime, workEndTime });
       showToast(
         `Jam kerja ${workStartTime}–${workEndTime} disimpan`,
         "success",
@@ -37,6 +41,8 @@ export function AttendanceSettingsCard({
         caught instanceof Error ? caught.message : "Jam kerja gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -74,8 +80,8 @@ export function AttendanceSettingsCard({
         ) : null}
 
         <div className="flex justify-end">
-          <Button variant="primary" size="md" type="submit">
-            Simpan Jam Kerja
+          <Button variant="primary" size="md" type="submit" disabled={saving}>
+            {saving ? "Menyimpan…" : "Simpan Jam Kerja"}
           </Button>
         </div>
       </form>

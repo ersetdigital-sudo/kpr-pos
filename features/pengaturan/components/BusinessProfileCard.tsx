@@ -23,6 +23,7 @@ export function BusinessProfileCard({ business }: BusinessProfileCardProps) {
   const [phone, setPhone] = useState(business.phone);
   const [logoUrl, setLogoUrl] = useState(business.logoUrl ?? "");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   function handleLogoFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -42,11 +43,14 @@ export function BusinessProfileCard({ business }: BusinessProfileCardProps) {
     reader.readAsDataURL(file);
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
 
     try {
-      updateBusinessProfile({ name, address, phone, logoUrl });
+      await updateBusinessProfile({ name, address, phone, logoUrl });
       showToast("Profil usaha diperbarui", "success");
       setError("");
     } catch (caught) {
@@ -54,6 +58,8 @@ export function BusinessProfileCard({ business }: BusinessProfileCardProps) {
         caught instanceof Error ? caught.message : "Profil gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -134,8 +140,13 @@ export function BusinessProfileCard({ business }: BusinessProfileCardProps) {
         ) : null}
 
         <div className="flex justify-end">
-          <Button variant="primary" size="md" type="submit">
-            Simpan Profil
+          <Button
+            variant="primary"
+            size="md"
+            type="submit"
+            disabled={saving}
+          >
+            {saving ? "Menyimpan…" : "Simpan Profil"}
           </Button>
         </div>
       </form>

@@ -34,6 +34,7 @@ export function CabangPageContent() {
   const [deactivateTarget, setDeactivateTarget] = useState<BranchRow | null>(
     null,
   );
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   if (!database) {
     return (
@@ -48,9 +49,13 @@ export function CabangPageContent() {
     );
   }
 
-  function applyActive(row: BranchRow, isActive: boolean) {
+  async function applyActive(row: BranchRow, isActive: boolean) {
+    if (togglingId) return;
+
+    setTogglingId(row.id);
+
     try {
-      setBranchActive(row.id, isActive);
+      await setBranchActive(row.id, isActive);
       showToast(
         isActive
           ? `Cabang ${row.name} diaktifkan`
@@ -63,6 +68,7 @@ export function CabangPageContent() {
         "error",
       );
     } finally {
+      setTogglingId(null);
       setDeactivateTarget(null);
     }
   }

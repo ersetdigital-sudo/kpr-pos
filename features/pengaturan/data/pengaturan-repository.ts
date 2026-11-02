@@ -1,15 +1,14 @@
 "use client";
 
-import { createId, appendActivity, recordActivity } from "@/lib/store/activity";
+import { recordActivity } from "@/lib/store/activity";
 import {
+  getDatabase,
   resetDatabase,
-  updateDatabase,
   useHydratedDatabase,
 } from "@/lib/store/store";
 import type {
   AppDatabase,
   AttendanceSettings,
-  BankAccount,
   ReceiptSettings,
   SalesBonusSettings,
 } from "@/lib/store/types";
@@ -18,10 +17,34 @@ import type {
   BankAccountFormInput,
   BusinessFormInput,
 } from "@/features/pengaturan/types";
+import {
+  addBankAccountAction,
+  deleteBankAccountAction,
+  togglePaymentMethodAction,
+  updateAttendanceSettingsAction,
+  updateBankAccountAction,
+  updateBusinessProfileAction,
+  updateReceiptSettingsAction,
+  updateSalesBonusAction,
+} from "@/features/pengaturan/cloud-actions";
+import { syncSettingsBranchFromCloud } from "@/features/pengaturan/data/settings-cloud";
+import type { CloudActionResult } from "@/lib/cloud/result";
 import type { PaymentMethod } from "@/types";
 
 export function usePengaturanData(): AppDatabase | null {
   return useHydratedDatabase();
+}
+
+function assertOk(result: CloudActionResult): void {
+  if (!result.ok) throw new Error(result.error);
+}
+
+async function refreshAfterWrite(): Promise<void> {
+  try {
+    await syncSettingsBranchFromCloud({ force: true });
+  } catch (error) {
+    console.error("Sinkronisasi setelah simpan pengaturan gagal:", error);
+  }
 }
 
 function validateBusiness(input: BusinessFormInput): void {
@@ -36,55 +59,39 @@ function validateBusiness(input: BusinessFormInput): void {
   }
 }
 
-export function updateBusinessProfile(input: BusinessFormInput): void {
-  updateDatabase((database) => {
-    validateBusiness(input);
+export async function updateBusinessProfile(
+  input: BusinessFormInput,
+): Promise<void> {
+  validateBusiness(input);
 
-    return appendActivity(
-      {
-        ...database,
-        settings: {
-          ...database.settings,
-          business: {
-            name: input.name.trim(),
-            address: input.address.trim(),
-            phone: input.phone.trim(),
-            logoUrl: input.logoUrl || undefined,
-          },
-        },
-      },
-      { action: "Mengubah", detail: "Pengaturan profil usaha diperbarui" },
-    );
+  const result = await updateBusinessProfileAction(input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: "Pengaturan profil usaha diperbarui",
   });
 }
 
-export function togglePaymentMethod(
+export async function togglePaymentMethod(
   method: PaymentMethod,
   enabled: boolean,
-): void {
-  updateDatabase((database) => {
-    const current = database.settings.payment.enabledMethods;
-    const next = enabled
-      ? [...new Set([...current, method])]
-      : current.filter((item) => item !== method);
+): Promise<void> {
+  const current = getDatabase().settings.payment.enabledMethods;
+  const next = enabled
+    ? [...new Set([...current, method])]
+    : current.filter((item) => item !== method);
 
-    if (next.length === 0) {
-      throw new Error("Minimal satu metode pembayaran harus aktif");
-    }
+  if (next.length === 0) {
+    throw new Error("Minimal satu metode pembayaran harus aktif");
+  }
 
-    return appendActivity(
-      {
-        ...database,
-        settings: {
-          ...database.settings,
-          payment: { ...database.settings.payment, enabledMethods: next },
-        },
-      },
-      {
-        action: "Mengubah",
-        detail: `Metode ${method} ${enabled ? "diaktifkan" : "dinonaktifkan"}`,
-      },
-    );
+  const result = await togglePaymentMethodAction(method, enabled);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Metode ${method} ${enabled ? "diaktifkan" : "dinonaktifkan"}`,
   });
 }
 
@@ -93,213 +100,151 @@ function validateBankAccount(input: BankAccountFormInput): void {
     throw new Error("Nama bank minimal 2 karakter");
   }
   if (input.accountNumber.replace(/\s/g, "").length < 5) {
-    throw new Error("Nomor rekening minimal 5 karakter");
+    throw new Error("Nomor rekening minimal 5 digit");
   }
   if (input.accountHolder.trim().length < 2) {
     throw new Error("Nama pemilik rekening minimal 2 karakter");
   }
 }
 
-export function addBankAccount(input: BankAccountFormInput): void {
-  updateDatabase((database) => {
-    validateBankAccount(input);
+export async function addBankAccount(
+  input: BankAccountFormInput,
+): Promise<void> {
+  validateBankAccount(input);
 
-    const account: BankAccount = {
-      id: createId("bank"),
-      bankName: input.bankName.trim(),
-      accountNumber: input.accountNumber.trim(),
-      accountHolder: input.accountHolder.trim(),
-    };
-
-    return appendActivity(
-      {
-        ...database,
-        settings: {
-          ...database.settings,
-          payment: {
-            ...database.settings.payment,
-            bankAccounts: [...database.settings.payment.bankAccounts, account],
-          },
-        },
-      },
-      { action: "Membuat", detail: `Rekening ${account.bankName} ditambahkan` },
-    );
+  const result = await addBankAccountAction(input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Membuat",
+    detail: `Rekening ${input.bankName.trim()} ditambahkan`,
   });
 }
 
-export function updateBankAccount(
+export async function updateBankAccount(
   accountId: string,
   input: BankAccountFormInput,
-): void {
-  updateDatabase((database) => {
-    validateBankAccount(input);
+): Promise<void> {
+  validateBankAccount(input);
 
-    const target = database.settings.payment.bankAccounts.find(
-      (account) => account.id === accountId,
-    );
+  const target = getDatabase().settings.payment.bankAccounts.find(
+    (account) => account.id === accountId,
+  );
 
-    if (!target) throw new Error("Rekening tidak ditemukan");
-
-    return appendActivity(
-      {
-        ...database,
-        settings: {
-          ...database.settings,
-          payment: {
-            ...database.settings.payment,
-            bankAccounts: database.settings.payment.bankAccounts.map(
-              (account) =>
-                account.id === accountId
-                  ? {
-                      ...account,
-                      bankName: input.bankName.trim(),
-                      accountNumber: input.accountNumber.trim(),
-                      accountHolder: input.accountHolder.trim(),
-                    }
-                  : account,
-            ),
-          },
-        },
-      },
-      {
-        action: "Mengubah",
-        detail: `Rekening ${target.bankName} diperbarui`,
-      },
-    );
+  const result = await updateBankAccountAction(accountId, input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Rekening ${target?.bankName ?? input.bankName.trim()} diperbarui`,
   });
 }
 
-export function deleteBankAccount(accountId: string): void {
-  updateDatabase((database) => {
-    const accounts = database.settings.payment.bankAccounts;
-    const target = accounts.find((account) => account.id === accountId);
+export async function deleteBankAccount(accountId: string): Promise<void> {
+  const database = getDatabase();
+  const accounts = database.settings.payment.bankAccounts;
+  const target = accounts.find((account) => account.id === accountId);
 
-    if (!target) throw new Error("Rekening tidak ditemukan");
+  const transferEnabled =
+    database.settings.payment.enabledMethods.includes("Transfer");
 
-    const transferEnabled =
-      database.settings.payment.enabledMethods.includes("Transfer");
-
-    if (transferEnabled && accounts.length <= 1) {
-      throw new Error(
-        "Minimal satu rekening harus tersedia selama Transfer aktif",
-      );
-    }
-
-    return appendActivity(
-      {
-        ...database,
-        settings: {
-          ...database.settings,
-          payment: {
-            ...database.settings.payment,
-            bankAccounts: accounts.filter(
-              (account) => account.id !== accountId,
-            ),
-          },
-        },
-      },
-      { action: "Menghapus", detail: `Rekening ${target.bankName} dihapus` },
+  if (transferEnabled && accounts.length <= 1) {
+    throw new Error(
+      "Minimal satu rekening harus tersedia selama Transfer aktif",
     );
+  }
+
+  const result = await deleteBankAccountAction(accountId);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Menghapus",
+    detail: `Rekening ${target?.bankName ?? accountId} dihapus`,
   });
 }
 
-export function updateSalesBonus(input: SalesBonusSettings): void {
-  updateDatabase((database) => {
-    if (input.type === "per_piece" && input.perPieceAmount <= 0) {
-      throw new Error("Bonus per pcs harus lebih dari 0");
+export async function updateSalesBonus(
+  input: SalesBonusSettings,
+): Promise<void> {
+  if (input.type === "per_piece" && input.perPieceAmount <= 0) {
+    throw new Error("Bonus per pcs harus lebih dari 0");
+  }
+
+  if (
+    input.type === "percent" &&
+    (input.percentRate <= 0 || input.percentRate > 100)
+  ) {
+    throw new Error("Persentase bonus harus antara 1 dan 100");
+  }
+
+  if (input.type === "tiered") {
+    if (input.tiers.length === 0) {
+      throw new Error("Tambahkan minimal satu tingkat target");
     }
 
-    if (
-      input.type === "percent" &&
-      (input.percentRate <= 0 || input.percentRate > 100)
-    ) {
-      throw new Error("Persentase bonus harus antara 1 dan 100");
-    }
+    const targets = new Set<number>();
 
-    if (input.type === "tiered") {
-      if (input.tiers.length === 0) {
-        throw new Error("Tambahkan minimal satu tingkat target");
+    input.tiers.forEach((tier) => {
+      if (tier.minQuantity < 0) {
+        throw new Error("Target pcs tidak boleh negatif");
       }
+      if (tier.amountPerPiece <= 0) {
+        throw new Error("Bonus per pcs tiap tingkat harus lebih dari 0");
+      }
+      if (targets.has(tier.minQuantity)) {
+        throw new Error("Target pcs antar tingkat tidak boleh sama");
+      }
+      targets.add(tier.minQuantity);
+    });
+  }
 
-      const targets = new Set<number>();
-
-      input.tiers.forEach((tier) => {
-        if (tier.minQuantity < 0) {
-          throw new Error("Target pcs tidak boleh negatif");
-        }
-        if (tier.amountPerPiece <= 0) {
-          throw new Error("Bonus per pcs tiap tingkat harus lebih dari 0");
-        }
-        if (targets.has(tier.minQuantity)) {
-          throw new Error("Target pcs antar tingkat tidak boleh sama");
-        }
-        targets.add(tier.minQuantity);
-      });
-    }
-
-    const tiers = [...input.tiers].sort(
-      (first, second) => second.minQuantity - first.minQuantity,
-    );
-
-    return appendActivity(
-      {
-        ...database,
-        settings: {
-          ...database.settings,
-          salesBonus: { ...input, tiers },
-          // Nilai lama ikut diselaraskan agar pembaca lama tetap konsisten.
-          salesBonusPerPiece: input.perPieceAmount,
-        },
-      },
-      { action: "Mengubah", detail: "Aturan bonus sales diperbarui" },
-    );
+  const result = await updateSalesBonusAction(input);
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: "Aturan bonus sales diperbarui",
   });
 }
 
-export function updateReceiptSettings(input: ReceiptSettings): void {
-  updateDatabase((database) => {
-    if (input.footerText.trim().length < 3) {
-      throw new Error("Teks footer struk minimal 3 karakter");
-    }
+export async function updateReceiptSettings(
+  input: ReceiptSettings,
+): Promise<void> {
+  if (input.footerText.trim().length < 3) {
+    throw new Error("Teks footer struk minimal 3 karakter");
+  }
 
-    return appendActivity(
-      {
-        ...database,
-        settings: {
-          ...database.settings,
-          receipt: {
-            paperSize: input.paperSize,
-            footerText: input.footerText.trim(),
-          },
-        },
-      },
-      {
-        action: "Mengubah",
-        detail: `Pengaturan struk ${input.paperSize}mm diperbarui`,
-      },
-    );
+  const result = await updateReceiptSettingsAction(
+    input.paperSize,
+    input.footerText,
+  );
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Pengaturan struk ${input.paperSize}mm diperbarui`,
   });
 }
 
-export function updateAttendanceSettings(input: AttendanceSettings): void {
-  updateDatabase((database) => {
-    if (!input.workStartTime || !input.workEndTime) {
-      throw new Error("Jam masuk dan jam pulang wajib diisi");
-    }
-    if (input.workStartTime >= input.workEndTime) {
-      throw new Error("Jam pulang harus setelah jam masuk");
-    }
+export async function updateAttendanceSettings(
+  input: AttendanceSettings,
+): Promise<void> {
+  if (!input.workStartTime || !input.workEndTime) {
+    throw new Error("Jam masuk dan jam pulang wajib diisi");
+  }
+  if (input.workStartTime >= input.workEndTime) {
+    throw new Error("Jam pulang harus setelah jam masuk");
+  }
 
-    return appendActivity(
-      {
-        ...database,
-        settings: { ...database.settings, attendance: input },
-      },
-      {
-        action: "Mengubah",
-        detail: `Jam kerja ${input.workStartTime}–${input.workEndTime} diperbarui`,
-      },
-    );
+  const result = await updateAttendanceSettingsAction(
+    input.workStartTime,
+    input.workEndTime,
+  );
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Jam kerja ${input.workStartTime}–${input.workEndTime} diperbarui`,
   });
 }
 

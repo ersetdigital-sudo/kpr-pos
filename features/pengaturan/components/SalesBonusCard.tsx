@@ -36,6 +36,7 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
     })),
   );
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const draft: SalesBonusSettings = {
     type,
@@ -55,11 +56,14 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
     );
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
 
     try {
-      updateSalesBonus(draft);
+      await updateSalesBonus(draft);
       showToast("Aturan bonus sales diperbarui", "success");
       setError("");
     } catch (caught) {
@@ -67,6 +71,8 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
         caught instanceof Error ? caught.message : "Bonus gagal disimpan";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -193,8 +199,8 @@ export function SalesBonusCard({ settings }: SalesBonusCardProps) {
         ) : null}
 
         <div className="flex justify-end">
-          <Button variant="primary" size="md" type="submit">
-            Simpan Bonus
+          <Button variant="primary" size="md" type="submit" disabled={saving}>
+            {saving ? "Menyimpan…" : "Simpan Bonus"}
           </Button>
         </div>
       </form>

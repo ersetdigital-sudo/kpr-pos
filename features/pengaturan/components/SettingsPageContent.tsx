@@ -6,7 +6,6 @@ import { AttendanceSettingsCard } from "@/features/pengaturan/components/Attenda
 import { BusinessProfileCard } from "@/features/pengaturan/components/BusinessProfileCard";
 import { PaymentSettingsCard } from "@/features/pengaturan/components/PaymentSettingsCard";
 import { ReceiptSettingsCard } from "@/features/pengaturan/components/ReceiptSettingsCard";
-import { ResetDataCard } from "@/features/pengaturan/components/ResetDataCard";
 import { SalesBonusCard } from "@/features/pengaturan/components/SalesBonusCard";
 import { usePengaturanData } from "@/features/pengaturan/data/pengaturan-repository";
 import { buildReceiptPreview } from "@/features/pengaturan/data/pengaturan-calculations";
@@ -74,7 +73,6 @@ function SettingsBody({ database }: { database: AppDatabase }) {
           preview={preview}
         />
         <AttendanceSettingsCard settings={database.settings.attendance} />
-        <ResetDataCard />
       </div>
     </>
   );
