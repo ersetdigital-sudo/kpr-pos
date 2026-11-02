@@ -72,7 +72,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewProducts: true,
   },
   [ROLES.CASHIER]: {
-    canApplyDiscount: false,
+    canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
     canCreateSalesOrder: false,
@@ -89,7 +89,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewProducts: false,
   },
   [ROLES.INVENTORY]: {
-    canApplyDiscount: false,
+    canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: true,
     canCreateSalesOrder: false,
@@ -106,7 +106,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewProducts: true,
   },
   [ROLES.ACCOUNTANT]: {
-    canApplyDiscount: false,
+    canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
     canCreateSalesOrder: false,
@@ -123,7 +123,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewProducts: false,
   },
   [ROLES.SALES]: {
-    canApplyDiscount: false,
+    canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
     canCreateSalesOrder: true,
@@ -140,7 +140,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewProducts: false,
   },
   [ROLES.STAFF]: {
-    canApplyDiscount: false,
+    canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
     canCreateSalesOrder: false,
