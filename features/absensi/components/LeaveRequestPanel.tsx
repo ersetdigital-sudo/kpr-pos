@@ -39,12 +39,16 @@ export function LeaveRequestPanel({
   const [date, setDate] = useState(today);
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
 
     try {
-      submitLeaveRequest({ date, reason });
+      await submitLeaveRequest({ date, reason });
       showToast("Pengajuan izin terkirim, menunggu persetujuan", "success");
       setReason("");
       setError("");
@@ -53,12 +57,20 @@ export function LeaveRequestPanel({
         caught instanceof Error ? caught.message : "Pengajuan izin gagal";
       setError(message);
       showToast(message, "error");
+    } finally {
+      setSaving(false);
     }
   }
 
-  function handleReview(row: LeaveRequestRow, status: "Disetujui" | "Ditolak") {
+  async function handleReview(
+    row: LeaveRequestRow,
+    status: "Disetujui" | "Ditolak",
+  ) {
+    if (saving) return;
+    setSaving(true);
+
     try {
-      reviewLeaveRequest(row.id, status);
+      await reviewLeaveRequest(row.id, status);
       showToast(
         `Izin ${row.employeeName} ${formatDateShort(row.date)} ${status.toLowerCase()}`,
         "success",
@@ -68,6 +80,8 @@ export function LeaveRequestPanel({
         caught instanceof Error ? caught.message : "Pengajuan gagal diproses",
         "error",
       );
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -106,8 +120,8 @@ export function LeaveRequestPanel({
             className="min-h-10 text-label"
           />
         </Field>
-        <Button variant="primary" size="md" type="submit">
-          Ajukan
+        <Button variant="primary" size="md" type="submit" disabled={saving}>
+          {saving ? "Menyimpan…" : "Ajukan"}
         </Button>
       </form>
 
@@ -156,6 +170,7 @@ export function LeaveRequestPanel({
                   size="sm"
                   className="h-[32px] px-2.5 text-meta"
                   onClick={() => handleReview(row, "Disetujui")}
+                  disabled={saving}
                 >
                   Setujui
                 </Button>
@@ -164,6 +179,7 @@ export function LeaveRequestPanel({
                   size="sm"
                   className="h-[32px] px-2.5 text-meta"
                   onClick={() => handleReview(row, "Ditolak")}
+                  disabled={saving}
                 >
                   Tolak
                 </Button>

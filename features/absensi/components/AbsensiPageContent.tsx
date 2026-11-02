@@ -104,6 +104,7 @@ function AbsensiBody({
   onBranchChange,
   onNotify,
 }: AbsensiBodyProps) {
+  const [busy, setBusy] = useState(false);
   const today = toDateInputValue(new Date());
   const activeDate = dateInput || today;
   const activeMonth = monthInput || today.slice(0, 7);
@@ -136,9 +137,12 @@ function AbsensiBody({
       ? "Semua cabang"
       : (branches.find((item) => item.id === branchScope)?.name ?? branch.name);
 
-  function handleCheckIn() {
+  async function handleCheckIn() {
+    if (busy) return;
+    setBusy(true);
+
     try {
-      const result = checkIn();
+      const result = await checkIn();
       onNotify(
         result.late
           ? `Absen masuk ${result.time} · Telat`
@@ -150,18 +154,25 @@ function AbsensiBody({
         caught instanceof Error ? caught.message : "Absen masuk gagal",
         "error",
       );
+    } finally {
+      setBusy(false);
     }
   }
 
-  function handleCheckOut() {
+  async function handleCheckOut() {
+    if (busy) return;
+    setBusy(true);
+
     try {
-      const time = checkOut();
+      const time = await checkOut();
       onNotify(`Absen pulang ${time}`, "success");
     } catch (caught) {
       onNotify(
         caught instanceof Error ? caught.message : "Absen pulang gagal",
         "error",
       );
+    } finally {
+      setBusy(false);
     }
   }
 

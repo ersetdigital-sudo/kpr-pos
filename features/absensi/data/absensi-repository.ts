@@ -1,24 +1,23 @@
 "use client";
 
 import { ROLE_PERMISSIONS } from "@/config/permissions";
-import {
-  appendActivity,
-  createId,
-} from "@/lib/store/activity";
-import {
-  getDatabase,
-  updateDatabase,
-  useHydratedDatabase,
-} from "@/lib/store/store";
+import { recordActivity } from "@/lib/store/activity";
+import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
 import type {
   AppDatabase,
-  AttendanceRecord,
   Employee,
   LeaveRequestStatus,
 } from "@/lib/store/types";
 import { toDateInputValue } from "@/lib/date-range";
 import { formatDateShort, formatTime } from "@/lib/format";
 import { isLateCheckIn } from "@/features/absensi/data/absensi-calculations";
+import { syncAttendanceFromCloud } from "@/features/absensi/data/attendance-cloud";
+import {
+  checkInAction,
+  checkOutAction,
+  reviewLeaveAction,
+  submitLeaveAction,
+} from "@/features/absensi/cloud-actions";
 import type { CheckInResult } from "@/features/absensi/types";
 
 export function useAbsensiData(): AppDatabase | null {
@@ -34,7 +33,15 @@ function requireActor(database: AppDatabase): Employee {
   return actor;
 }
 
-export function checkIn(): CheckInResult {
+async function refreshAttendance(): Promise<void> {
+  try {
+    await syncAttendanceFromCloud({ force: true });
+  } catch (error) {
+    console.error("Sinkronisasi absensi gagal:", error);
+  }
+}
+
+export async function checkIn(): Promise<CheckInResult> {
   const now = new Date();
   const date = toDateInputValue(now);
   const time = formatTime(now);
@@ -43,81 +50,36 @@ export function checkIn(): CheckInResult {
     getDatabase().settings.attendance.workStartTime,
   );
 
-  updateDatabase((database) => {
-    const actor = requireActor(database);
-    const existing = database.attendance.find(
-      (record) => record.employeeId === actor.id && record.date === date,
-    );
+  const result = await checkInAction(date, time);
+  if (!result.ok) throw new Error(result.error);
 
-    if (existing?.checkIn) {
-      throw new Error("Kamu sudah absen masuk hari ini");
-    }
-
-    const record: AttendanceRecord = existing
-      ? { ...existing, branchId: database.session.activeBranchId, checkIn: time }
-      : {
-          id: createId("att"),
-          employeeId: actor.id,
-          branchId: database.session.activeBranchId,
-          date,
-          status: "Hadir",
-          checkIn: time,
-        };
-
-    const attendance = existing
-      ? database.attendance.map((entry) =>
-          entry.id === existing.id ? record : entry,
-        )
-      : [record, ...database.attendance];
-
-    return appendActivity(
-      { ...database, attendance },
-      {
-        action: "Membuat",
-        detail: `Absen masuk ${time}${late ? " · Telat" : ""}`,
-      },
-    );
+  await refreshAttendance();
+  recordActivity({
+    action: "Membuat",
+    detail: `Absen masuk ${time}${late ? " · Telat" : ""}`,
   });
 
   return { time, late };
 }
 
-export function checkOut(): string {
+export async function checkOut(): Promise<string> {
   const now = new Date();
   const date = toDateInputValue(now);
   const time = formatTime(now);
 
-  updateDatabase((database) => {
-    const actor = requireActor(database);
-    const existing = database.attendance.find(
-      (record) => record.employeeId === actor.id && record.date === date,
-    );
+  const result = await checkOutAction(date, time);
+  if (!result.ok) throw new Error(result.error);
 
-    if (!existing?.checkIn) {
-      throw new Error("Absen masuk dulu sebelum pulang");
-    }
-    if (existing.checkOut) {
-      throw new Error("Kamu sudah absen pulang hari ini");
-    }
-
-    return appendActivity(
-      {
-        ...database,
-        attendance: database.attendance.map((record) =>
-          record.id === existing.id ? { ...record, checkOut: time } : record,
-        ),
-      },
-      { action: "Mengubah", detail: `Absen pulang ${time}` },
-    );
-  });
+  await refreshAttendance();
+  recordActivity({ action: "Mengubah", detail: `Absen pulang ${time}` });
 
   return time;
 }
 
-export function submitLeaveRequest(input: {
+export async function submitLeaveRequest(input: {
   date: string;
   reason: string;
-}): void {
+}): Promise<void> {
   const date = input.date;
   const reason = input.reason.trim();
 
@@ -127,111 +89,45 @@ export function submitLeaveRequest(input: {
     throw new Error("Tanggal izin tidak boleh di masa lalu");
   }
 
-  updateDatabase((database) => {
-    const actor = requireActor(database);
-    const duplicate = database.leaveRequests.some(
-      (request) =>
-        request.employeeId === actor.id &&
-        request.date === date &&
-        request.status !== "Ditolak",
-    );
+  const result = await submitLeaveAction(date, reason);
+  if (!result.ok) throw new Error(result.error);
 
-    if (duplicate) {
-      throw new Error("Sudah ada pengajuan izin untuk tanggal itu");
-    }
-
-    return appendActivity(
-      {
-        ...database,
-        leaveRequests: [
-          {
-            id: createId("leave"),
-            employeeId: actor.id,
-            branchId: actor.branchId,
-            date,
-            reason,
-            status: "Menunggu",
-            createdAt: new Date().toISOString(),
-          },
-          ...database.leaveRequests,
-        ],
-      },
-      {
-        action: "Membuat",
-        detail: `Pengajuan izin ${formatDateShort(date)} · ${reason}`,
-      },
-    );
+  await refreshAttendance();
+  recordActivity({
+    action: "Membuat",
+    detail: `Pengajuan izin ${formatDateShort(date)} · ${reason}`,
   });
 }
 
-export function reviewLeaveRequest(
+export async function reviewLeaveRequest(
   requestId: string,
   status: Exclude<LeaveRequestStatus, "Menunggu">,
-): void {
-  updateDatabase((database) => {
-    const actor = requireActor(database);
+): Promise<void> {
+  const database = getDatabase();
+  const actor = requireActor(database);
 
-    if (!ROLE_PERMISSIONS[actor.role].canApproveLeave) {
-      throw new Error("Role ini tidak bisa menyetujui izin");
-    }
+  if (!ROLE_PERMISSIONS[actor.role].canApproveLeave) {
+    throw new Error("Role ini tidak bisa menyetujui izin");
+  }
 
-    const request = database.leaveRequests.find(
-      (entry) => entry.id === requestId,
-    );
+  const request = database.leaveRequests.find((entry) => entry.id === requestId);
+  if (!request) throw new Error("Pengajuan izin tidak ditemukan");
+  if (request.status !== "Menunggu") {
+    throw new Error("Pengajuan ini sudah diproses");
+  }
 
-    if (!request) throw new Error("Pengajuan izin tidak ditemukan");
-    if (request.status !== "Menunggu") {
-      throw new Error("Pengajuan ini sudah diproses");
-    }
+  const result = await reviewLeaveAction(requestId, status);
+  if (!result.ok) throw new Error(result.error);
 
-    let attendance = database.attendance;
+  await refreshAttendance();
 
-    // Izin disetujui langsung dicatat sebagai absensi agar rekap ikut terhitung.
-    if (status === "Disetujui") {
-      const existing = attendance.find(
-        (record) =>
-          record.employeeId === request.employeeId &&
-          record.date === request.date,
-      );
+  const employeeName =
+    database.employees.find(
+      (employee) => employee.id === request.employeeId,
+    )?.name ?? "Karyawan";
 
-      if (!existing) {
-        attendance = [
-          {
-            id: createId("att"),
-            employeeId: request.employeeId,
-            branchId: request.branchId,
-            date: request.date,
-            status: "Izin",
-          },
-          ...attendance,
-        ];
-      }
-    }
-
-    const employeeName =
-      database.employees.find(
-        (employee) => employee.id === request.employeeId,
-      )?.name ?? "Karyawan";
-
-    return appendActivity(
-      {
-        ...database,
-        attendance,
-        leaveRequests: database.leaveRequests.map((entry) =>
-          entry.id === requestId
-            ? {
-                ...entry,
-                status,
-                reviewedBy: actor.id,
-                reviewedAt: new Date().toISOString(),
-              }
-            : entry,
-        ),
-      },
-      {
-        action: "Mengubah",
-        detail: `Izin ${employeeName} ${formatDateShort(request.date)} ${status.toLowerCase()}`,
-      },
-    );
+  recordActivity({
+    action: "Mengubah",
+    detail: `Izin ${employeeName} ${formatDateShort(request.date)} ${status.toLowerCase()}`,
   });
 }

@@ -5,6 +5,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProductStockSyncProvider } from "@/features/produk/data/ProductStockSyncProvider";
 import { SettingsBranchSyncProvider } from "@/features/pengaturan/data/SettingsBranchSyncProvider";
 import { SalesSyncProvider } from "@/features/sales/data/SalesSyncProvider";
+import { AttendanceSyncProvider } from "@/features/absensi/data/AttendanceSyncProvider";
+import { ActivitySyncProvider } from "@/features/activity/data/ActivitySyncProvider";
 import { AuthSessionProvider } from "@/features/session/data/session-context";
 import { getAuthSession } from "@/lib/auth/session";
 
@@ -23,7 +25,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <ProductStockSyncProvider>
         <SettingsBranchSyncProvider>
           <SalesSyncProvider>
-            <AppShell>{children}</AppShell>
+            <AttendanceSyncProvider>
+              <ActivitySyncProvider>
+                <AppShell>{children}</AppShell>
+              </ActivitySyncProvider>
+            </AttendanceSyncProvider>
           </SalesSyncProvider>
         </SettingsBranchSyncProvider>
       </ProductStockSyncProvider>
