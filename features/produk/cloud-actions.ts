@@ -121,10 +121,21 @@ async function callRpc(
   try {
     const admin = createSupabaseAdminClient();
     const { error } = await admin.rpc(name, args);
-    if (error) return fail(error.message);
+
+    if (error) {
+      console.error(`[cloud-actions] RPC ${name} gagal`, {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      return fail(error.message);
+    }
+
     return { ok: true };
-  } catch {
-    return fail("Layanan data belum siap. Coba lagi.");
+  } catch (error) {
+    console.error(`[cloud-actions] RPC ${name} terputus`, error);
+    return fail(error);
   }
 }
 
