@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { NAV_SECTIONS, type NavItem } from "@/config/navigation";
 import { logoutAction } from "@/features/auth/actions";
-import { useSession } from "@/features/session/data/session-repository";
+import { usePermissions } from "@/features/session/data/session-repository";
 import { useDatabase } from "@/lib/store/store";
 import { cn } from "@/lib/cn";
 
@@ -22,13 +22,11 @@ function isItemActive(item: NavItem, pathname: string): boolean {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { employee } = useSession();
+  const permissions = usePermissions();
   const { business } = useDatabase().settings;
   const sections = NAV_SECTIONS.map((section) => ({
     label: section.label,
-    items: section.items.filter((item) =>
-      item.roles.includes(employee.role),
-    ),
+    items: section.items.filter((item) => item.canAccess(permissions)),
   })).filter((section) => section.items.length > 0);
 
   return (

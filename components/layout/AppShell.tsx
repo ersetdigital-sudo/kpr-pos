@@ -17,8 +17,8 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const { employee } = useSession();
-  const allowed = canAccessPath(pathname, employee.role);
+  const { permissions } = useSession();
+  const allowed = canAccessPath(pathname, permissions);
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);

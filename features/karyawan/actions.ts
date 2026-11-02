@@ -246,6 +246,8 @@ interface RolePermissionsRow {
   can_manage_employees: boolean;
   can_manage_branches: boolean;
   can_manage_settings: boolean;
+  can_use_cashier: boolean;
+  can_view_products: boolean;
 }
 
 function mapPermissions(row: RolePermissionsRow): RolePermissions {
@@ -263,6 +265,8 @@ function mapPermissions(row: RolePermissionsRow): RolePermissions {
     canManageEmployees: row.can_manage_employees,
     canManageBranches: row.can_manage_branches,
     canManageSettings: row.can_manage_settings,
+    canUseCashier: row.can_use_cashier,
+    canViewProducts: row.can_view_products,
   };
 }
 
@@ -279,7 +283,7 @@ export async function fetchRolePermissionsAction(): Promise<RoleMatrixResult> {
     const { data, error } = await admin
       .from("role_permissions")
       .select(
-        "role,can_apply_discount,can_cancel_transaction,can_manage_products,can_create_sales_order,can_manage_sales_orders,can_delete_sales_order,can_export_reports,can_view_all_branches,can_view_all_attendance,can_approve_leave,can_manage_employees,can_manage_branches,can_manage_settings",
+        "role,can_apply_discount,can_cancel_transaction,can_manage_products,can_create_sales_order,can_manage_sales_orders,can_delete_sales_order,can_export_reports,can_view_all_branches,can_view_all_attendance,can_approve_leave,can_manage_employees,can_manage_branches,can_manage_settings,can_use_cashier,can_view_products",
       );
 
     if (error) return { ok: false, error: FAILED };

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { canAccessPath } from "@/config/navigation";
-import { useSession } from "@/features/session/data/session-repository";
+import { usePermissions } from "@/features/session/data/session-repository";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { formatRupiah } from "@/lib/format";
 import type { TopSalesEntry } from "@/features/dashboard/types";
@@ -13,8 +13,8 @@ interface TopSalesCardProps {
 }
 
 export function TopSalesCard({ entries }: TopSalesCardProps) {
-  const { employee } = useSession();
-  const canViewOrders = canAccessPath("/pesanan", employee.role);
+  const permissions = usePermissions();
+  const canViewOrders = canAccessPath("/pesanan", permissions);
 
   return (
     <Card className="min-w-0 p-5">

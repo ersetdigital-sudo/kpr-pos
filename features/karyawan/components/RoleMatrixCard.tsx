@@ -32,6 +32,8 @@ const PERMISSION_ROWS: readonly {
   { key: "canManageEmployees", label: "Kelola karyawan" },
   { key: "canManageBranches", label: "Kelola cabang" },
   { key: "canManageSettings", label: "Pengaturan" },
+  { key: "canUseCashier", label: "Akses kasir" },
+  { key: "canViewProducts", label: "Lihat produk & stok" },
 ];
 
 interface RoleMatrixCardProps {

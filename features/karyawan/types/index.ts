@@ -57,8 +57,3 @@ export interface EmployeeStats {
   rolesUsed: number;
 }
 
-export interface RoleAccessRow {
-  menu: string;
-  section: string;
-  access: Record<Role, boolean>;
-}

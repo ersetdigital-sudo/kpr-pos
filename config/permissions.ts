@@ -15,6 +15,8 @@ export interface RolePermissions {
   canManageEmployees: boolean;
   canManageBranches: boolean;
   canManageSettings: boolean;
+  canUseCashier: boolean;
+  canViewProducts: boolean;
 }
 
 export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
@@ -32,6 +34,8 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: true,
     canManageBranches: true,
     canManageSettings: true,
+    canUseCashier: true,
+    canViewProducts: true,
   },
   [ROLES.MANAGER]: {
     canApplyDiscount: true,
@@ -47,6 +51,8 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: true,
     canManageBranches: false,
     canManageSettings: false,
+    canUseCashier: true,
+    canViewProducts: true,
   },
   [ROLES.SUPERVISOR]: {
     canApplyDiscount: true,
@@ -62,6 +68,8 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: false,
     canManageBranches: false,
     canManageSettings: false,
+    canUseCashier: true,
+    canViewProducts: true,
   },
   [ROLES.CASHIER]: {
     canApplyDiscount: false,
@@ -77,6 +85,8 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: false,
     canManageBranches: false,
     canManageSettings: false,
+    canUseCashier: true,
+    canViewProducts: false,
   },
   [ROLES.INVENTORY]: {
     canApplyDiscount: false,
@@ -92,6 +102,8 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: false,
     canManageBranches: false,
     canManageSettings: false,
+    canUseCashier: false,
+    canViewProducts: true,
   },
   [ROLES.ACCOUNTANT]: {
     canApplyDiscount: false,
@@ -107,6 +119,8 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: false,
     canManageBranches: false,
     canManageSettings: false,
+    canUseCashier: false,
+    canViewProducts: false,
   },
   [ROLES.SALES]: {
     canApplyDiscount: false,
@@ -122,6 +136,8 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: false,
     canManageBranches: false,
     canManageSettings: false,
+    canUseCashier: false,
+    canViewProducts: false,
   },
   [ROLES.STAFF]: {
     canApplyDiscount: false,
@@ -137,5 +153,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canManageEmployees: false,
     canManageBranches: false,
     canManageSettings: false,
+    canUseCashier: false,
+    canViewProducts: false,
   },
 };

@@ -1,11 +1,8 @@
-import { ALL_ROLES, type Role } from "@/constants/roles";
-import { NAV_SECTIONS } from "@/config/navigation";
 import type { AppDatabase } from "@/lib/store/types";
 import type {
   EmployeeFilters,
   EmployeeRow,
   EmployeeStats,
-  RoleAccessRow,
 } from "@/features/karyawan/types";
 
 export function buildEmployeeRows(
@@ -65,21 +62,4 @@ export function calculateEmployeeStats(database: AppDatabase): EmployeeStats {
     inactive: database.employees.length - active.length,
     rolesUsed: roles.size,
   };
-}
-
-/** Matriks menu yang bisa dibuka per role, diambil dari config navigasi. */
-export function buildRoleMatrix(): RoleAccessRow[] {
-  return NAV_SECTIONS.flatMap((section) =>
-    section.items.map((item) => ({
-      menu: item.label,
-      section: section.label,
-      access: ALL_ROLES.reduce(
-        (result, role) => ({
-          ...result,
-          [role]: item.roles.includes(role),
-        }),
-        {} as Record<Role, boolean>,
-      ),
-    })),
-  );
 }

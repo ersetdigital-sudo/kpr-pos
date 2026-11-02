@@ -1,18 +1,20 @@
 import type { IconName } from "@/components/ui/Icon";
-import { ALL_ROLES, ROLES, type Role } from "@/constants/roles";
+import type { RolePermissions } from "@/config/permissions";
 
 export interface NavItem {
   label: string;
   /** Kosongkan href untuk menu yang halamannya belum tersedia. */
   href?: string;
   icon: IconName;
-  roles: readonly Role[];
+  canAccess: (permissions: RolePermissions) => boolean;
 }
 
 export interface NavSection {
   label: string;
   items: readonly NavItem[];
 }
+
+const always = () => true;
 
 export function findNavItemByPath(pathname: string): NavItem | undefined {
   return NAV_SECTIONS.flatMap((section) => section.items).find(
@@ -22,9 +24,12 @@ export function findNavItemByPath(pathname: string): NavItem | undefined {
   );
 }
 
-export function canAccessPath(pathname: string, role: Role): boolean {
+export function canAccessPath(
+  pathname: string,
+  permissions: RolePermissions,
+): boolean {
   const item = findNavItemByPath(pathname);
-  return item ? item.roles.includes(role) : true;
+  return item ? item.canAccess(permissions) : true;
 }
 
 export const NAV_SECTIONS: readonly NavSection[] = [
@@ -35,7 +40,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         label: "Dashboard",
         href: "/dashboard",
         icon: "dashboard",
-        roles: ALL_ROLES,
+        canAccess: always,
       },
     ],
   },
@@ -46,36 +51,34 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         label: "Kasir",
         href: "/kasir",
         icon: "receipt",
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.SUPERVISOR, ROLES.CASHIER],
+        canAccess: (permissions) => permissions.canUseCashier,
       },
       {
         label: "Pesanan Sales",
         href: "/pesanan",
         icon: "clipboard",
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.SUPERVISOR, ROLES.SALES],
+        canAccess: (permissions) =>
+          permissions.canCreateSalesOrder ||
+          permissions.canManageSalesOrders,
       },
       {
         label: "Produk & Stok",
         href: "/produk",
         icon: "package",
-        roles: [
-          ROLES.OWNER,
-          ROLES.MANAGER,
-          ROLES.SUPERVISOR,
-          ROLES.INVENTORY,
-        ],
+        canAccess: (permissions) =>
+          permissions.canViewProducts || permissions.canManageProducts,
       },
       {
         label: "Absensi",
         href: "/absensi",
         icon: "clock",
-        roles: ALL_ROLES,
+        canAccess: always,
       },
       {
         label: "Laporan",
         href: "/laporan",
         icon: "chart",
-        roles: [ROLES.OWNER, ROLES.MANAGER, ROLES.ACCOUNTANT],
+        canAccess: (permissions) => permissions.canExportReports,
       },
     ],
   },
@@ -86,19 +89,19 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         label: "Karyawan & Role",
         href: "/karyawan",
         icon: "users",
-        roles: [ROLES.OWNER, ROLES.MANAGER],
+        canAccess: (permissions) => permissions.canManageEmployees,
       },
       {
         label: "Cabang",
         href: "/cabang",
         icon: "store",
-        roles: [ROLES.OWNER, ROLES.MANAGER],
+        canAccess: (permissions) => permissions.canManageBranches,
       },
       {
         label: "Pengaturan",
         href: "/pengaturan",
         icon: "settings",
-        roles: [ROLES.OWNER],
+        canAccess: (permissions) => permissions.canManageSettings,
       },
     ],
   },
