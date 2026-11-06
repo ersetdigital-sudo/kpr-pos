@@ -17,6 +17,10 @@ import {
   inviteEmployeeAction,
   updateEmployeeAccountAction,
 } from "@/features/karyawan/actions";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import type { EmployeeRow } from "@/features/karyawan/types";
 import type { Branch } from "@/lib/store/types";
 
@@ -64,12 +68,14 @@ export function EmployeeFormDrawer({
 
     try {
       if (isEditing && employee) {
-        const result = await updateEmployeeAccountAction(employee.id, {
-          name,
-          phone,
-          role,
-          branch,
-        });
+        const result = await trackCloudWrite(() =>
+          updateEmployeeAccountAction(employee.id, {
+            name,
+            phone,
+            role,
+            branch,
+          }),
+        );
 
         if (!result.ok) {
           setError(result.error);
@@ -78,6 +84,7 @@ export function EmployeeFormDrawer({
         }
 
         updateEmployee(employee.id, { name, phone, role, branchId });
+        void syncAppFromCloud({ force: true }).catch(() => undefined);
         showToast(`Data ${name.trim()} diperbarui`, "success");
       } else {
         if (password.length < 8) {
@@ -85,14 +92,16 @@ export function EmployeeFormDrawer({
           return;
         }
 
-        const result = await inviteEmployeeAction({
-          name,
-          email,
-          password,
-          phone,
-          role,
-          branch,
-        });
+        const result = await trackCloudWrite(() =>
+          inviteEmployeeAction({
+            name,
+            email,
+            password,
+            phone,
+            role,
+            branch,
+          }),
+        );
 
         if (!result.ok) {
           setError(result.error);

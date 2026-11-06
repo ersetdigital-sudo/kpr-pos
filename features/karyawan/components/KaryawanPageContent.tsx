@@ -23,6 +23,10 @@ import {
   deleteEmployeeAccountAction,
   setEmployeeAccountActiveAction,
 } from "@/features/karyawan/actions";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import type {
   EmployeeFilters,
   EmployeeRow,
@@ -78,11 +82,14 @@ export function KaryawanPageContent() {
 
   async function applyActive(row: EmployeeRow, isActive: boolean) {
     try {
-      const result = await setEmployeeAccountActiveAction(row.id, isActive);
+      const result = await trackCloudWrite(() =>
+        setEmployeeAccountActiveAction(row.id, isActive),
+      );
 
       if (!result.ok) throw new Error(result.error);
 
       setEmployeeActive(row.id, isActive);
+      void syncAppFromCloud({ force: true }).catch(() => undefined);
       showToast(
         isActive
           ? `${row.name} diaktifkan`
@@ -105,9 +112,12 @@ export function KaryawanPageContent() {
     setDeleting(true);
 
     try {
-      const result = await deleteEmployeeAccountAction(deleteTarget.id);
+      const result = await trackCloudWrite(() =>
+        deleteEmployeeAccountAction(deleteTarget.id),
+      );
       if (!result.ok) throw new Error(result.error);
       showToast(`${deleteTarget.name} dihapus permanen`, "success");
+      void syncAppFromCloud({ force: true }).catch(() => undefined);
       router.refresh();
     } catch (caught) {
       showToast(

@@ -1,154 +1,13 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import {
-  buildProductCostLookup,
-  withUnitCostSnapshot,
-} from "@/lib/store/profit";
-import {
-  createSeedDatabase,
-  DEFAULT_ATTENDANCE,
-  DEFAULT_SALES_BONUS,
-} from "@/lib/store/seed";
-import type {
-  AppDatabase,
-  LeaveRequest,
-  SalesOrder,
-  StoreSettings,
-} from "@/lib/store/types";
+import { createEmptyDatabase } from "@/lib/store/defaults";
+import type { AppDatabase } from "@/lib/store/types";
 
-export const DB_STORAGE_KEY = "kpr-pos-db-v1";
-
-const SERVER_SNAPSHOT = createSeedDatabase();
+const SERVER_SNAPSHOT = createEmptyDatabase();
 const listeners = new Set<() => void>();
 
 let clientSnapshot: AppDatabase | null = null;
-let storageListenerAttached = false;
-let storedDatabaseFound = false;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object";
-}
-
-/**
- * Menormalkan data tersimpan. Data lama (schemaVersion 1/2) dimigrasikan ke v3
- * tanpa menghapus transaksi/draft milik pengguna.
- */
-function normalizeDatabase(value: unknown): AppDatabase | null {
-  if (!isRecord(value)) return null;
-
-  const version = value.schemaVersion;
-  const coreArrays = [
-    "branches",
-    "employees",
-    "categories",
-    "products",
-    "stocks",
-    "transactions",
-    "drafts",
-    "salesOrders",
-    "attendance",
-    "activityLogs",
-  ];
-
-  if (
-    typeof version !== "number" ||
-    version < 1 ||
-    version > 3 ||
-    coreArrays.some((key) => !Array.isArray(value[key])) ||
-    !isRecord(value.settings) ||
-    !isRecord(value.session) ||
-    typeof value.session.currentEmployeeId !== "string" ||
-    typeof value.session.activeBranchId !== "string"
-  ) {
-    return null;
-  }
-
-  const database = value as unknown as AppDatabase;
-  const settings = database.settings as StoreSettings;
-  const productCostById = buildProductCostLookup(database.products);
-
-  // Data lama belum menyimpan harga modal per item; isi dari costPrice produk
-  // saat migrasi agar laporan lama tidak ikut berubah ketika modal diedit.
-  const transactions = database.transactions.map((transaction) => ({
-    ...transaction,
-    items: transaction.items.map((item) =>
-      withUnitCostSnapshot(item, productCostById),
-    ),
-  }));
-
-  return {
-    ...database,
-    schemaVersion: 3,
-    employees: database.employees.map((employee) => ({
-      ...employee,
-      phone: employee.phone ?? "",
-    })),
-    products: database.products.map((product) => ({
-      ...product,
-      imageUrl: product.imageUrl || undefined,
-    })),
-    transactions,
-    leaveRequests: Array.isArray(database.leaveRequests)
-      ? (database.leaveRequests as LeaveRequest[])
-      : [],
-    stockIns: Array.isArray(database.stockIns) ? database.stockIns : [],
-    stockOpnames: Array.isArray(database.stockOpnames)
-      ? database.stockOpnames
-      : [],
-    stockTransfers: Array.isArray(database.stockTransfers)
-      ? database.stockTransfers
-      : [],
-    salesOrders: database.salesOrders.map((order) => ({
-      ...order,
-      items: order.items.map((item) =>
-        withUnitCostSnapshot(item, productCostById),
-      ),
-      // Pesanan Lunas lama belum punya paidAt; createdAt dipakai sebagai
-      // perkiraan tanggal lunas agar bonus tetap masuk periode yang tepat.
-      paidAt:
-        order.status === "Lunas"
-          ? (order.paidAt ?? order.createdAt)
-          : order.paidAt,
-      // Pesanan lunas dari v1 dianggap sudah memotong stok saat dibuat.
-      stockApplied:
-        typeof order.stockApplied === "boolean"
-          ? order.stockApplied
-          : order.status === "Lunas",
-    })) as SalesOrder[],
-    settings: {
-      ...settings,
-      business: {
-        ...settings.business,
-        logoUrl: settings.business.logoUrl || undefined,
-      },
-      salesBonus: settings.salesBonus ?? DEFAULT_SALES_BONUS,
-      attendance: settings.attendance ?? DEFAULT_ATTENDANCE,
-    },
-  };
-}
-
-function loadDatabase(): AppDatabase {
-  if (typeof window === "undefined") return SERVER_SNAPSHOT;
-
-  try {
-    const raw = window.localStorage.getItem(DB_STORAGE_KEY);
-
-    if (raw) {
-      storedDatabaseFound = true;
-      const parsed: unknown = JSON.parse(raw);
-      const normalized = normalizeDatabase(parsed);
-
-      if (normalized) {
-        return normalized;
-      }
-    }
-  } catch {
-    // Data rusak atau localStorage diblokir: kembali ke data awal.
-  }
-
-  return createSeedDatabase();
-}
 
 function emitChange() {
   for (const listener of listeners) {
@@ -156,39 +15,25 @@ function emitChange() {
   }
 }
 
-function attachStorageListener() {
-  if (storageListenerAttached || typeof window === "undefined") return;
-
-  storageListenerAttached = true;
-  window.addEventListener("storage", (event) => {
-    if (event.key !== DB_STORAGE_KEY) return;
-
-    clientSnapshot = null;
-    emitChange();
-  });
-}
-
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  attachStorageListener();
 
   return () => {
     listeners.delete(listener);
   };
 }
 
-export function getDatabase(): AppDatabase {
-  if (!clientSnapshot) {
-    clientSnapshot = loadDatabase();
-  }
-
-  return clientSnapshot;
+/**
+ * Mengisi cache dari snapshot cloud sebelum render pertama. Tidak memicu
+ * listener karena dipanggil saat provider belum me-render anak-anaknya.
+ */
+export function primeDatabase(database: AppDatabase): AppDatabase {
+  clientSnapshot = database;
+  return database;
 }
 
-/** True jika perangkat ini sudah pernah menyimpan data POS sebelumnya. */
-export function hasStoredDatabase(): boolean {
-  getDatabase();
-  return storedDatabaseFound;
+export function getDatabase(): AppDatabase {
+  return clientSnapshot ?? SERVER_SNAPSHOT;
 }
 
 export function useDatabase(): AppDatabase {
@@ -196,8 +41,8 @@ export function useDatabase(): AppDatabase {
 }
 
 /**
- * Versi yang bernilai null sampai store selesai di-hydrate di browser. Dipakai
- * untuk nilai yang bergantung pada waktu nyata agar tidak ikut prerender.
+ * Versi yang bernilai null sampai store ter-hydrate di browser. Dipakai untuk
+ * nilai yang bergantung pada waktu nyata agar tidak ikut prerender.
  */
 export function useHydratedDatabase(): AppDatabase | null {
   return useSyncExternalStore(subscribe, getDatabase, () => null);
@@ -210,33 +55,13 @@ export function updateDatabase(
   const next = updater(getDatabase());
 
   clientSnapshot = next;
-
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Store tetap jalan di memori walau penyimpanan browser penuh/diblokir.
-    }
-  }
-
   emitChange();
 
   return next;
 }
 
-/** Mengembalikan seluruh data ke data demo awal (dipakai Pengaturan). */
-export function resetDatabase(): void {
-  const next = createSeedDatabase();
-
-  clientSnapshot = next;
-
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Store tetap jalan di memori walau penyimpanan browser penuh/diblokir.
-    }
-  }
-
+/** Mengosongkan cache tampilan; data berikutnya selalu datang dari cloud. */
+export function resetDatabaseCache(): void {
+  clientSnapshot = createEmptyDatabase();
   emitChange();
 }

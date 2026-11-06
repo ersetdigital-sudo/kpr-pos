@@ -19,6 +19,7 @@ import {
 import {
   createTransaction,
   deleteDraft,
+  loadTransactionHistory,
   logCartCancellation,
   refundTransaction,
   saveDraft,
@@ -64,6 +65,9 @@ export function KasirWorkspace() {
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRows, setHistoryRows] = useState<
+    TransactionHistoryRow[] | null
+  >(null);
   const [refundTarget, setRefundTarget] =
     useState<TransactionHistoryRow | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -295,6 +299,16 @@ export function KasirWorkspace() {
     }
   }
 
+  async function handleOpenHistory() {
+    setHistoryOpen(true);
+
+    try {
+      setHistoryRows(await loadTransactionHistory(data.branch.id));
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    }
+  }
+
   function handleCancelCart() {
     if (totals.itemCount === 0) {
       showToast("Keranjang sudah kosong", "info");
@@ -322,6 +336,7 @@ export function KasirWorkspace() {
         reason,
       });
       setRefundTarget(null);
+      setHistoryRows(null);
       showToast(
         `Transaksi ${result.transaction.invoiceNumber} direfund · ${formatRupiah(result.refundedAmount)}`,
         "success",
@@ -387,7 +402,7 @@ export function KasirWorkspace() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setHistoryOpen(true)}
+              onClick={handleOpenHistory}
             >
               Riwayat Transaksi
             </Button>
@@ -451,7 +466,7 @@ export function KasirWorkspace() {
 
       <TransactionHistoryModal
         open={historyOpen}
-        transactions={data.transactions}
+        transactions={historyRows ?? data.transactions}
         canRefund={permissions.canCancelTransaction}
         onClose={() => setHistoryOpen(false)}
         onRequestRefund={setRefundTarget}

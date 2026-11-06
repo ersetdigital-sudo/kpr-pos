@@ -5,7 +5,10 @@ import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
 import { formatNumber, formatRupiah } from "@/lib/format";
 import { selectSession } from "@/features/session/data/session-repository";
 import { hasSalesHistory } from "@/features/produk/data/produk-calculations";
-import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import {
   addStockInAction,
   createCategoryAction,
@@ -41,14 +44,14 @@ function assertOk(result: CloudActionResult): void {
 
 async function refreshAfterWrite(): Promise<void> {
   try {
-    await syncProductStockFromCloud({ force: true });
+    await syncAppFromCloud({ force: true });
   } catch (error) {
     console.error("Sinkronisasi setelah simpan produk/stok gagal:", error);
   }
 }
 
 export async function createProduct(input: ProductFormInput): Promise<void> {
-  const result = await createProductAction(input);
+  const result = await trackCloudWrite(() => createProductAction(input));
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -61,7 +64,9 @@ export async function updateProduct(
   productId: string,
   input: ProductFormInput,
 ): Promise<void> {
-  const result = await updateProductAction(productId, input);
+  const result = await trackCloudWrite(() =>
+    updateProductAction(productId, input),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -74,7 +79,9 @@ export async function setProductActive(
   productId: string,
   isActive: boolean,
 ): Promise<void> {
-  const result = await setProductActiveAction(productId, isActive);
+  const result = await trackCloudWrite(() =>
+    setProductActiveAction(productId, isActive),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -92,9 +99,11 @@ export async function deleteProduct(
   if (!product) throw new Error("Produk tidak ditemukan");
 
   const sold = hasSalesHistory(database, productId);
-  const result = sold
-    ? await setProductActiveAction(productId, false)
-    : await deleteProductAction(productId);
+  const result = await trackCloudWrite(() =>
+    sold
+      ? setProductActiveAction(productId, false)
+      : deleteProductAction(productId),
+  );
 
   assertOk(result);
   await refreshAfterWrite();
@@ -113,7 +122,7 @@ export async function deleteProduct(
 
 export async function createCategory(name: string): Promise<void> {
   const trimmed = name.trim();
-  const result = await createCategoryAction(trimmed);
+  const result = await trackCloudWrite(() => createCategoryAction(trimmed));
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({ action: "Membuat", detail: `Kategori ${trimmed}` });
@@ -129,7 +138,9 @@ export async function updateCategory(
     (category) => category.id === categoryId,
   );
 
-  const result = await updateCategoryAction(categoryId, trimmed);
+  const result = await trackCloudWrite(() =>
+    updateCategoryAction(categoryId, trimmed),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -141,7 +152,9 @@ export async function updateCategory(
 export async function deleteCategory(categoryId: string): Promise<void> {
   const database = getDatabase();
   const category = database.categories.find((item) => item.id === categoryId);
-  const result = await deleteCategoryAction(categoryId);
+  const result = await trackCloudWrite(() =>
+    deleteCategoryAction(categoryId),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -153,7 +166,9 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 export async function addStockIn(input: StockInInput): Promise<void> {
   const { branch } = selectSession(getDatabase());
   const total = input.items.reduce((sum, item) => sum + item.quantity, 0);
-  const result = await addStockInAction(branch.id, input);
+  const result = await trackCloudWrite(() =>
+    addStockInAction(branch.id, input),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -164,7 +179,9 @@ export async function addStockIn(input: StockInInput): Promise<void> {
 
 export async function submitOpname(input: OpnameInput): Promise<void> {
   const { branch } = selectSession(getDatabase());
-  const result = await submitOpnameAction(branch.id, input);
+  const result = await trackCloudWrite(() =>
+    submitOpnameAction(branch.id, input),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -181,7 +198,9 @@ export async function transferStock(input: TransferInput): Promise<void> {
   );
   const total = input.items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const result = await transferStockAction(branch.id, input);
+  const result = await trackCloudWrite(() =>
+    transferStockAction(branch.id, input),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -194,7 +213,9 @@ export async function importProducts(
   rows: readonly ImportProductPayload[],
 ): Promise<number> {
   const { branch } = selectSession(getDatabase());
-  const result = await importProductsAction(branch.id, rows);
+  const result = await trackCloudWrite(() =>
+    importProductsAction(branch.id, rows),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({

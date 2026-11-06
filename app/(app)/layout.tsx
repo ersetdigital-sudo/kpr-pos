@@ -2,13 +2,9 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AppShell } from "@/components/layout/AppShell";
-import { ProductStockSyncProvider } from "@/features/produk/data/ProductStockSyncProvider";
-import { SettingsBranchSyncProvider } from "@/features/pengaturan/data/SettingsBranchSyncProvider";
-import { SalesSyncProvider } from "@/features/sales/data/SalesSyncProvider";
-import { AttendanceSyncProvider } from "@/features/absensi/data/AttendanceSyncProvider";
-import { ActivitySyncProvider } from "@/features/activity/data/ActivitySyncProvider";
-import { EmployeeSyncProvider } from "@/features/karyawan/data/EmployeeSyncProvider";
 import { AuthSessionProvider } from "@/features/session/data/session-context";
+import { AppSyncProvider } from "@/features/sync/data/AppSyncProvider";
+import { readAppSnapshot } from "@/features/sync/data/app-snapshot";
 import { getAuthSession } from "@/lib/auth/session";
 
 export const instant = false;
@@ -21,21 +17,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect("/login");
   }
 
+  // Satu snapshot untuk render pertama: tidak ada enam action berurutan.
+  const snapshot = await readAppSnapshot(session);
+
   return (
     <AuthSessionProvider session={session}>
-      <ProductStockSyncProvider>
-        <SettingsBranchSyncProvider>
-          <SalesSyncProvider>
-            <AttendanceSyncProvider>
-              <ActivitySyncProvider>
-                <EmployeeSyncProvider>
-                  <AppShell>{children}</AppShell>
-                </EmployeeSyncProvider>
-              </ActivitySyncProvider>
-            </AttendanceSyncProvider>
-          </SalesSyncProvider>
-        </SettingsBranchSyncProvider>
-      </ProductStockSyncProvider>
+      <AppSyncProvider initialSnapshot={snapshot}>
+        <AppShell>{children}</AppShell>
+      </AppSyncProvider>
     </AuthSessionProvider>
   );
 }

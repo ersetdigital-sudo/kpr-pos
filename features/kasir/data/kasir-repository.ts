@@ -24,12 +24,15 @@ import { selectSession } from "@/features/session/data/session-repository";
 import {
   createTransactionAction,
   deleteDraftAction,
+  fetchTransactionHistoryAction,
   refundTransactionAction,
   saveDraftAction,
   takeDraftAction,
 } from "@/features/sales/cloud-actions";
-import { syncSalesFromCloud } from "@/features/sales/data/sales-cloud";
-import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import type {
   CartLine,
   CashierData,
@@ -148,6 +151,17 @@ export function getTransactionHistory(
     }));
 }
 
+/**
+ * Riwayat transaksi cabang aktif langsung dari server (bukan snapshot harian),
+ * dipakai saat modal Riwayat Transaksi dibuka.
+ */
+export async function loadTransactionHistory(
+  branchId: string,
+): Promise<TransactionHistoryRow[]> {
+  const transactions = await fetchTransactionHistoryAction(branchId);
+  return getTransactionHistory({ ...getDatabase(), transactions }, branchId);
+}
+
 function getDraftTotal(
   database: ReturnType<typeof getDatabase>,
   draft: CartDraft,
@@ -261,16 +275,11 @@ function buildReceiptView(
 }
 
 async function refreshAfterSale(): Promise<void> {
-  await Promise.allSettled([
-    syncSalesFromCloud({ force: true }),
-    syncProductStockFromCloud({ force: true }),
-  ]).then((results) => {
-    results.forEach((result) => {
-      if (result.status === "rejected") {
-        console.error("Sinkronisasi setelah transaksi gagal:", result.reason);
-      }
-    });
-  });
+  try {
+    await syncAppFromCloud({ force: true });
+  } catch (error) {
+    console.error("Sinkronisasi setelah transaksi gagal:", error);
+  }
 }
 
 /**
@@ -349,17 +358,19 @@ export async function createTransaction(
       )
     : undefined;
 
-  const result = await createTransactionAction({
-    branchId: branch.id,
-    cashierId: employee.id,
-    salesEmployeeId: salesEmployee?.id ?? null,
-    items: input.items,
-    discountType: input.discountType,
-    discountValue: input.discountValue,
-    paymentMethod: input.paymentMethod,
-    cashReceived: input.cashReceived,
-    bankAccountId: input.bankAccountId,
-  });
+  const result = await trackCloudWrite(() =>
+    createTransactionAction({
+      branchId: branch.id,
+      cashierId: employee.id,
+      salesEmployeeId: salesEmployee?.id ?? null,
+      items: input.items,
+      discountType: input.discountType,
+      discountValue: input.discountValue,
+      paymentMethod: input.paymentMethod,
+      cashReceived: input.cashReceived,
+      bankAccountId: input.bankAccountId,
+    }),
+  );
 
   if (!result.ok) throw new Error(result.error);
 
@@ -403,7 +414,9 @@ export async function refundTransaction(
     throw new Error("Alasan refund minimal 3 karakter");
   }
 
-  const result = await refundTransactionAction(input.transactionId, reason);
+  const result = await trackCloudWrite(() =>
+    refundTransactionAction(input.transactionId, reason),
+  );
   if (!result.ok) throw new Error(result.error);
 
   await refreshAfterSale();
@@ -445,19 +458,21 @@ export async function saveDraft(input: SaveDraftInput): Promise<CartDraft> {
   );
   const label = `Draft ${formatDateTimeShort(new Date())} · ${totalQuantity} item`;
 
-  const result = await saveDraftAction({
-    branchId: branch.id,
-    cashierId: employee.id,
-    salesEmployeeId: input.salesEmployeeId,
-    label,
-    discountType: input.discountType,
-    discountValue: input.discountValue,
-    items: input.items,
-  });
+  const result = await trackCloudWrite(() =>
+    saveDraftAction({
+      branchId: branch.id,
+      cashierId: employee.id,
+      salesEmployeeId: input.salesEmployeeId,
+      label,
+      discountType: input.discountType,
+      discountValue: input.discountValue,
+      items: input.items,
+    }),
+  );
 
   if (!result.ok) throw new Error(result.error);
 
-  await syncSalesFromCloud({ force: true }).catch(() => undefined);
+  await syncAppFromCloud({ force: true }).catch(() => undefined);
 
   recordActivity({ action: "Membuat", detail: label });
 
@@ -465,14 +480,14 @@ export async function saveDraft(input: SaveDraftInput): Promise<CartDraft> {
 }
 
 export async function takeDraft(draftId: string): Promise<CartDraft | null> {
-  const result = await takeDraftAction(draftId);
+  const result = await trackCloudWrite(() => takeDraftAction(draftId));
 
   if (!result.ok) {
     if (result.error === "Draft tidak ditemukan") return null;
     throw new Error(result.error);
   }
 
-  await syncSalesFromCloud({ force: true }).catch(() => undefined);
+  await syncAppFromCloud({ force: true }).catch(() => undefined);
   recordActivity({ action: "Membuka", detail: result.data.label });
 
   return result.data;
@@ -480,11 +495,11 @@ export async function takeDraft(draftId: string): Promise<CartDraft | null> {
 
 export async function deleteDraft(draftId: string): Promise<void> {
   const draft = getDatabase().drafts.find((item) => item.id === draftId);
-  const result = await deleteDraftAction(draftId);
+  const result = await trackCloudWrite(() => deleteDraftAction(draftId));
 
   if (!result.ok) throw new Error(result.error);
 
-  await syncSalesFromCloud({ force: true }).catch(() => undefined);
+  await syncAppFromCloud({ force: true }).catch(() => undefined);
   recordActivity({
     action: "Menghapus",
     detail: draft?.label ?? draftId,

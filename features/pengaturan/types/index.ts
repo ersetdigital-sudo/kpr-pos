@@ -18,8 +18,3 @@ export interface SettingsBranchSnapshot {
   branches: Branch[];
   isEmpty: boolean;
 }
-
-export interface SettingsBranchBootstrapPayload {
-  settings: StoreSettings;
-  branches: Branch[];
-}

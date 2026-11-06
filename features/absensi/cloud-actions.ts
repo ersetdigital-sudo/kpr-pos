@@ -2,42 +2,13 @@
 
 import { getAuthSession, getAuthorizedSession } from "@/lib/auth/session";
 import { callServiceRpc } from "@/lib/cloud/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { CloudBootstrapResult } from "@/lib/cloud/result";
 import type {
   AttendanceRecord,
   AttendanceStatus,
   LeaveRequest,
   LeaveRequestStatus,
 } from "@/lib/store/types";
-import type {
-  AttendanceBootstrapPayload,
-  AttendanceDataResult,
-  AttendanceSnapshot,
-} from "@/lib/cloud/attendance-types";
-import type { SessionState } from "@/features/session/types";
-
-interface AttendanceRow {
-  id: string;
-  employee_id: string;
-  branch_id: string;
-  date: string;
-  status: string;
-  check_in: string | null;
-  check_out: string | null;
-}
-
-interface LeaveRow {
-  id: string;
-  employee_id: string;
-  branch_id: string;
-  date: string;
-  reason: string;
-  status: string;
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  created_at: string;
-}
+import type { AttendanceDataResult } from "@/lib/cloud/attendance-types";
 
 interface AttendanceJson {
   id: string;
@@ -65,32 +36,6 @@ function fail(message: string): { ok: false; error: string } {
   return { ok: false, error: message };
 }
 
-function mapAttendance(row: AttendanceRow): AttendanceRecord {
-  return {
-    id: row.id,
-    employeeId: row.employee_id,
-    branchId: row.branch_id,
-    date: row.date,
-    status: row.status as AttendanceStatus,
-    checkIn: row.check_in?.slice(0, 5) ?? undefined,
-    checkOut: row.check_out?.slice(0, 5) ?? undefined,
-  };
-}
-
-function mapLeave(row: LeaveRow): LeaveRequest {
-  return {
-    id: row.id,
-    employeeId: row.employee_id,
-    branchId: row.branch_id,
-    date: row.date,
-    reason: row.reason,
-    status: row.status as LeaveRequestStatus,
-    reviewedBy: row.reviewed_by ?? undefined,
-    reviewedAt: row.reviewed_at ?? undefined,
-    createdAt: row.created_at,
-  };
-}
-
 function mapAttendanceJson(row: AttendanceJson): AttendanceRecord {
   return {
     id: row.id,
@@ -115,69 +60,6 @@ function mapLeaveJson(row: LeaveJson): LeaveRequest {
     reviewedAt: row.reviewedAt ?? undefined,
     createdAt: row.createdAt,
   };
-}
-
-async function readSnapshot(session: SessionState): Promise<AttendanceSnapshot> {
-  const admin = createSupabaseAdminClient();
-  const permissions = session.permissions;
-
-  const [attendanceResult, leaveResult] = await Promise.all([
-    admin
-      .from("attendance")
-      .select("id,employee_id,branch_id,date,status,check_in,check_out")
-      .order("date", { ascending: false }),
-    admin
-      .from("leave_requests")
-      .select("id,employee_id,branch_id,date,reason,status,reviewed_by,reviewed_at,created_at")
-      .order("created_at", { ascending: false }),
-  ]);
-
-  const error = attendanceResult.error ?? leaveResult.error;
-  if (error) throw new Error(error.message);
-
-  const attendance = ((attendanceResult.data ?? []) as AttendanceRow[])
-    .filter(
-      (row) =>
-        permissions.canViewAllAttendance ||
-        row.employee_id === session.employee.id,
-    )
-    .map(mapAttendance);
-
-  const leaveRequests = ((leaveResult.data ?? []) as LeaveRow[])
-    .filter(
-      (row) =>
-        permissions.canApproveLeave ||
-        row.employee_id === session.employee.id,
-    )
-    .map(mapLeave);
-
-  return {
-    attendance,
-    leaveRequests,
-    isEmpty: attendance.length === 0 && leaveRequests.length === 0,
-  };
-}
-
-export async function fetchAttendanceSnapshotAction(): Promise<AttendanceSnapshot> {
-  const session = await getAuthSession();
-  if (!session) throw new Error("Sesi pengguna tidak ditemukan");
-  return readSnapshot(session);
-}
-
-export async function bootstrapAttendanceAction(
-  payload: AttendanceBootstrapPayload,
-): Promise<CloudBootstrapResult> {
-  const session = await getAuthorizedSession("canViewAllAttendance");
-  if (!session) {
-    return { ok: false, error: "Anda tidak punya akses memindahkan absensi." };
-  }
-
-  const result = await callServiceRpc<boolean>("fn_bootstrap_attendance", {
-    p_payload: payload,
-  });
-
-  if (!result.ok) return { ok: false, error: result.error };
-  return { ok: true, bootstrapped: result.data === true };
 }
 
 export async function checkInAction(

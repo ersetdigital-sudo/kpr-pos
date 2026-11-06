@@ -9,8 +9,10 @@ import {
   setBranchActiveAction,
   updateBranchAction,
 } from "@/features/cabang/cloud-actions";
-import { syncSettingsBranchFromCloud } from "@/features/pengaturan/data/settings-cloud";
-import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import type { CloudActionResult } from "@/lib/cloud/result";
 
 export function useCabangData(): AppDatabase | null {
@@ -21,19 +23,11 @@ function assertOk(result: CloudActionResult): void {
   if (!result.ok) throw new Error(result.error);
 }
 
-async function refreshAfterWrite(includeStocks = false): Promise<void> {
+async function refreshAfterWrite(): Promise<void> {
   try {
-    await syncSettingsBranchFromCloud({ force: true });
+    await syncAppFromCloud({ force: true });
   } catch (error) {
     console.error("Sinkronisasi setelah simpan cabang gagal:", error);
-  }
-
-  if (includeStocks) {
-    try {
-      await syncProductStockFromCloud({ force: true });
-    } catch (error) {
-      console.error("Sinkronisasi stok cabang baru gagal:", error);
-    }
   }
 }
 
@@ -68,9 +62,9 @@ export async function createBranch(input: BranchFormInput): Promise<void> {
   validateFields(input);
   assertNameAvailable(database, input.name);
 
-  const result = await createBranchAction(input);
+  const result = await trackCloudWrite(() => createBranchAction(input));
   assertOk(result);
-  await refreshAfterWrite(true);
+  await refreshAfterWrite();
   recordActivity({
     action: "Membuat",
     detail: `Cabang ${input.name.trim()} ditambahkan`,
@@ -89,7 +83,9 @@ export async function updateBranch(
   validateFields(input);
   assertNameAvailable(database, input.name, branchId);
 
-  const result = await updateBranchAction(branchId, input);
+  const result = await trackCloudWrite(() =>
+    updateBranchAction(branchId, input),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -123,7 +119,9 @@ export async function setBranchActive(
     }
   }
 
-  const result = await setBranchActiveAction(branchId, isActive);
+  const result = await trackCloudWrite(() =>
+    setBranchActiveAction(branchId, isActive),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({

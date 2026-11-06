@@ -6,7 +6,10 @@ import type { AppDatabase, LeaveRequestStatus } from "@/lib/store/types";
 import { toDateInputValue } from "@/lib/date-range";
 import { formatDateShort, formatTime } from "@/lib/format";
 import { isLateCheckIn } from "@/features/absensi/data/absensi-calculations";
-import { syncAttendanceFromCloud } from "@/features/absensi/data/attendance-cloud";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import {
   checkInAction,
   checkOutAction,
@@ -21,7 +24,7 @@ export function useAbsensiData(): AppDatabase | null {
 
 async function refreshAttendance(): Promise<void> {
   try {
-    await syncAttendanceFromCloud({ force: true });
+    await syncAppFromCloud({ force: true });
   } catch (error) {
     console.error("Sinkronisasi absensi gagal:", error);
   }
@@ -36,7 +39,7 @@ export async function checkIn(): Promise<CheckInResult> {
     getDatabase().settings.attendance.workStartTime,
   );
 
-  const result = await checkInAction(date, time);
+  const result = await trackCloudWrite(() => checkInAction(date, time));
   if (!result.ok) throw new Error(result.error);
 
   await refreshAttendance();
@@ -53,7 +56,7 @@ export async function checkOut(): Promise<string> {
   const date = toDateInputValue(now);
   const time = formatTime(now);
 
-  const result = await checkOutAction(date, time);
+  const result = await trackCloudWrite(() => checkOutAction(date, time));
   if (!result.ok) throw new Error(result.error);
 
   await refreshAttendance();
@@ -75,7 +78,7 @@ export async function submitLeaveRequest(input: {
     throw new Error("Tanggal izin tidak boleh di masa lalu");
   }
 
-  const result = await submitLeaveAction(date, reason);
+  const result = await trackCloudWrite(() => submitLeaveAction(date, reason));
   if (!result.ok) throw new Error(result.error);
 
   await refreshAttendance();
@@ -96,7 +99,9 @@ export async function reviewLeaveRequest(
     throw new Error("Pengajuan ini sudah diproses");
   }
 
-  const result = await reviewLeaveAction(requestId, status);
+  const result = await trackCloudWrite(() =>
+    reviewLeaveAction(requestId, status),
+  );
   if (!result.ok) throw new Error(result.error);
 
   await refreshAttendance();

@@ -1,5 +1,4 @@
 import type { AppDatabase, Transaction } from "@/lib/store/types";
-import { createSeedDatabase } from "@/lib/store/seed";
 import type { ReceiptViewData } from "@/features/kasir/types";
 
 /**
@@ -40,23 +39,32 @@ export function buildReceiptPreview(database: AppDatabase): ReceiptViewData {
   };
 }
 
+/** Contoh struk netral untuk preview; tidak pernah disimpan ke store. */
 function buildSampleTransaction(database: AppDatabase): Transaction {
-  const seed = createSeedDatabase();
-  const transaction = seed.transactions[0];
-
-  if (!transaction) {
-    throw new Error("Data contoh struk tidak tersedia");
-  }
+  const product = database.products[0];
+  const unitPrice = product?.price ?? 15_000;
+  const unitCost = product?.costPrice ?? 10_000;
 
   return {
-    ...transaction,
+    id: "preview",
     invoiceNumber: "INV-PREVIEW",
-    branchId: database.branches[0]?.id ?? transaction.branchId,
-    cashierId: database.employees[0]?.id ?? transaction.cashierId,
-    payment: {
-      method: transaction.payment.method,
-      cashReceived: transaction.payment.cashReceived,
-      change: transaction.payment.change,
-    },
+    branchId: database.branches[0]?.id ?? "",
+    cashierId: database.employees[0]?.id ?? "",
+    salesEmployeeId: null,
+    items: [
+      {
+        productId: product?.id ?? "preview",
+        productName: product?.name ?? "Contoh Produk",
+        unitPrice,
+        unitCost,
+        quantity: 1,
+        lineTotal: unitPrice,
+      },
+    ],
+    subtotal: unitPrice,
+    discount: { type: "nominal", value: 0, amount: 0 },
+    total: unitPrice,
+    payment: { method: "Cash", cashReceived: unitPrice, change: 0 },
+    createdAt: "2026-01-01T00:00:00.000Z",
   };
 }

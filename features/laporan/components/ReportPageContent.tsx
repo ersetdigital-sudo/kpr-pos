@@ -40,7 +40,6 @@ import type { AppDatabase, Branch } from "@/lib/store/types";
 const INITIAL_RANGE: DateRangeValue = { preset: "month", start: "", end: "" };
 
 export function LaporanPageContent() {
-  const database = useLaporanData();
   const { branch, branches } = useSession();
   const permissions = usePermissions();
   const { showToast } = useToast();
@@ -48,6 +47,9 @@ export function LaporanPageContent() {
   const [branchId, setBranchId] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
   const [userFilter, setUserFilter] = useState<string>("all");
+
+  const branchScope = permissions.canViewAllBranches ? branchId : branch.id;
+  const database = useLaporanData(range, branchScope);
 
   const logUsers = useMemo(
     () => (database ? buildLogUsers(database) : []),

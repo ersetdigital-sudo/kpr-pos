@@ -1,11 +1,7 @@
 "use client";
 
 import { recordActivity } from "@/lib/store/activity";
-import {
-  getDatabase,
-  resetDatabase,
-  useHydratedDatabase,
-} from "@/lib/store/store";
+import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
 import type {
   AppDatabase,
   AttendanceSettings,
@@ -27,7 +23,10 @@ import {
   updateReceiptSettingsAction,
   updateSalesBonusAction,
 } from "@/features/pengaturan/cloud-actions";
-import { syncSettingsBranchFromCloud } from "@/features/pengaturan/data/settings-cloud";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import type { CloudActionResult } from "@/lib/cloud/result";
 import type { PaymentMethod } from "@/types";
 
@@ -41,7 +40,7 @@ function assertOk(result: CloudActionResult): void {
 
 async function refreshAfterWrite(): Promise<void> {
   try {
-    await syncSettingsBranchFromCloud({ force: true });
+    await syncAppFromCloud({ force: true });
   } catch (error) {
     console.error("Sinkronisasi setelah simpan pengaturan gagal:", error);
   }
@@ -64,7 +63,9 @@ export async function updateBusinessProfile(
 ): Promise<void> {
   validateBusiness(input);
 
-  const result = await updateBusinessProfileAction(input);
+  const result = await trackCloudWrite(() =>
+    updateBusinessProfileAction(input),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -86,7 +87,9 @@ export async function togglePaymentMethod(
     throw new Error("Minimal satu metode pembayaran harus aktif");
   }
 
-  const result = await togglePaymentMethodAction(method, enabled);
+  const result = await trackCloudWrite(() =>
+    togglePaymentMethodAction(method, enabled),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -112,7 +115,7 @@ export async function addBankAccount(
 ): Promise<void> {
   validateBankAccount(input);
 
-  const result = await addBankAccountAction(input);
+  const result = await trackCloudWrite(() => addBankAccountAction(input));
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -131,7 +134,9 @@ export async function updateBankAccount(
     (account) => account.id === accountId,
   );
 
-  const result = await updateBankAccountAction(accountId, input);
+  const result = await trackCloudWrite(() =>
+    updateBankAccountAction(accountId, input),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -154,7 +159,9 @@ export async function deleteBankAccount(accountId: string): Promise<void> {
     );
   }
 
-  const result = await deleteBankAccountAction(accountId);
+  const result = await trackCloudWrite(() =>
+    deleteBankAccountAction(accountId),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -198,7 +205,7 @@ export async function updateSalesBonus(
     });
   }
 
-  const result = await updateSalesBonusAction(input);
+  const result = await trackCloudWrite(() => updateSalesBonusAction(input));
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
@@ -214,9 +221,8 @@ export async function updateReceiptSettings(
     throw new Error("Teks footer struk minimal 3 karakter");
   }
 
-  const result = await updateReceiptSettingsAction(
-    input.paperSize,
-    input.footerText,
+  const result = await trackCloudWrite(() =>
+    updateReceiptSettingsAction(input.paperSize, input.footerText),
   );
   assertOk(result);
   await refreshAfterWrite();
@@ -236,9 +242,8 @@ export async function updateAttendanceSettings(
     throw new Error("Jam pulang harus setelah jam masuk");
   }
 
-  const result = await updateAttendanceSettingsAction(
-    input.workStartTime,
-    input.workEndTime,
+  const result = await trackCloudWrite(() =>
+    updateAttendanceSettingsAction(input.workStartTime, input.workEndTime),
   );
   assertOk(result);
   await refreshAfterWrite();
@@ -248,11 +253,17 @@ export async function updateAttendanceSettings(
   });
 }
 
-/** Mengembalikan seluruh data ke data demo awal. */
+/**
+ * Memuat ulang cache tampilan dari Supabase. Data demo tidak pernah dibuat
+ * lagi karena cloud adalah satu-satunya sumber data.
+ */
 export function resetDemoData(): void {
-  resetDatabase();
+  void syncAppFromCloud({ force: true }).catch((error) => {
+    console.error("Muat ulang data dari server gagal:", error);
+  });
+
   recordActivity({
     action: "Mengubah",
-    detail: `Data demo direset ke data awal (${formatDateShort(new Date())})`,
+    detail: `Cache tampilan dimuat ulang dari server (${formatDateShort(new Date())})`,
   });
 }

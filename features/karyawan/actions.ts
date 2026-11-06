@@ -5,12 +5,12 @@ import {
   ROLE_PERMISSIONS,
   type RolePermissions,
 } from "@/config/permissions";
-import { getAuthSession, getAuthorizedSession } from "@/lib/auth/session";
+import { getAuthorizedSession } from "@/lib/auth/session";
 import { callServiceRpc } from "@/lib/cloud/server";
 import type { CloudActionResult } from "@/lib/cloud/result";
 import { buildInitials } from "@/lib/initials";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { Branch, Employee } from "@/lib/store/types";
+import type { Branch } from "@/lib/store/types";
 import type {
   EmployeeAccountInput,
   EmployeeAccountResult,
@@ -321,43 +321,6 @@ export async function saveRolePermissionsAction(
   });
 
   return result.ok ? { ok: true } : { ok: false, error: result.error };
-}
-
-export async function fetchEmployeeSnapshotAction(): Promise<Employee[]> {
-  const session = await getAuthSession();
-  if (!session) return [];
-
-  try {
-    const admin = createSupabaseAdminClient();
-    const { data, error } = await admin
-      .from("employees")
-      .select("id,name,phone,initials,role,branch_id,is_active")
-      .order("name");
-
-    if (error) return [];
-
-    return ((data ?? []) as {
-      id: string;
-      name: string;
-      phone: string | null;
-      initials: string;
-      role: string;
-      branch_id: string;
-      is_active: boolean;
-    }[])
-      .filter((row) => isRole(row.role))
-      .map((row) => ({
-        id: row.id,
-        name: row.name,
-        phone: row.phone ?? "",
-        initials: row.initials,
-        role: row.role as Employee["role"],
-        branchId: row.branch_id,
-        isActive: row.is_active,
-      }));
-  } catch {
-    return [];
-  }
 }
 
 export async function deleteEmployeeAccountAction(

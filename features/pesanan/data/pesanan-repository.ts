@@ -20,27 +20,22 @@ import {
   deleteSalesOrderAction,
   updateSalesOrderStatusAction,
 } from "@/features/sales/cloud-actions";
-import { syncSalesFromCloud } from "@/features/sales/data/sales-cloud";
-import { syncProductStockFromCloud } from "@/features/produk/data/produk-cloud";
+import {
+  syncAppFromCloud,
+  trackCloudWrite,
+} from "@/features/sync/data/app-sync";
 import type { CreateOrderInput } from "@/features/pesanan/types";
 
 export function usePesananData(): AppDatabase | null {
   return useHydratedDatabase();
 }
 
-async function refreshAfterOrder(includeStock = false): Promise<void> {
-  await Promise.allSettled([
-    syncSalesFromCloud({ force: true }),
-    includeStock
-      ? syncProductStockFromCloud({ force: true })
-      : Promise.resolve(),
-  ]).then((results) => {
-    results.forEach((result) => {
-      if (result.status === "rejected") {
-        console.error("Sinkronisasi setelah pesanan gagal:", result.reason);
-      }
-    });
-  });
+async function refreshAfterOrder(): Promise<void> {
+  try {
+    await syncAppFromCloud({ force: true });
+  } catch (error) {
+    console.error("Sinkronisasi setelah pesanan gagal:", error);
+  }
 }
 
 export async function createSalesOrder(
@@ -87,17 +82,19 @@ export async function createSalesOrder(
     if (quantity <= 0) throw new Error("Jumlah produk harus lebih dari 0");
   });
 
-  const result = await createSalesOrderAction({
-    branchId: input.branchId,
-    salesEmployeeId: salesEmployee.id,
-    customerName,
-    customerPhone: input.customerPhone.trim(),
-    note: input.note.trim(),
-    items: [...merged.entries()].map(([productId, quantity]) => ({
-      productId,
-      quantity,
-    })),
-  });
+  const result = await trackCloudWrite(() =>
+    createSalesOrderAction({
+      branchId: input.branchId,
+      salesEmployeeId: salesEmployee.id,
+      customerName,
+      customerPhone: input.customerPhone.trim(),
+      note: input.note.trim(),
+      items: [...merged.entries()].map(([productId, quantity]) => ({
+        productId,
+        quantity,
+      })),
+    }),
+  );
 
   if (!result.ok) throw new Error(result.error);
 
@@ -120,7 +117,7 @@ export async function deleteSalesOrder(orderId: string): Promise<void> {
     throw new Error("Batalkan pesanan terlebih dahulu sebelum menghapus");
   }
 
-  const result = await deleteSalesOrderAction(orderId);
+  const result = await trackCloudWrite(() => deleteSalesOrderAction(orderId));
   if (!result.ok) throw new Error(result.error);
 
   await refreshAfterOrder();
@@ -152,10 +149,12 @@ export async function updateSalesOrderStatus(
   }
 
   const totalQuantity = getOrderQuantity(order);
-  const result = await updateSalesOrderStatusAction(orderId, nextStatus);
+  const result = await trackCloudWrite(() =>
+    updateSalesOrderStatusAction(orderId, nextStatus),
+  );
   if (!result.ok) throw new Error(result.error);
 
-  await refreshAfterOrder(true);
+  await refreshAfterOrder();
 
   recordActivity({
     action: nextStatus === "Dibatalkan" ? "Membatalkan" : "Mengubah",
