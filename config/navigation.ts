@@ -14,8 +14,6 @@ export interface NavSection {
   items: readonly NavItem[];
 }
 
-const always = () => true;
-
 export function findNavItemByPath(pathname: string): NavItem | undefined {
   return NAV_SECTIONS.flatMap((section) => section.items).find(
     (item) =>
@@ -32,6 +30,19 @@ export function canAccessPath(
   return item ? item.canAccess(permissions) : true;
 }
 
+/** Halaman pertama yang boleh dibuka role ini, urut sesuai NAV_SECTIONS. */
+export function getFirstAccessiblePath(
+  permissions: RolePermissions,
+): string | null {
+  for (const section of NAV_SECTIONS) {
+    for (const item of section.items) {
+      if (item.href && item.canAccess(permissions)) return item.href;
+    }
+  }
+
+  return null;
+}
+
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     label: "UTAMA",
@@ -40,7 +51,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         label: "Dashboard",
         href: "/dashboard",
         icon: "dashboard",
-        canAccess: always,
+        canAccess: (permissions) => permissions.canViewDashboard,
       },
     ],
   },
@@ -72,7 +83,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         label: "Absensi",
         href: "/absensi",
         icon: "clock",
-        canAccess: always,
+        canAccess: (permissions) => permissions.canAccessAttendance,
       },
       {
         label: "Laporan",

@@ -2,7 +2,13 @@ import "server-only";
 
 import { cache } from "react";
 import { ALL_ROLES, ROLES, type Role } from "@/constants/roles";
-import { ROLE_PERMISSIONS, type RolePermissions } from "@/config/permissions";
+import {
+  ROLE_PERMISSIONS,
+  ROLE_PERMISSIONS_SELECT,
+  mapRolePermissionsRow,
+  type RolePermissions,
+  type RolePermissionsRow,
+} from "@/config/permissions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Branch, Employee } from "@/lib/store/types";
 import type { SessionState } from "@/features/session/types";
@@ -24,45 +30,6 @@ interface BranchRow {
   address: string;
   phone: string;
   is_active: boolean;
-}
-
-interface RolePermissionsRow {
-  role: Role;
-  can_apply_discount: boolean;
-  can_cancel_transaction: boolean;
-  can_manage_products: boolean;
-  can_create_sales_order: boolean;
-  can_manage_sales_orders: boolean;
-  can_delete_sales_order: boolean;
-  can_export_reports: boolean;
-  can_view_all_branches: boolean;
-  can_view_all_attendance: boolean;
-  can_approve_leave: boolean;
-  can_manage_employees: boolean;
-  can_manage_branches: boolean;
-  can_manage_settings: boolean;
-  can_use_cashier: boolean;
-  can_view_products: boolean;
-}
-
-function mapPermissions(row: RolePermissionsRow): RolePermissions {
-  return {
-    canApplyDiscount: row.can_apply_discount,
-    canCancelTransaction: row.can_cancel_transaction,
-    canManageProducts: row.can_manage_products,
-    canCreateSalesOrder: row.can_create_sales_order,
-    canManageSalesOrders: row.can_manage_sales_orders,
-    canDeleteSalesOrder: row.can_delete_sales_order,
-    canExportReports: row.can_export_reports,
-    canViewAllBranches: row.can_view_all_branches,
-    canViewAllAttendance: row.can_view_all_attendance,
-    canApproveLeave: row.can_approve_leave,
-    canManageEmployees: row.can_manage_employees,
-    canManageBranches: row.can_manage_branches,
-    canManageSettings: row.can_manage_settings,
-    canUseCashier: row.can_use_cashier,
-    canViewProducts: row.can_view_products,
-  };
 }
 
 function isRole(value: string): value is Role {
@@ -109,11 +76,7 @@ const loadSessionForUser = cache(
         .select("id,name,address,phone,is_active")
         .eq("is_active", true)
         .order("name"),
-      supabase
-        .from("role_permissions")
-        .select(
-          "role,can_apply_discount,can_cancel_transaction,can_manage_products,can_create_sales_order,can_manage_sales_orders,can_delete_sales_order,can_export_reports,can_view_all_branches,can_view_all_attendance,can_approve_leave,can_manage_employees,can_manage_branches,can_manage_settings,can_use_cashier,can_view_products",
-        ),
+      supabase.from("role_permissions").select(ROLE_PERMISSIONS_SELECT),
     ]);
 
     if (employeeResult.error || branchResult.error || permissionResult.error) {
@@ -139,10 +102,10 @@ const loadSessionForUser = cache(
       .map(mapEmployee);
 
     const permissionRow = (
-      (permissionResult.data ?? []) as RolePermissionsRow[]
+      (permissionResult.data ?? []) as (RolePermissionsRow & { role: string })[]
     ).find((row) => row.role === employeeRow.role);
     const permissions = permissionRow
-      ? mapPermissions(permissionRow)
+      ? mapRolePermissionsRow(permissionRow)
       : ROLE_PERMISSIONS[employeeRow.role];
 
     return {

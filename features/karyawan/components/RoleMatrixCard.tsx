@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 import { ALL_ROLES, ROLES, type Role } from "@/constants/roles";
 import {
+  PERMISSION_ROWS,
   ROLE_PERMISSIONS,
   type RolePermissions,
 } from "@/config/permissions";
@@ -14,27 +15,6 @@ import {
   fetchRolePermissionsAction,
   saveRolePermissionsAction,
 } from "@/features/karyawan/actions";
-
-const PERMISSION_ROWS: readonly {
-  key: keyof RolePermissions;
-  label: string;
-}[] = [
-  { key: "canApplyDiscount", label: "Diskon kasir" },
-  { key: "canCancelTransaction", label: "Refund / void" },
-  { key: "canManageProducts", label: "Produk & stok" },
-  { key: "canCreateSalesOrder", label: "Buat pesanan" },
-  { key: "canManageSalesOrders", label: "Ubah status pesanan" },
-  { key: "canDeleteSalesOrder", label: "Hapus pesanan" },
-  { key: "canExportReports", label: "Laporan & export" },
-  { key: "canViewAllBranches", label: "Lihat semua cabang" },
-  { key: "canViewAllAttendance", label: "Absensi semua cabang" },
-  { key: "canApproveLeave", label: "Approve izin" },
-  { key: "canManageEmployees", label: "Kelola karyawan" },
-  { key: "canManageBranches", label: "Kelola cabang" },
-  { key: "canManageSettings", label: "Pengaturan" },
-  { key: "canUseCashier", label: "Akses kasir" },
-  { key: "canViewProducts", label: "Lihat produk & stok" },
-];
 
 interface RoleMatrixCardProps {
   canEdit: boolean;

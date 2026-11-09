@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { getFirstAccessiblePath } from "@/config/navigation";
 import { getAuthSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { LoginState, SetPasswordState } from "@/features/auth/types";
@@ -45,7 +46,11 @@ export async function loginAction(
     return { error: "Login gagal. Coba lagi." };
   }
 
-  redirect("/dashboard");
+  const session = await getAuthSession();
+  redirect(
+    (session ? getFirstAccessiblePath(session.permissions) : null) ??
+      "/dashboard",
+  );
 }
 
 export async function logoutAction(): Promise<void> {

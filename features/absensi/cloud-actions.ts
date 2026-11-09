@@ -1,6 +1,6 @@
 "use server";
 
-import { getAuthSession, getAuthorizedSession } from "@/lib/auth/session";
+import { getAuthorizedSession } from "@/lib/auth/session";
 import { callServiceRpc } from "@/lib/cloud/server";
 import type {
   AttendanceRecord,
@@ -66,8 +66,8 @@ export async function checkInAction(
   date: string,
   time: string,
 ): Promise<AttendanceDataResult<AttendanceRecord>> {
-  const session = await getAuthSession();
-  if (!session) return fail("Sesi pengguna tidak ditemukan");
+  const session = await getAuthorizedSession("canAccessAttendance");
+  if (!session) return fail("Role ini tidak punya akses absensi");
 
   const result = await callServiceRpc<AttendanceJson>("fn_check_in", {
     p_employee_id: session.employee.id,
@@ -87,8 +87,8 @@ export async function checkOutAction(
   date: string,
   time: string,
 ): Promise<AttendanceDataResult<AttendanceRecord>> {
-  const session = await getAuthSession();
-  if (!session) return fail("Sesi pengguna tidak ditemukan");
+  const session = await getAuthorizedSession("canAccessAttendance");
+  if (!session) return fail("Role ini tidak punya akses absensi");
 
   const result = await callServiceRpc<AttendanceJson>("fn_check_out", {
     p_employee_id: session.employee.id,
@@ -107,8 +107,8 @@ export async function submitLeaveAction(
   date: string,
   reason: string,
 ): Promise<AttendanceDataResult<LeaveRequest>> {
-  const session = await getAuthSession();
-  if (!session) return fail("Sesi pengguna tidak ditemukan");
+  const session = await getAuthorizedSession("canAccessAttendance");
+  if (!session) return fail("Role ini tidak punya akses absensi");
 
   const result = await callServiceRpc<LeaveJson>("fn_submit_leave_request", {
     p_employee_id: session.employee.id,

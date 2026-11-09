@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AuthShell } from "@/components/auth/AuthShell";
+import { getFirstAccessiblePath } from "@/config/navigation";
 import { getAuthSession } from "@/lib/auth/session";
 import { LoginForm } from "@/app/login/login-form";
 
@@ -17,7 +18,9 @@ interface LoginPageProps {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   await connection();
   const session = await getAuthSession();
-  if (session) redirect("/dashboard");
+  if (session) {
+    redirect(getFirstAccessiblePath(session.permissions) ?? "/dashboard");
+  }
 
   const params = await searchParams;
   const initialError =
