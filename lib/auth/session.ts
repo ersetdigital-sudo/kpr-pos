@@ -102,7 +102,9 @@ const loadSessionForUser = cache(
       .map(mapEmployee);
 
     const permissionRow = (
-      (permissionResult.data ?? []) as (RolePermissionsRow & { role: string })[]
+      (permissionResult.data ?? []) as unknown as (RolePermissionsRow & {
+        role: string;
+      })[]
     ).find((row) => row.role === employeeRow.role);
     const permissions = permissionRow
       ? mapRolePermissionsRow(permissionRow)

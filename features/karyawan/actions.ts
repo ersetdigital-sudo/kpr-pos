@@ -252,7 +252,7 @@ export async function fetchRolePermissionsAction(): Promise<RoleMatrixResult> {
 
     const matrix = { ...ROLE_PERMISSIONS };
     (
-      (data ?? []) as (RolePermissionsRow & { role: string })[]
+      (data ?? []) as unknown as (RolePermissionsRow & { role: string })[]
     ).forEach((row) => {
       if (isRole(row.role)) matrix[row.role] = mapRolePermissionsRow(row);
     });
