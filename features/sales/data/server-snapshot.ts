@@ -20,6 +20,10 @@ interface TransactionItemRow {
   unit_cost: number | null;
   quantity: number;
   line_total: number;
+  price_type: "retail" | "wholesale";
+  discount_type: "nominal" | "percent";
+  discount_value: number;
+  discount_amount: number;
 }
 
 interface TransactionRow {
@@ -52,6 +56,10 @@ interface SalesOrderItemRow {
   unit_price: number;
   unit_cost: number | null;
   quantity: number;
+  price_type: "retail" | "wholesale";
+  discount_type: "nominal" | "percent";
+  discount_value: number;
+  discount_amount: number;
 }
 
 interface SalesOrderRow {
@@ -64,6 +72,7 @@ interface SalesOrderRow {
   total: number;
   status: string;
   paid_at: string | null;
+  transaction_id: string | null;
   stock_applied: boolean;
   note: string;
   created_at: string;
@@ -89,10 +98,10 @@ interface CartDraftRow {
 }
 
 export const TRANSACTION_COLUMNS =
-  "id,invoice_number,branch_id,cashier_id,sales_employee_id,subtotal,discount_type,discount_value,discount_amount,total,payment_method,cash_received,change_amount,bank_account_id,refunded_at,refunded_by_id,refunded_by_name,refund_reason,refund_amount,created_at,transaction_items(product_id,product_name,unit_price,unit_cost,quantity,line_total)";
+  "id,invoice_number,branch_id,cashier_id,sales_employee_id,subtotal,discount_type,discount_value,discount_amount,total,payment_method,cash_received,change_amount,bank_account_id,refunded_at,refunded_by_id,refunded_by_name,refund_reason,refund_amount,created_at,transaction_items(product_id,product_name,unit_price,unit_cost,quantity,line_total,price_type,discount_type,discount_value,discount_amount)";
 
 export const SALES_ORDER_COLUMNS =
-  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,status,paid_at,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_price,unit_cost,quantity)";
+  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,status,paid_at,transaction_id,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_price,unit_cost,quantity,price_type,discount_type,discount_value,discount_amount)";
 
 export const CART_DRAFT_COLUMNS =
   "id,label,branch_id,cashier_id,sales_employee_id,discount_type,discount_value,created_at,updated_at,cart_draft_items(product_id,quantity)";
@@ -113,6 +122,10 @@ function mapTransactionItem(row: TransactionItemRow): TransactionItem {
     unitCost: row.unit_cost ?? undefined,
     quantity: row.quantity,
     lineTotal: row.line_total,
+    priceType: row.price_type,
+    discountType: row.discount_type,
+    discountValue: row.discount_value,
+    discountAmount: row.discount_amount,
   };
 }
 
@@ -164,9 +177,14 @@ export function mapSalesOrderRow(row: SalesOrderRow): SalesOrder {
       unitPrice: item.unit_price,
       unitCost: item.unit_cost ?? undefined,
       quantity: item.quantity,
+      priceType: item.price_type,
+      discountType: item.discount_type,
+      discountValue: item.discount_value,
+      discountAmount: item.discount_amount,
     })),
     total: row.total,
     status: row.status as SalesOrderStatus,
+    transactionId: row.transaction_id ?? undefined,
     paidAt: row.paid_at ?? undefined,
     stockApplied: row.stock_applied,
     note: row.note,

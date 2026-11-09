@@ -243,6 +243,7 @@ export function buildProductOptions(
       name: product.name,
       sku: product.sku,
       price: product.price,
+      wholesalePrice: product.wholesalePrice ?? 0,
       stock:
         database.stocks.find(
           (level) =>

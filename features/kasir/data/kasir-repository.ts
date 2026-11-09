@@ -70,6 +70,7 @@ export function getProducts(
         name: product.name,
         sku: product.sku,
         price: product.price,
+        wholesalePrice: product.wholesalePrice ?? 0,
         costPrice: product.costPrice,
         stock: stock?.quantity ?? 0,
         categoryId: product.categoryId,
@@ -158,9 +159,16 @@ export function getTransactionHistory(
  */
 export async function loadTransactionHistory(
   branchId: string,
-): Promise<TransactionHistoryRow[]> {
+): Promise<{
+  rows: TransactionHistoryRow[];
+  transactions: Transaction[];
+}> {
   const transactions = await fetchTransactionHistoryAction(branchId);
-  return getTransactionHistory({ ...getDatabase(), transactions }, branchId);
+
+  return {
+    rows: getTransactionHistory({ ...getDatabase(), transactions }, branchId),
+    transactions,
+  };
 }
 
 function getDraftTotal(
@@ -173,14 +181,20 @@ function getDraftTotal(
   );
   const lines: CartLine[] = draft.items.flatMap((item) => {
     const product = products.get(item.productId);
-    return product ? [{ product, quantity: item.quantity }] : [];
+    return product
+      ? [
+          {
+            product,
+            quantity: item.quantity,
+            priceType: "retail",
+            discountType: "nominal",
+            discountValue: 0,
+          },
+        ]
+      : [];
   });
 
-  return calculateCartTotals(
-    lines,
-    draft.discountType,
-    draft.discountValue,
-  ).total;
+  return calculateCartTotals(lines).total;
 }
 
 export function getDraftSummaries(
@@ -221,6 +235,8 @@ export function useCashierData(): CashierData {
     enabledMethods: getEnabledMethods(database),
     drafts: getDraftSummaries(database, branch.id),
     transactions: getTransactionHistory(database, branch.id),
+    salesOrders: database.salesOrders,
+    employees: database.employees,
     settings: database.settings,
     branch,
     cashier: employee,
@@ -239,7 +255,7 @@ export function useNextInvoiceNumber(): string {
   return getNextInvoiceNumber(database.transactions);
 }
 
-function buildReceiptView(
+export function buildReceiptView(
   database: ReturnType<typeof getDatabase>,
   transaction: Transaction,
 ): ReceiptViewData {
@@ -259,6 +275,9 @@ function buildReceiptView(
         (account) => account.id === transaction.payment.bankAccountId,
       )
     : undefined;
+  const order = database.salesOrders.find(
+    (item) => item.transactionId === transaction.id,
+  );
 
   return {
     transaction,
@@ -270,6 +289,8 @@ function buildReceiptView(
     cashierName: cashier?.name ?? "Karyawan",
     salesName: sales?.name ?? null,
     bankName: bank?.bankName ?? null,
+    customerName: order?.customerName ?? null,
+    note: order?.note ?? null,
     paperSize: database.settings.receipt.paperSize,
     footerText: database.settings.receipt.footerText,
   };
@@ -316,21 +337,39 @@ export async function createTransaction(
       throw new Error(`Stok ${product.name} tersisa ${product.stock}`);
     }
 
+    const priceType = item.priceType ?? "retail";
+    const discountType = item.discountType ?? "nominal";
+    const discountValue = Math.max(0, item.discountValue ?? 0);
+    const unitPrice =
+      priceType === "wholesale" && product.wholesalePrice > 0
+        ? product.wholesalePrice
+        : product.price;
+    const gross = unitPrice * item.quantity;
+    const discountAmount = calculateDiscountAmount(
+      gross,
+      discountType,
+      discountValue,
+    );
+
     return {
       productId: product.id,
-      productName: product.name,
-      unitPrice: product.price,
-      unitCost: product.costPrice,
       quantity: item.quantity,
-      lineTotal: product.price * item.quantity,
+      priceType,
+      discountType,
+      discountValue,
+      unitPrice,
+      discountAmount,
+      lineTotal: gross - discountAmount,
     };
   });
 
-  const subtotal = items.reduce((total, item) => total + item.lineTotal, 0);
-  const discountAmount = calculateDiscountAmount(
-    subtotal,
-    input.discountType,
-    input.discountValue,
+  const subtotal = items.reduce(
+    (total, item) => total + item.lineTotal + item.discountAmount,
+    0,
+  );
+  const discountAmount = items.reduce(
+    (total, item) => total + item.discountAmount,
+    0,
   );
   const total = Math.max(0, subtotal - discountAmount);
 
@@ -364,12 +403,17 @@ export async function createTransaction(
       branchId: branch.id,
       cashierId: employee.id,
       salesEmployeeId: salesEmployee?.id ?? null,
-      items: input.items,
-      discountType: input.discountType,
-      discountValue: input.discountValue,
+      items: items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        priceType: item.priceType,
+        discountType: item.discountType,
+        discountValue: item.discountValue,
+      })),
       paymentMethod: input.paymentMethod,
       cashReceived: input.cashReceived,
       bankAccountId: input.bankAccountId,
+      salesOrderId: input.salesOrderId,
     }),
   );
 

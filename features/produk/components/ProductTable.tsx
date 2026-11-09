@@ -90,7 +90,16 @@ export function ProductTable({
         header: "Harga Jual",
         align: "right",
         cellClassName: "font-semibold text-ink",
-        cell: (product) => formatRupiah(product.price),
+        cell: (product) => (
+          <div>
+            <div>{formatRupiah(product.price)}</div>
+            {product.wholesalePrice > 0 ? (
+              <div className="text-meta font-normal text-ink-muted">
+                Grosir {formatRupiah(product.wholesalePrice)}
+              </div>
+            ) : null}
+          </div>
+        ),
       },
       {
         id: "stock",

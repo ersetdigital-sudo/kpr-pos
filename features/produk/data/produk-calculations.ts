@@ -69,6 +69,7 @@ export function buildProductRows(
         categoryById.get(product.categoryId)?.name ?? "Tanpa kategori",
       costPrice: product.costPrice,
       price: product.price,
+      wholesalePrice: product.wholesalePrice ?? 0,
       imageUrl: product.imageUrl,
       imageKey: product.imageKey,
       stock: stock.quantity,

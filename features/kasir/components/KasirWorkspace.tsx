@@ -11,12 +11,14 @@ import { DraftListModal } from "@/features/kasir/components/DraftListModal";
 import { ProductCatalog } from "@/features/kasir/components/ProductCatalog";
 import { ReceiptModal } from "@/features/kasir/components/ReceiptModal";
 import { RefundDialog } from "@/features/kasir/components/RefundDialog";
+import { SalesOrderPickerModal } from "@/features/kasir/components/SalesOrderPickerModal";
 import { TransactionHistoryModal } from "@/features/kasir/components/TransactionHistoryModal";
 import {
   calculateCartTotals,
   filterProducts,
 } from "@/features/kasir/data/kasir-calculations";
 import {
+  buildReceiptView,
   createTransaction,
   deleteDraft,
   loadTransactionHistory,
@@ -28,8 +30,9 @@ import {
   useNextInvoiceNumber,
 } from "@/features/kasir/data/kasir-repository";
 import { usePermissions } from "@/features/session/data/session-repository";
+import { getDatabase } from "@/lib/store/store";
 import { formatRupiah } from "@/lib/format";
-import type { DiscountType } from "@/lib/store/types";
+import type { SalesOrder, Transaction } from "@/lib/store/types";
 import type {
   CartItemInput,
   CartLine,
@@ -56,9 +59,9 @@ export function KasirWorkspace() {
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(
     null,
   );
-  const [discountType, setDiscountType] = useState<DiscountType>("nominal");
-  const [discountValue, setDiscountValue] = useState(0);
   const [salesEmployeeId, setSalesEmployeeId] = useState("");
+  const [salesOrderId, setSalesOrderId] = useState<string | null>(null);
+  const [ordersOpen, setOrdersOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("Cash");
   const [cashReceived, setCashReceived] = useState(0);
   const [selectedBankId, setSelectedBankId] = useState("");
@@ -68,6 +71,9 @@ export function KasirWorkspace() {
   const [historyRows, setHistoryRows] = useState<
     TransactionHistoryRow[] | null
   >(null);
+  const [historyTransactions, setHistoryTransactions] = useState<
+    Transaction[]
+  >([]);
   const [refundTarget, setRefundTarget] =
     useState<TransactionHistoryRow | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -83,18 +89,25 @@ export function KasirWorkspace() {
 
   const lines: CartLine[] = items.flatMap((item) => {
     const product = productMap.get(item.productId);
-    return product ? [{ product, quantity: item.quantity }] : [];
+    return product
+      ? [
+          {
+            product,
+            quantity: item.quantity,
+            priceType: item.priceType ?? "retail",
+            discountType: item.discountType ?? "nominal",
+            discountValue: item.discountValue ?? 0,
+          },
+        ]
+      : [];
   });
 
   const canEditDiscount = permissions.canApplyDiscount;
-  const activeDiscountType: DiscountType = canEditDiscount
-    ? discountType
-    : "nominal";
-  const activeDiscountValue = canEditDiscount ? discountValue : 0;
-  const totals = calculateCartTotals(
-    lines,
-    activeDiscountType,
-    activeDiscountValue,
+  const totals = calculateCartTotals(lines);
+  const pendingOrders = data.salesOrders.filter(
+    (order) =>
+      order.branchId === data.branch.id &&
+      (order.status === "Menunggu bayar" || order.status === "Belum sinkron"),
   );
 
   const filteredProducts = useMemo(
@@ -152,7 +165,16 @@ export function KasirWorkspace() {
         );
       }
 
-      return [...current, { productId: product.id, quantity: 1 }];
+      return [
+        ...current,
+        {
+          productId: product.id,
+          quantity: 1,
+          priceType: "retail",
+          discountType: "nominal",
+          discountValue: 0,
+        },
+      ];
     });
     showToast(`${product.name} ditambahkan`, "success");
   }
@@ -188,16 +210,23 @@ export function KasirWorkspace() {
     );
   }
 
-  function handleDiscountTypeChange(nextType: DiscountType) {
-    setDiscountType(nextType);
-    setDiscountValue(0);
+  function handleLineChange(
+    productId: string,
+    patch: Partial<
+      Pick<CartLine, "priceType" | "discountType" | "discountValue">
+    >,
+  ) {
+    setItems((current) =>
+      current.map((item) =>
+        item.productId === productId ? { ...item, ...patch } : item,
+      ),
+    );
   }
 
   function resetCart() {
     setItems([]);
-    setDiscountType("nominal");
-    setDiscountValue(0);
     setSalesEmployeeId("");
+    setSalesOrderId(null);
     setCashReceived(0);
   }
 
@@ -214,8 +243,8 @@ export function KasirWorkspace() {
     try {
       await saveDraft({
         items,
-        discountType: activeDiscountType,
-        discountValue: activeDiscountValue,
+        discountType: "nominal",
+        discountValue: 0,
         salesEmployeeId: activeSalesId || null,
       });
       resetCart();
@@ -252,7 +281,13 @@ export function KasirWorkspace() {
       const quantity = Math.min(item.quantity, product.stock);
       if (quantity < item.quantity) adjusted = true;
       if (quantity > 0) {
-        restored.push({ productId: item.productId, quantity });
+        restored.push({
+          productId: item.productId,
+          quantity,
+          priceType: "retail",
+          discountType: "nominal",
+          discountValue: 0,
+        });
       }
     });
 
@@ -268,8 +303,7 @@ export function KasirWorkspace() {
       await takeDraft(draftId);
       setDraftsOpen(false);
       setItems(restored);
-      setDiscountType(draft.discountType);
-      setDiscountValue(draft.discountValue);
+      setSalesOrderId(null);
       setSalesEmployeeId(draft.salesEmployeeId ?? "");
       showToast(
         adjusted
@@ -303,10 +337,64 @@ export function KasirWorkspace() {
     setHistoryOpen(true);
 
     try {
-      setHistoryRows(await loadTransactionHistory(data.branch.id));
+      const history = await loadTransactionHistory(data.branch.id);
+      setHistoryRows(history.rows);
+      setHistoryTransactions(history.transactions);
     } catch (error) {
       showToast(getErrorMessage(error), "error");
     }
+  }
+
+  function handleViewReceipt(row: TransactionHistoryRow) {
+    const database = getDatabase();
+    const transaction =
+      historyTransactions.find((item) => item.id === row.id) ??
+      database.transactions.find((item) => item.id === row.id);
+
+    if (!transaction) {
+      showToast("Transaksi tidak ditemukan", "error");
+      return;
+    }
+
+    setReceipt(buildReceiptView(database, transaction));
+  }
+
+  function handleSelectOrder(order: SalesOrder) {
+    const restored: CartItemInput[] = [];
+
+    for (const item of order.items) {
+      const product = productMap.get(item.productId);
+
+      if (!product) {
+        showToast(`Produk ${item.productName} sudah tidak tersedia`, "error");
+        return;
+      }
+
+      if (item.quantity > product.stock) {
+        showToast(`Stok ${product.name} tersisa ${product.stock}`, "error");
+        return;
+      }
+
+      restored.push({
+        productId: item.productId,
+        quantity: item.quantity,
+        priceType: item.priceType ?? "retail",
+        discountType: item.discountType ?? "nominal",
+        discountValue: item.discountValue ?? 0,
+      });
+    }
+
+    if (restored.length === 0) {
+      showToast("Pesanan tidak punya item", "error");
+      return;
+    }
+
+    setItems(restored);
+    setSalesEmployeeId(order.salesEmployeeId);
+    setSalesOrderId(order.id);
+    setOrdersOpen(false);
+    setCashReceived(0);
+    showToast(`Pesanan ${order.orderNumber} dimuat ke kasir`, "success");
   }
 
   function handleCancelCart() {
@@ -366,13 +454,12 @@ export function KasirWorkspace() {
     try {
       const result = await createTransaction({
         items,
-        discountType: activeDiscountType,
-        discountValue: activeDiscountValue,
         paymentMethod: activeMethod,
         cashReceived,
         bankAccountId:
           activeMethod === "Transfer" ? activeBankId : undefined,
         salesEmployeeId: activeSalesId || null,
+        salesOrderId: salesOrderId ?? undefined,
       });
 
       setReceipt(result.receipt);
@@ -399,6 +486,13 @@ export function KasirWorkspace() {
               Online · Tersinkron
             </Chip>
             <Chip tone="neutral">Printer &amp; laci siap</Chip>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOrdersOpen(true)}
+            >
+              Pesanan Sales ({pendingOrders.length})
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -432,10 +526,7 @@ export function KasirWorkspace() {
           salesEmployeeId={activeSalesId}
           onSalesChange={setSalesEmployeeId}
           canEditDiscount={canEditDiscount}
-          discountType={activeDiscountType}
-          discountValue={activeDiscountValue}
-          onDiscountTypeChange={handleDiscountTypeChange}
-          onDiscountValueChange={setDiscountValue}
+          onLineChange={handleLineChange}
           methods={data.enabledMethods}
           method={activeMethod}
           onMethodChange={setMethod}
@@ -464,12 +555,22 @@ export function KasirWorkspace() {
         onDeleteDraft={handleDeleteDraft}
       />
 
+      <SalesOrderPickerModal
+        open={ordersOpen}
+        orders={pendingOrders}
+        employees={data.employees}
+        branchName={data.branch.name}
+        onSelect={handleSelectOrder}
+        onClose={() => setOrdersOpen(false)}
+      />
+
       <TransactionHistoryModal
         open={historyOpen}
         transactions={historyRows ?? data.transactions}
         canRefund={permissions.canCancelTransaction}
         onClose={() => setHistoryOpen(false)}
         onRequestRefund={setRefundTarget}
+        onViewReceipt={handleViewReceipt}
       />
 
       {refundTarget ? (

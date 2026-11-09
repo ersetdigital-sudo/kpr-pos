@@ -1,4 +1,6 @@
 import type {
+  DiscountType,
+  PriceType,
   SalesBonusSettings,
   SalesOrderStatus,
 } from "@/lib/store/types";
@@ -43,6 +45,7 @@ export interface OrderProductOption {
   name: string;
   sku: string;
   price: number;
+  wholesalePrice: number;
   stock: number;
 }
 
@@ -56,6 +59,9 @@ export interface NewOrderRow {
   key: string;
   productId: string;
   quantity: number;
+  priceType: PriceType;
+  discountType: DiscountType;
+  discountValue: number;
 }
 
 export interface CreateOrderInput {
@@ -64,7 +70,13 @@ export interface CreateOrderInput {
   note: string;
   branchId: string;
   salesEmployeeId: string;
-  items: { productId: string; quantity: number }[];
+  items: {
+    productId: string;
+    quantity: number;
+    priceType: PriceType;
+    discountType: DiscountType;
+    discountValue: number;
+  }[];
 }
 
 export interface BonusEntry {

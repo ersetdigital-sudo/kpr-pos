@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { createSalesOrder } from "@/features/pesanan/data/pesanan-repository";
 import { formatRupiah } from "@/lib/format";
+import type { DiscountType, PriceType } from "@/lib/store/types";
 import type {
   NewOrderRow,
   OrderProductOption,
@@ -31,7 +32,32 @@ function createRow(productId: string): NewOrderRow {
     key: `row-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     productId,
     quantity: 1,
+    priceType: "retail",
+    discountType: "nominal",
+    discountValue: 0,
   };
+}
+
+function getRowPricing(
+  row: NewOrderRow,
+  product: OrderProductOption | undefined,
+): { unitPrice: number; gross: number; discount: number; total: number } {
+  if (!product) return { unitPrice: 0, gross: 0, discount: 0, total: 0 };
+
+  const unitPrice =
+    row.priceType === "wholesale" && product.wholesalePrice > 0
+      ? product.wholesalePrice
+      : product.price;
+  const gross = unitPrice * row.quantity;
+  const discount =
+    row.discountType === "percent"
+      ? Math.min(
+          gross,
+          Math.round((gross * Math.min(100, row.discountValue)) / 100),
+        )
+      : Math.min(gross, Math.max(0, Math.round(row.discountValue)));
+
+  return { unitPrice, gross, discount, total: gross - discount };
 }
 
 export function NewOrderForm({
@@ -62,7 +88,7 @@ export function NewOrderForm({
     const product = productOptions.find(
       (option) => option.id === row.productId,
     );
-    return product ? sum + product.price * row.quantity : sum;
+    return sum + getRowPricing(row, product).total;
   }, 0);
 
   function updateRow(key: string, patch: Partial<NewOrderRow>) {
@@ -100,6 +126,9 @@ export function NewOrderForm({
         items: rows.map((row) => ({
           productId: row.productId,
           quantity: row.quantity,
+          priceType: row.priceType,
+          discountType: row.discountType,
+          discountValue: row.discountValue,
         })),
       });
 
@@ -183,6 +212,7 @@ export function NewOrderForm({
             const product = productOptions.find(
               (option) => option.id === row.productId,
             );
+            const pricing = getRowPricing(row, product);
 
             return (
               <div key={row.key} className="flex flex-col gap-1">
@@ -231,12 +261,71 @@ export function NewOrderForm({
                     ×
                   </Button>
                 </div>
-                {product ? (
-                  <span className="text-right text-meta text-ink-muted">
-                    {row.quantity} × {formatRupiah(product.price)} ={" "}
-                    {formatRupiah(product.price * row.quantity)}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <select
+                    aria-label={`Jenis harga ${index + 1}`}
+                    value={row.priceType}
+                    onChange={(event) =>
+                      updateRow(row.key, {
+                        priceType: event.target.value as PriceType,
+                      })
+                    }
+                    className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
+                  >
+                    <option value="retail">Ecer</option>
+                    <option
+                      value="wholesale"
+                      disabled={!product || product.wholesalePrice <= 0}
+                    >
+                      Grosir
+                    </option>
+                  </select>
+
+                  <select
+                    aria-label={`Tipe diskon ${index + 1}`}
+                    value={row.discountType}
+                    onChange={(event) =>
+                      updateRow(row.key, {
+                        discountType: event.target.value as DiscountType,
+                        discountValue: 0,
+                      })
+                    }
+                    className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
+                  >
+                    <option value="nominal">Rp</option>
+                    <option value="percent">%</option>
+                  </select>
+
+                  <input
+                    aria-label={`Diskon ${index + 1}`}
+                    type="number"
+                    min={0}
+                    max={row.discountType === "percent" ? 100 : undefined}
+                    value={row.discountValue === 0 ? "" : row.discountValue}
+                    placeholder="0"
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      const safeValue = Number.isFinite(next)
+                        ? Math.max(0, next)
+                        : 0;
+                      updateRow(row.key, {
+                        discountValue:
+                          row.discountType === "percent"
+                            ? Math.min(100, safeValue)
+                            : Math.round(safeValue),
+                      });
+                    }}
+                    className="h-8 w-[80px] rounded-control border border-line-strong bg-surface px-2 text-right font-sans text-meta text-ink"
+                  />
+
+                  <span className="ml-auto text-right text-meta text-ink-muted">
+                    {row.quantity} × {formatRupiah(pricing.unitPrice)}
+                    {pricing.discount > 0
+                      ? ` · diskon ${formatRupiah(pricing.discount)}`
+                      : ""}{" "}
+                    = {formatRupiah(pricing.total)}
                   </span>
-                ) : null}
+                </div>
               </div>
             );
           })}

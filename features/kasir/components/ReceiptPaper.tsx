@@ -65,6 +65,18 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
             {receipt.salesName ?? "Tanpa sales"}
           </span>
         </div>
+        {receipt.customerName ? (
+          <div className="flex justify-between gap-2">
+            <span>Pelanggan</span>
+            <span className="text-right">{receipt.customerName}</span>
+          </div>
+        ) : null}
+        {receipt.note ? (
+          <div className="flex justify-between gap-2">
+            <span>Catatan</span>
+            <span className="text-right">{receipt.note}</span>
+          </div>
+        ) : null}
       </div>
 
       <div className="my-2 border-t border-dashed border-ink/30" />
@@ -79,7 +91,18 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
               <div className="font-semibold">{item.productName}</div>
               <div>
                 {item.quantity} × {formatRupiah(item.unitPrice)}
+                {item.priceType === "wholesale" ? " (grosir)" : ""}
               </div>
+              {item.discountAmount ? (
+                <div className="text-danger-ink">
+                  Diskon{" "}
+                  {item.discountType === "percent"
+                    ? `${item.discountValue ?? 0}%`
+                    : formatRupiah(item.discountValue ?? 0)}
+                  {" · -"}
+                  {formatRupiah(item.discountAmount)}
+                </div>
+              ) : null}
             </div>
             <div className="shrink-0 font-semibold">
               {formatRupiah(item.lineTotal)}

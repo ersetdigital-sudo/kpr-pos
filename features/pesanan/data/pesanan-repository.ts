@@ -89,10 +89,15 @@ export async function createSalesOrder(
       customerName,
       customerPhone: input.customerPhone.trim(),
       note: input.note.trim(),
-      items: [...merged.entries()].map(([productId, quantity]) => ({
-        productId,
-        quantity,
-      })),
+      items: input.items
+        .filter((item) => item.quantity > 0)
+        .map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          priceType: item.priceType,
+          discountType: item.discountType,
+          discountValue: item.discountValue,
+        })),
     }),
   );
 

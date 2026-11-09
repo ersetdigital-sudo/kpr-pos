@@ -12,12 +12,20 @@ import type {
   KasirProduct,
 } from "@/features/kasir/types";
 
-export function calculateLineTotal(line: CartLine): number {
-  return line.product.price * line.quantity;
+export function getLineUnitPrice(line: CartLine): number {
+  if (line.priceType === "wholesale" && line.product.wholesalePrice > 0) {
+    return line.product.wholesalePrice;
+  }
+
+  return line.product.price;
+}
+
+export function calculateLineGross(line: CartLine): number {
+  return getLineUnitPrice(line) * line.quantity;
 }
 
 export function calculateSubtotal(lines: readonly CartLine[]): number {
-  return lines.reduce((total, line) => total + calculateLineTotal(line), 0);
+  return lines.reduce((total, line) => total + calculateLineGross(line), 0);
 }
 
 export function calculateDiscountAmount(
@@ -37,6 +45,18 @@ export function calculateDiscountAmount(
   return Math.min(subtotal, Math.round(safeValue));
 }
 
+export function calculateLineDiscount(line: CartLine): number {
+  return calculateDiscountAmount(
+    calculateLineGross(line),
+    line.discountType,
+    line.discountValue,
+  );
+}
+
+export function calculateLineTotal(line: CartLine): number {
+  return Math.max(0, calculateLineGross(line) - calculateLineDiscount(line));
+}
+
 export function calculateTotal(
   subtotal: number,
   type: DiscountType,
@@ -49,16 +69,11 @@ export function calculateChange(total: number, received: number): number {
   return Math.max(0, Math.round(received) - total);
 }
 
-export function calculateCartTotals(
-  lines: readonly CartLine[],
-  discountType: DiscountType,
-  discountValue: number,
-): CartTotals {
+export function calculateCartTotals(lines: readonly CartLine[]): CartTotals {
   const subtotal = calculateSubtotal(lines);
-  const discountAmount = calculateDiscountAmount(
-    subtotal,
-    discountType,
-    discountValue,
+  const discountAmount = lines.reduce(
+    (total, line) => total + calculateLineDiscount(line),
+    0,
   );
 
   return {

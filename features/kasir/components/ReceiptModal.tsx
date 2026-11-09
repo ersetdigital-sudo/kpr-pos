@@ -28,7 +28,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
               Tutup
             </Button>
             <Button variant="primary" onClick={() => window.print()}>
-              Cetak Struk
+              Cetak / Simpan PDF
             </Button>
           </>
         }

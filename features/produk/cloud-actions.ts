@@ -111,6 +111,7 @@ export async function createProductAction(
     p_price: input.price,
     p_image_url: input.imageUrl ?? "",
     p_min_stock: input.minStock,
+    p_wholesale_price: input.wholesalePrice,
   });
 }
 
@@ -132,6 +133,7 @@ export async function updateProductAction(
     p_price: input.price,
     p_image_url: input.imageUrl ?? "",
     p_min_stock: input.minStock,
+    p_wholesale_price: input.wholesalePrice,
   });
 
   if (result.ok && previousImage && previousImage !== (input.imageUrl ?? "")) {

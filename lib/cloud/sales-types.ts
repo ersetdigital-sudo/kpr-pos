@@ -1,6 +1,7 @@
 import type {
   CartDraft,
   DiscountType,
+  PriceType,
   SalesOrder,
   Transaction,
 } from "@/lib/store/types";
@@ -13,16 +14,23 @@ export interface SalesSnapshot {
   isEmpty: boolean;
 }
 
+export interface OrderItemPayload {
+  productId: string;
+  quantity: number;
+  priceType: PriceType;
+  discountType: DiscountType;
+  discountValue: number;
+}
+
 export interface CreateTransactionPayload {
   branchId: string;
   cashierId: string;
   salesEmployeeId: string | null;
-  items: { productId: string; quantity: number }[];
-  discountType: DiscountType;
-  discountValue: number;
+  items: OrderItemPayload[];
   paymentMethod: PaymentMethod;
   cashReceived: number;
   bankAccountId?: string;
+  salesOrderId?: string;
 }
 
 export interface CreateSalesOrderPayload {
@@ -31,7 +39,7 @@ export interface CreateSalesOrderPayload {
   customerName: string;
   customerPhone: string;
   note: string;
-  items: { productId: string; quantity: number }[];
+  items: OrderItemPayload[];
 }
 
 export interface SaveDraftPayload {

@@ -32,6 +32,7 @@ interface TransactionHistoryModalProps {
   canRefund: boolean;
   onClose: () => void;
   onRequestRefund: (row: TransactionHistoryRow) => void;
+  onViewReceipt: (row: TransactionHistoryRow) => void;
 }
 
 export function TransactionHistoryModal({
@@ -40,6 +41,7 @@ export function TransactionHistoryModal({
   canRefund,
   onClose,
   onRequestRefund,
+  onViewReceipt,
 }: TransactionHistoryModalProps) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -122,18 +124,26 @@ export function TransactionHistoryModal({
       id: "action",
       header: "Aksi",
       align: "right",
-      cell: (row) =>
-        canRefund && !row.isRefunded ? (
+      cell: (row) => (
+        <div className="flex justify-end gap-1.5">
           <Button
-            variant="dangerOutline"
+            variant="outline"
             size="sm"
-            onClick={() => onRequestRefund(row)}
+            onClick={() => onViewReceipt(row)}
           >
-            Refund
+            Struk
           </Button>
-        ) : (
-          <span className="text-meta text-ink-muted">-</span>
-        ),
+          {canRefund && !row.isRefunded ? (
+            <Button
+              variant="dangerOutline"
+              size="sm"
+              onClick={() => onRequestRefund(row)}
+            >
+              Refund
+            </Button>
+          ) : null}
+        </div>
+      ),
     },
   ];
 

@@ -21,6 +21,7 @@ export interface ProductRow {
   categoryName: string;
   costPrice: number;
   price: number;
+  wholesalePrice: number;
   /** URL siap pakai untuk ditampilkan. */
   imageUrl?: string;
   /** Nilai mentah image_url di database (key R2 atau URL lama). */
@@ -69,6 +70,7 @@ export interface ProductFormInput {
   categoryId: string;
   costPrice: number;
   price: number;
+  wholesalePrice: number;
   imageUrl?: string;
   minStock: number;
 }

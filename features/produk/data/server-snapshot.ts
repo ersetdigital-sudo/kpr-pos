@@ -27,6 +27,7 @@ interface ProductRow {
   category_id: string;
   cost_price: number;
   price: number;
+  wholesale_price: number;
   image_url: string | null;
   is_active: boolean;
 }
@@ -107,7 +108,9 @@ export async function readProductStockSnapshot(
     admin.from("categories").select("id,name,is_active").order("name"),
     admin
       .from("products")
-      .select("id,name,sku,category_id,cost_price,price,image_url,is_active")
+      .select(
+        "id,name,sku,category_id,cost_price,price,wholesale_price,image_url,is_active",
+      )
       .order("name"),
     admin.from("stock_levels").select("branch_id,product_id,quantity,min_stock"),
   ]);
@@ -132,6 +135,7 @@ export async function readProductStockSnapshot(
       categoryId: row.category_id,
       costPrice: row.cost_price,
       price: row.price,
+      wholesalePrice: row.wholesale_price,
       imageUrl: resolveProductImageUrl(row.image_url),
       imageKey: row.image_url ?? undefined,
       isActive: row.is_active,

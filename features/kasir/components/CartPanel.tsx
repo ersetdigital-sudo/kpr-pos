@@ -4,10 +4,19 @@ import { Button } from "@/components/ui/Button";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Field } from "@/components/ui/Field";
 import { Select } from "@/components/ui/Select";
-import { calculateLineTotal } from "@/features/kasir/data/kasir-calculations";
+import {
+  calculateLineDiscount,
+  calculateLineTotal,
+  getLineUnitPrice,
+} from "@/features/kasir/data/kasir-calculations";
 import { PaymentSection } from "@/features/kasir/components/PaymentSection";
 import { formatRupiah } from "@/lib/format";
-import type { BankAccount, DiscountType, Employee } from "@/lib/store/types";
+import type {
+  BankAccount,
+  DiscountType,
+  Employee,
+  PriceType,
+} from "@/lib/store/types";
 import type {
   CartLine,
   CartTotals,
@@ -22,10 +31,12 @@ interface CartPanelProps {
   salesEmployeeId: string;
   onSalesChange: (employeeId: string) => void;
   canEditDiscount: boolean;
-  discountType: DiscountType;
-  discountValue: number;
-  onDiscountTypeChange: (type: DiscountType) => void;
-  onDiscountValueChange: (value: number) => void;
+  onLineChange: (
+    productId: string,
+    patch: Partial<
+      Pick<CartLine, "priceType" | "discountType" | "discountValue">
+    >,
+  ) => void;
   methods: readonly PaymentMethod[];
   method: PaymentMethod;
   onMethodChange: (method: PaymentMethod) => void;
@@ -53,10 +64,7 @@ export function CartPanel({
   salesEmployeeId,
   onSalesChange,
   canEditDiscount,
-  discountType,
-  discountValue,
-  onDiscountTypeChange,
-  onDiscountValueChange,
+  onLineChange,
   methods,
   method,
   onMethodChange,
@@ -126,51 +134,132 @@ export function CartPanel({
           lines.map((line) => (
             <div
               key={line.product.id}
-              className="flex items-center gap-3 border-b border-line-faint py-3"
+              className="border-b border-line-faint py-3"
             >
-              <div className="min-w-0 flex-1">
-                <div className="text-body font-semibold text-ink">
-                  {line.product.name}
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-body font-semibold text-ink">
+                    {line.product.name}
+                  </div>
+                  <div className="text-meta text-ink-muted">
+                    {formatRupiah(getLineUnitPrice(line))}
+                    {line.priceType === "wholesale" ? " · Grosir" : " · Ecer"}
+                    <span aria-hidden="true"> · </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveItem(line.product.id)}
+                      className="cursor-pointer border-0 bg-transparent p-0 font-sans text-meta text-danger-ink underline"
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 </div>
-                <div className="text-meta text-ink-muted">
-                  {formatRupiah(line.product.price)}
-                  <span aria-hidden="true"> · </span>
+
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => onRemoveItem(line.product.id)}
-                    className="cursor-pointer border-0 bg-transparent p-0 font-sans text-meta text-danger-ink underline"
+                    aria-label={`Kurangi ${line.product.name}`}
+                    disabled={line.quantity <= 1}
+                    onClick={() => onQtyChange(line.product.id, -1)}
+                    className="h-8 w-8 cursor-pointer rounded-control border border-line-strong bg-surface font-sans text-[16px] text-ink disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Hapus
+                    -
                   </button>
+                  <span className="min-w-[22px] text-center text-body font-bold text-ink">
+                    {line.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Tambah ${line.product.name}`}
+                    disabled={line.quantity >= line.product.stock}
+                    onClick={() => onQtyChange(line.product.id, 1)}
+                    className="h-8 w-8 cursor-pointer rounded-control border border-line-strong bg-surface font-sans text-[16px] text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div className="w-[92px] text-right text-body font-bold text-ink">
+                  {formatRupiah(calculateLineTotal(line))}
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  aria-label={`Kurangi ${line.product.name}`}
-                  disabled={line.quantity <= 1}
-                  onClick={() => onQtyChange(line.product.id, -1)}
-                  className="h-8 w-8 cursor-pointer rounded-control border border-line-strong bg-surface font-sans text-[16px] text-ink disabled:cursor-not-allowed disabled:opacity-40"
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <select
+                  aria-label={`Jenis harga ${line.product.name}`}
+                  value={line.priceType}
+                  onChange={(event) =>
+                    onLineChange(line.product.id, {
+                      priceType: event.target.value as PriceType,
+                    })
+                  }
+                  className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
                 >
-                  -
-                </button>
-                <span className="min-w-[22px] text-center text-body font-bold text-ink">
-                  {line.quantity}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Tambah ${line.product.name}`}
-                  disabled={line.quantity >= line.product.stock}
-                  onClick={() => onQtyChange(line.product.id, 1)}
-                  className="h-8 w-8 cursor-pointer rounded-control border border-line-strong bg-surface font-sans text-[16px] text-ink disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  +
-                </button>
-              </div>
+                  <option value="retail">Ecer</option>
+                  <option
+                    value="wholesale"
+                    disabled={line.product.wholesalePrice <= 0}
+                  >
+                    Grosir
+                  </option>
+                </select>
 
-              <div className="w-[92px] text-right text-body font-bold text-ink">
-                {formatRupiah(calculateLineTotal(line))}
+                {canEditDiscount ? (
+                  <>
+                    <select
+                      aria-label={`Tipe diskon ${line.product.name}`}
+                      value={line.discountType}
+                      onChange={(event) =>
+                        onLineChange(line.product.id, {
+                          discountType: event.target.value as DiscountType,
+                          discountValue: 0,
+                        })
+                      }
+                      className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
+                    >
+                      <option value="nominal">Rp</option>
+                      <option value="percent">%</option>
+                    </select>
+                    {line.discountType === "nominal" ? (
+                      <CurrencyInput
+                        aria-label={`Diskon ${line.product.name}`}
+                        prefix={false}
+                        value={line.discountValue}
+                        onValueChange={(value) =>
+                          onLineChange(line.product.id, {
+                            discountValue: value,
+                          })
+                        }
+                        placeholder="0"
+                        className="h-8 w-[88px] px-2 text-label font-semibold"
+                      />
+                    ) : (
+                      <input
+                        aria-label={`Diskon persen ${line.product.name}`}
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={line.discountValue === 0 ? "" : line.discountValue}
+                        placeholder="0"
+                        onChange={(event) => {
+                          const next = Number(event.target.value);
+                          const safeValue = Number.isFinite(next)
+                            ? Math.max(0, next)
+                            : 0;
+                          onLineChange(line.product.id, {
+                            discountValue: Math.min(100, safeValue),
+                          });
+                        }}
+                        className="h-8 w-[70px] rounded-control border border-line-strong bg-surface px-2 text-right font-sans text-label font-semibold text-ink"
+                      />
+                    )}
+                    {calculateLineDiscount(line) > 0 ? (
+                      <span className="text-meta font-semibold text-danger-ink">
+                        - {formatRupiah(calculateLineDiscount(line))}
+                      </span>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             </div>
           ))
@@ -183,63 +272,12 @@ export function CartPanel({
           <span className="text-ink">{formatRupiah(totals.subtotal)}</span>
         </div>
 
-        {canEditDiscount ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-ink-muted">Diskon</span>
-            <div className="flex items-center gap-1.5">
-              <select
-                aria-label="Tipe diskon"
-                value={discountType}
-                onChange={(event) =>
-                  onDiscountTypeChange(
-                    event.target.value === "percent" ? "percent" : "nominal",
-                  )
-                }
-                className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
-              >
-                <option value="nominal">Rp</option>
-                <option value="percent">%</option>
-              </select>
-              {discountType === "nominal" ? (
-                <CurrencyInput
-                  aria-label="Nilai diskon"
-                  prefix={false}
-                  value={discountValue}
-                  onValueChange={onDiscountValueChange}
-                  placeholder="0"
-                  className="h-8 w-[92px] px-2 text-label font-semibold"
-                />
-              ) : (
-                <input
-                  aria-label="Nilai diskon"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={discountValue === 0 ? "" : discountValue}
-                  placeholder="0"
-                  onChange={(event) => {
-                    const next = Number(event.target.value);
-                    const safeValue = Number.isFinite(next)
-                      ? Math.max(0, next)
-                      : 0;
-                    onDiscountValueChange(Math.min(100, safeValue));
-                  }}
-                  className="h-8 w-[78px] rounded-control border border-line-strong bg-surface px-2 text-right font-sans text-label font-semibold text-ink"
-                />
-              )}
-              <span className="min-w-[74px] text-right text-ink">
-                - {formatRupiah(totals.discountAmount)}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-between">
-            <span className="text-ink-muted">Diskon</span>
-            <span className="text-ink">
-              - {formatRupiah(totals.discountAmount)}
-            </span>
-          </div>
-        )}
+        <div className="flex justify-between">
+          <span className="text-ink-muted">Total diskon item</span>
+          <span className="text-ink">
+            - {formatRupiah(totals.discountAmount)}
+          </span>
+        </div>
 
         <div className="flex items-baseline justify-between border-t border-dashed border-line-strong pt-2">
           <span className="font-bold text-ink">Total</span>

@@ -42,6 +42,9 @@ export function ProductFormDrawer({
   );
   const [costPrice, setCostPrice] = useState(product?.costPrice ?? 0);
   const [price, setPrice] = useState(product?.price ?? 0);
+  const [wholesalePrice, setWholesalePrice] = useState(
+    product?.wholesalePrice ?? 0,
+  );
   const [minStock, setMinStock] = useState(
     product ? String(product.minStock) : "5",
   );
@@ -63,6 +66,7 @@ export function ProductFormDrawer({
       categoryId,
       costPrice,
       price,
+      wholesalePrice,
       minStock: Number(minStock || 0),
       imageUrl: imageKey,
     };
@@ -75,6 +79,9 @@ export function ProductFormDrawer({
     }
     if (!Number.isFinite(input.costPrice) || input.costPrice < 0) {
       return setError("Harga modal tidak boleh negatif");
+    }
+    if (!Number.isFinite(input.wholesalePrice) || input.wholesalePrice < 0) {
+      return setError("Harga grosir tidak boleh negatif");
     }
     if (!Number.isFinite(input.minStock) || input.minStock < 0) {
       return setError("Batas stok menipis tidak boleh negatif");
@@ -170,7 +177,7 @@ export function ProductFormDrawer({
           </Field>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Harga modal (Rp)" labelSize="sm">
             <CurrencyInput
               value={costPrice}
@@ -179,10 +186,18 @@ export function ProductFormDrawer({
             />
           </Field>
 
-          <Field label="Harga jual (Rp)" labelSize="sm">
+          <Field label="Harga ecer (Rp)" labelSize="sm">
             <CurrencyInput
               value={price}
               onValueChange={setPrice}
+              placeholder="0"
+            />
+          </Field>
+
+          <Field label="Harga grosir (Rp)" labelSize="sm">
+            <CurrencyInput
+              value={wholesalePrice}
+              onValueChange={setWholesalePrice}
               placeholder="0"
             />
           </Field>

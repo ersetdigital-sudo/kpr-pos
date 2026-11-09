@@ -3,6 +3,9 @@ import type { PaymentMethod } from "@/types";
 
 export type DiscountType = "nominal" | "percent";
 
+/** Harga ecer (retail) atau grosir per item. */
+export type PriceType = "retail" | "wholesale";
+
 export type ActivityAction =
   | "Membuat"
   | "Mengubah"
@@ -45,6 +48,8 @@ export interface Product {
   categoryId: string;
   costPrice: number;
   price: number;
+  /** 0 berarti produk tidak punya harga grosir khusus. */
+  wholesalePrice?: number;
   /** URL siap pakai untuk ditampilkan. */
   imageUrl?: string;
   /** Nilai mentah image_url di database (key R2 atau URL lama). */
@@ -126,6 +131,11 @@ export interface TransactionItem {
   unitCost?: number;
   quantity: number;
   lineTotal: number;
+  /** Kosong pada transaksi lama yang dibuat sebelum diskon per item. */
+  priceType?: PriceType;
+  discountType?: DiscountType;
+  discountValue?: number;
+  discountAmount?: number;
 }
 
 export interface TransactionDiscount {
@@ -197,6 +207,10 @@ export interface SalesOrderItem {
   /** Harga modal saat pesanan dibuat; pesanan lama bisa belum punya nilai ini. */
   unitCost?: number;
   quantity: number;
+  priceType?: PriceType;
+  discountType?: DiscountType;
+  discountValue?: number;
+  discountAmount?: number;
 }
 
 export interface SalesOrder {
@@ -209,6 +223,8 @@ export interface SalesOrder {
   items: SalesOrderItem[];
   total: number;
   status: SalesOrderStatus;
+  /** Transaksi kasir yang melunasi pesanan ini, bila ada. */
+  transactionId?: string;
   /** Waktu pesanan berubah menjadi Lunas; kosong untuk status lainnya. */
   paidAt?: string;
   /** Menandai stok cabang sudah dikurangi saat pesanan dilunasi. */

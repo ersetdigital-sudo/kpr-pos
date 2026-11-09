@@ -4,7 +4,9 @@ import type {
   CartDraft,
   DiscountType,
   Employee,
+  PriceType,
   ReceiptPaperSize,
+  SalesOrder,
   StoreSettings,
   Transaction,
 } from "@/lib/store/types";
@@ -15,6 +17,7 @@ export interface KasirProduct {
   name: string;
   sku: string;
   price: number;
+  wholesalePrice: number;
   costPrice: number;
   stock: number;
   categoryId: string;
@@ -30,11 +33,17 @@ export interface KasirCategory {
 export interface CartLine {
   product: KasirProduct;
   quantity: number;
+  priceType: PriceType;
+  discountType: DiscountType;
+  discountValue: number;
 }
 
 export interface CartItemInput {
   productId: string;
   quantity: number;
+  priceType?: PriceType;
+  discountType?: DiscountType;
+  discountValue?: number;
 }
 
 export interface CartTotals {
@@ -60,6 +69,8 @@ export interface CashierData {
   enabledMethods: PaymentMethod[];
   drafts: DraftSummary[];
   transactions: TransactionHistoryRow[];
+  salesOrders: SalesOrder[];
+  employees: Employee[];
   settings: StoreSettings;
   branch: Branch;
   cashier: Employee;
@@ -67,12 +78,12 @@ export interface CashierData {
 
 export interface CreateTransactionInput {
   items: CartItemInput[];
-  discountType: DiscountType;
-  discountValue: number;
   paymentMethod: PaymentMethod;
   cashReceived: number;
   bankAccountId?: string;
   salesEmployeeId: string | null;
+  /** Diisi bila pembayaran berasal dari pesanan sales. */
+  salesOrderId?: string;
 }
 
 export interface SaveDraftInput {
@@ -121,6 +132,8 @@ export interface ReceiptViewData {
   cashierName: string;
   salesName: string | null;
   bankName: string | null;
+  customerName?: string | null;
+  note?: string | null;
   paperSize: ReceiptPaperSize;
   footerText: string;
 }

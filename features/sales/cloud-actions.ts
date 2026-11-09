@@ -48,6 +48,10 @@ interface TransactionJson {
     unitCost: number | null;
     quantity: number;
     lineTotal: number;
+    priceType: "retail" | "wholesale";
+    discountType: "nominal" | "percent";
+    discountValue: number;
+    discountAmount: number;
   }[];
   refund: {
     at: string;
@@ -68,6 +72,7 @@ interface SalesOrderJson {
   total: number;
   status: string;
   paidAt: string | null;
+  transactionId: string | null;
   stockApplied: boolean;
   note: string;
   createdAt: string;
@@ -77,6 +82,10 @@ interface SalesOrderJson {
     unitPrice: number;
     unitCost: number | null;
     quantity: number;
+    priceType: "retail" | "wholesale";
+    discountType: "nominal" | "percent";
+    discountValue: number;
+    discountAmount: number;
   }[];
 }
 
@@ -118,6 +127,10 @@ function mapTransactionJson(row: TransactionJson): Transaction {
       unitCost: item.unitCost ?? undefined,
       quantity: item.quantity,
       lineTotal: item.lineTotal,
+      priceType: item.priceType,
+      discountType: item.discountType,
+      discountValue: item.discountValue,
+      discountAmount: item.discountAmount,
     })),
     subtotal: row.subtotal,
     discount: row.discount,
@@ -147,9 +160,14 @@ function mapSalesOrderJson(row: SalesOrderJson): SalesOrder {
       unitPrice: item.unitPrice,
       unitCost: item.unitCost ?? undefined,
       quantity: item.quantity,
+      priceType: item.priceType,
+      discountType: item.discountType,
+      discountValue: item.discountValue,
+      discountAmount: item.discountAmount,
     })),
     total: row.total,
     status: row.status as SalesOrderStatus,
+    transactionId: row.transactionId ?? undefined,
     paidAt: row.paidAt ?? undefined,
     stockApplied: row.stockApplied,
     note: row.note,
