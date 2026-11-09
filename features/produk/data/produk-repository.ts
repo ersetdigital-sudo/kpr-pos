@@ -22,6 +22,7 @@ import {
   updateCategoryAction,
   updateProductAction,
 } from "@/features/produk/cloud-actions";
+import { uploadProductPhotoAction } from "@/features/produk/photo-actions";
 import type { AppDatabase } from "@/lib/store/types";
 import type {
   CloudActionResult,
@@ -29,6 +30,7 @@ import type {
   ImportProductPayload,
   OpnameInput,
   ProductFormInput,
+  ProductPhotoUploadResult,
   StockInInput,
   TransferInput,
 } from "@/features/produk/types";
@@ -40,6 +42,16 @@ export function useProdukData(): AppDatabase | null {
 
 function assertOk(result: CloudActionResult): void {
   if (!result.ok) throw new Error(result.error);
+}
+
+export async function uploadProductPhoto(
+  file: File,
+  productId?: string,
+): Promise<ProductPhotoUploadResult> {
+  const formData = new FormData();
+  formData.set("file", file);
+  if (productId) formData.set("productId", productId);
+  return uploadProductPhotoAction(formData);
 }
 
 async function refreshAfterWrite(): Promise<void> {

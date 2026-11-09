@@ -23,6 +23,11 @@ Perintah lain: `npm run lint`, `npm run typecheck`, `npm run build`.
 | `NEXT_PUBLIC_SUPABASE_URL`          | client & server         | URL project Supabase                        |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | client & server      | Publishable/anon key, aman untuk browser    |
 | `SUPABASE_SERVICE_ROLE_KEY`         | server saja             | Jangan pernah diberi prefix `NEXT_PUBLIC_`  |
+| `R2_ACCOUNT_ID`                     | server saja             | Cloudflare R2 account ID                    |
+| `R2_ACCESS_KEY_ID`                  | server saja             | Access key R2 untuk upload/hapus foto       |
+| `R2_SECRET_ACCESS_KEY`              | server saja             | Secret key R2                               |
+| `R2_BUCKET`                         | server saja             | Bucket foto produk (`kpr-pos-produk`)       |
+| `R2_PUBLIC_URL`                     | server saja             | Domain publik bucket tanpa slash di akhir   |
 
 `.env.local` sudah masuk `.gitignore`. Service role hanya dipakai di server action
 untuk RPC tulis dan pembacaan snapshot yang sudah difilter per role.
@@ -32,6 +37,18 @@ untuk RPC tulis dan pembacaan snapshot yang sudah difilter per role.
 `vercel.json` mengunci region deployment ke **`sin1` (Singapore)** agar dekat
 dengan database. Pindahkan region database dan fungsi secara bersamaan bila
 ingin mengubahnya.
+
+### Foto produk (Cloudflare R2)
+
+Foto produk dikompres di browser (WebP, sisi terpanjang 800px, kualitas 0.8)
+lalu diunggah lewat server action ke R2. `products.image_url` hanya menyimpan
+key object (`products/...webp`); URL penuh dirakit oleh `resolveProductImageUrl`
+di `lib/r2.ts` dari `R2_PUBLIC_URL`. Nilai lama yang berupa URL lengkap atau
+data URL tetap ditampilkan apa adanya.
+
+Foto lama dihapus best-effort saat diganti, dihapus, atau produknya dihapus.
+Kalau env R2 belum lengkap, upload ditolak dengan pesan
+"Upload foto belum dikonfigurasi" dan aplikasi tetap jalan normal.
 
 ## Login & hak akses
 

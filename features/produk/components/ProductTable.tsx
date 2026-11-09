@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { Pagination } from "@/components/ui/Pagination";
 import { SearchField } from "@/components/ui/SearchField";
 import { Select } from "@/components/ui/Select";
@@ -62,20 +62,9 @@ export function ProductTable({
         header: "Produk",
         cell: (product) => (
           <div className="flex items-center gap-2.5">
-            {product.imageUrl ? (
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                width={40}
-                height={40}
-                unoptimized
-                className="h-10 w-10 shrink-0 rounded-control object-cover"
-              />
-            ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-line text-meta font-bold text-ink-muted">
-                {product.name.slice(0, 2).toUpperCase()}
-              </div>
-            )}
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-control">
+              <ImageWithFallback src={product.imageUrl} alt={product.name} />
+            </div>
             <div>
               <div className="font-semibold text-ink">{product.name}</div>
               <div className="text-meta text-ink-muted">{product.sku}</div>

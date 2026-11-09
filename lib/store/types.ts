@@ -45,7 +45,10 @@ export interface Product {
   categoryId: string;
   costPrice: number;
   price: number;
+  /** URL siap pakai untuk ditampilkan. */
   imageUrl?: string;
+  /** Nilai mentah image_url di database (key R2 atau URL lama). */
+  imageKey?: string;
   isActive: boolean;
 }
 

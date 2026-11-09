@@ -1,6 +1,7 @@
 import "server-only";
 
 import { syncWindowStartDate } from "@/lib/cloud/window";
+import { resolveProductImageUrl } from "@/lib/r2";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { SessionState } from "@/features/session/types";
 import type {
@@ -131,7 +132,8 @@ export async function readProductStockSnapshot(
       categoryId: row.category_id,
       costPrice: row.cost_price,
       price: row.price,
-      imageUrl: row.image_url ?? undefined,
+      imageUrl: resolveProductImageUrl(row.image_url),
+      imageKey: row.image_url ?? undefined,
       isActive: row.is_active,
     }),
   );

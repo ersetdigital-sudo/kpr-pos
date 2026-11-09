@@ -19,6 +19,7 @@ export interface KasirProduct {
   stock: number;
   categoryId: string;
   categoryName: string;
+  imageUrl?: string;
 }
 
 export interface KasirCategory {

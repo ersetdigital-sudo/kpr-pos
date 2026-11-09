@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { cn } from "@/lib/cn";
 import { formatRupiah } from "@/lib/format";
 import type { KasirProduct } from "@/features/kasir/types";
@@ -22,8 +23,8 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
         outOfStock && "cursor-not-allowed opacity-60",
       )}
     >
-      <div className="flex aspect-[4/3] w-full items-center justify-center rounded-control bg-line text-meta text-ink-muted">
-        Foto
+      <div className="aspect-[4/3] w-full overflow-hidden rounded-control">
+        <ImageWithFallback src={product.imageUrl} alt={product.name} />
       </div>
       <div className="text-body font-semibold">{product.name}</div>
       <div className="flex w-full items-center justify-between">

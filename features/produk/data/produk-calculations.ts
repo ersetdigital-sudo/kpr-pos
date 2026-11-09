@@ -70,6 +70,7 @@ export function buildProductRows(
       costPrice: product.costPrice,
       price: product.price,
       imageUrl: product.imageUrl,
+      imageKey: product.imageKey,
       stock: stock.quantity,
       minStock: stock.minStock,
       status: getStockStatus(stock.quantity, stock.minStock, product.isActive),

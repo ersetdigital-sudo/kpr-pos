@@ -21,7 +21,10 @@ export interface ProductRow {
   categoryName: string;
   costPrice: number;
   price: number;
+  /** URL siap pakai untuk ditampilkan. */
   imageUrl?: string;
+  /** Nilai mentah image_url di database (key R2 atau URL lama). */
+  imageKey?: string;
   stock: number;
   minStock: number;
   status: StockStatus;
@@ -153,5 +156,9 @@ export interface ProductStockSnapshot {
 
 export type CloudActionResult =
   | { ok: true }
+  | { ok: false; error: string };
+
+export type ProductPhotoUploadResult =
+  | { ok: true; key: string }
   | { ok: false; error: string };
 

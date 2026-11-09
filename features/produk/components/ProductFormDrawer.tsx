@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import type { ChangeEvent, FormEvent } from "react";
-import Image from "next/image";
+import type { FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Drawer } from "@/components/ui/Drawer";
 import { Field } from "@/components/ui/Field";
+import { ImageUploadField } from "@/components/ui/ImageUploadField";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import {
   createProduct,
   updateProduct,
+  uploadProductPhoto,
 } from "@/features/produk/data/produk-repository";
 import type {
   ProductFormInput,
@@ -44,31 +45,12 @@ export function ProductFormDrawer({
   const [minStock, setMinStock] = useState(
     product ? String(product.minStock) : "5",
   );
-  const [imageUrl, setImageUrl] = useState(product?.imageUrl ?? "");
-  const [imageError, setImageError] = useState(false);
+  const [imageKey, setImageKey] = useState(product?.imageKey ?? "");
+  const [previewUrl, setPreviewUrl] = useState(product?.imageUrl ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const isEditing = product !== null;
-
-  function handleImageFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 400_000) {
-      setError("Ukuran foto maksimal 400 KB");
-      event.target.value = "";
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageUrl(String(reader.result ?? ""));
-      setImageError(false);
-      setError("");
-    };
-    reader.readAsDataURL(file);
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,7 +64,7 @@ export function ProductFormDrawer({
       costPrice,
       price,
       minStock: Number(minStock || 0),
-      imageUrl,
+      imageUrl: imageKey,
     };
 
     if (!name.trim()) return setError("Nama produk wajib diisi");
@@ -220,44 +202,15 @@ export function ProductFormDrawer({
           />
         </Field>
 
-        <div className="flex flex-col gap-2">
-          <span className="text-label font-semibold text-ink-soft">Foto</span>
-          <div className="flex items-start gap-3">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-control border border-line bg-canvas text-meta text-ink-muted">
-              {imageUrl && !imageError ? (
-                <Image
-                  src={imageUrl}
-                  alt="Preview produk"
-                  width={80}
-                  height={80}
-                  unoptimized
-                  className="h-20 w-20 object-cover"
-                  onError={() => setImageError(true)}
-                />
-              ) : (
-                "Belum ada"
-              )}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <Input
-                value={imageUrl}
-                onChange={(event) => {
-                  setImageUrl(event.target.value);
-                  setImageError(false);
-                }}
-                placeholder="https://... atau unggah file"
-                className="text-label"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageFile}
-                className="text-meta text-ink-muted"
-                aria-label="Unggah foto produk"
-              />
-            </div>
-          </div>
-        </div>
+        <ImageUploadField
+          value={previewUrl}
+          onChange={(next) => {
+            setImageKey(next?.key ?? "");
+            setPreviewUrl(next?.previewUrl ?? "");
+          }}
+          upload={(file) => uploadProductPhoto(file, product?.id)}
+          disabled={saving}
+        />
 
         {error ? (
           <p className="m-0 rounded-control bg-danger-soft px-3 py-2 text-label font-semibold text-danger-ink">

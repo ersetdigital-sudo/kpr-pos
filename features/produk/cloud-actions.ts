@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthorizedSession } from "@/lib/auth/session";
+import { deleteR2ObjectBestEffort } from "@/lib/r2";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { SessionState } from "@/features/session/types";
 import type {
@@ -27,6 +28,23 @@ function canUseBranch(session: SessionState, branchId: string): boolean {
     session.permissions.canViewAllBranches ||
     branchId === session.employee.branchId
   );
+}
+
+/** Foto lama dibaca sebelum diubah/dihapus agar object R2 bisa dibersihkan. */
+async function readProductImageUrl(productId: string): Promise<string | null> {
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin
+      .from("products")
+      .select("image_url")
+      .eq("id", productId)
+      .maybeSingle();
+
+    if (error) return null;
+    return (data as { image_url: string | null } | null)?.image_url ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function callRpc(
@@ -103,7 +121,9 @@ export async function updateProductAction(
   const session = await getAuthorizedSession("canManageProducts");
   if (!session) return fail("Anda tidak punya akses mengubah produk.");
 
-  return callRpc("fn_update_product", {
+  const previousImage = await readProductImageUrl(productId);
+
+  const result = await callRpc("fn_update_product", {
     p_id: productId,
     p_name: input.name,
     p_sku: input.sku,
@@ -113,6 +133,12 @@ export async function updateProductAction(
     p_image_url: input.imageUrl ?? "",
     p_min_stock: input.minStock,
   });
+
+  if (result.ok && previousImage && previousImage !== (input.imageUrl ?? "")) {
+    await deleteR2ObjectBestEffort(previousImage);
+  }
+
+  return result;
 }
 
 export async function setProductActiveAction(
@@ -132,7 +158,13 @@ export async function deleteProductAction(
 ): Promise<CloudActionResult> {
   const session = await getAuthorizedSession("canManageProducts");
   if (!session) return fail("Anda tidak punya akses menghapus produk.");
-  return callRpc("fn_delete_product", { p_id: productId });
+
+  const previousImage = await readProductImageUrl(productId);
+  const result = await callRpc("fn_delete_product", { p_id: productId });
+
+  if (result.ok) await deleteR2ObjectBestEffort(previousImage);
+
+  return result;
 }
 
 export async function addStockInAction(

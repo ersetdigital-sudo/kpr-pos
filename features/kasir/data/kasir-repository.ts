@@ -75,6 +75,7 @@ export function getProducts(
         categoryId: product.categoryId,
         categoryName:
           categoryById.get(product.categoryId)?.name ?? "Tanpa kategori",
+        imageUrl: product.imageUrl,
       };
     });
 }
