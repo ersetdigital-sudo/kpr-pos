@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# catatan & tooling lokal (jangan di-commit)
+AGENTS.local.md
+.commandcode/
+.playwright-cli/
+supabase/.temp/

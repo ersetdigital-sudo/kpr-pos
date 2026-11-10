@@ -97,6 +97,12 @@ membaca `request` tanpa penanda itu.
 - Komentar dan pesan UI memakai bahasa Indonesia.
 - Jangan commit `.commandcode/`, `.playwright-cli/`, atau `supabase/.temp/`.
 
+## Catatan lokal mesin ini
+
+Kalau ada `AGENTS.local.md` di root (file ini di-ignore Git), baca dulu. Isinya
+token Management API Supabase, URL produksi, alur apply migration lewat API,
+dan catatan operasional lain yang tidak boleh masuk repo.
+
 ## Perintah
 
 `npm run typecheck`, `npm run lint`, `npm run build`. Build Vercel adalah
