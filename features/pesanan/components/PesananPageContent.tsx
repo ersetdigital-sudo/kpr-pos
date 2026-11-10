@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Chip } from "@/components/ui/Chip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { LeaderboardTable } from "@/features/pesanan/components/LeaderboardTable";
 import { NewOrderForm } from "@/features/pesanan/components/NewOrderForm";
+import { OrderDetailModal } from "@/features/pesanan/components/OrderDetailModal";
 import { OrderTable } from "@/features/pesanan/components/OrderTable";
 import { SalesStatsCards } from "@/features/pesanan/components/SalesStatsCards";
 import {
@@ -32,7 +34,12 @@ import {
 import { ROLES } from "@/constants/roles";
 import { getMonthRange } from "@/lib/date-range";
 import { formatMonthYear } from "@/lib/format";
-import type { AppDatabase, Employee, SalesOrderStatus } from "@/lib/store/types";
+import type {
+  AppDatabase,
+  Employee,
+  SalesOrder,
+  SalesOrderStatus,
+} from "@/lib/store/types";
 import type { OrderRow } from "@/features/pesanan/types";
 
 export function PesananPageContent() {
@@ -40,8 +47,10 @@ export function PesananPageContent() {
   const { employee } = useSession();
   const permissions = usePermissions();
   const { showToast } = useToast();
+  const router = useRouter();
   const [pendingCancel, setPendingCancel] = useState<OrderRow | null>(null);
   const [pendingDelete, setPendingDelete] = useState<OrderRow | null>(null);
+  const [detailOrder, setDetailOrder] = useState<SalesOrder | null>(null);
 
   async function applyStatus(row: OrderRow, status: SalesOrderStatus) {
     try {
@@ -97,6 +106,19 @@ export function PesananPageContent() {
     );
   }
 
+  const salesOrders = database.salesOrders;
+
+  function handleViewDetail(row: OrderRow) {
+    const order = salesOrders.find((item) => item.id === row.id);
+
+    if (!order) {
+      showToast("Pesanan tidak ditemukan", "error");
+      return;
+    }
+
+    setDetailOrder(order);
+  }
+
   return (
     <>
       <PesananBody
@@ -107,6 +129,7 @@ export function PesananPageContent() {
         canDelete={permissions.canDeleteSalesOrder}
         onStatusChange={handleStatusChange}
         onDelete={setPendingDelete}
+        onViewDetail={handleViewDetail}
       />
 
       <ConfirmDialog
@@ -137,6 +160,30 @@ export function PesananPageContent() {
         onClose={() => setPendingDelete(null)}
         onConfirm={handleDelete}
       />
+
+      <OrderDetailModal
+        order={detailOrder}
+        salesName={
+          detailOrder
+            ? (database.employees.find(
+                (item) => item.id === detailOrder.salesEmployeeId,
+              )?.name ?? "Sales")
+            : "Sales"
+        }
+        branchName={
+          detailOrder
+            ? (database.branches.find(
+                (item) => item.id === detailOrder.branchId,
+              )?.name ?? "-")
+            : "-"
+        }
+        canProcess={permissions.canUseCashier}
+        onProcess={() => {
+          if (!detailOrder) return;
+          router.push(`/kasir?order=${detailOrder.id}`);
+        }}
+        onClose={() => setDetailOrder(null)}
+      />
     </>
   );
 }
@@ -149,6 +196,7 @@ interface PesananBodyProps {
   canDelete: boolean;
   onStatusChange: (row: OrderRow, status: SalesOrderStatus) => void;
   onDelete: (row: OrderRow) => void;
+  onViewDetail: (row: OrderRow) => void;
 }
 
 function PesananBody({
@@ -159,6 +207,7 @@ function PesananBody({
   canDelete,
   onStatusChange,
   onDelete,
+  onViewDetail,
 }: PesananBodyProps) {
   const today = new Date();
   const monthRange = getMonthRange(today);
@@ -252,6 +301,7 @@ function PesananBody({
           title={isSales ? "Pesanan Saya" : "Semua Pesanan Sales"}
           onStatusChange={onStatusChange}
           onDelete={onDelete}
+          onViewDetail={onViewDetail}
         />
       </div>
     </>

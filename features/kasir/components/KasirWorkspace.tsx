@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -62,6 +62,7 @@ export function KasirWorkspace() {
   const [salesEmployeeId, setSalesEmployeeId] = useState("");
   const [salesOrderId, setSalesOrderId] = useState<string | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
+  const handledOrderRef = useRef<string | null>(null);
   const [method, setMethod] = useState<PaymentMethod>("Cash");
   const [cashReceived, setCashReceived] = useState(0);
   const [selectedBankId, setSelectedBankId] = useState("");
@@ -396,6 +397,22 @@ export function KasirWorkspace() {
     setCashReceived(0);
     showToast(`Pesanan ${order.orderNumber} dimuat ke kasir`, "success");
   }
+
+  // Halaman Pesanan mengirim ?order=<id> agar pesanan langsung masuk keranjang.
+  useEffect(() => {
+    if (handledOrderRef.current) return;
+
+    const orderId = new URLSearchParams(window.location.search).get("order");
+    if (!orderId) return;
+
+    const order = data.salesOrders.find((item) => item.id === orderId);
+    if (!order) return;
+
+    handledOrderRef.current = orderId;
+    handleSelectOrder(order);
+    window.history.replaceState(null, "", window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.salesOrders]);
 
   function handleCancelCart() {
     if (totals.itemCount === 0) {

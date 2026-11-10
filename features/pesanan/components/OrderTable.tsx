@@ -28,6 +28,7 @@ interface OrderTableProps {
   title: string;
   onStatusChange: (row: OrderRow, status: SalesOrderStatus) => void;
   onDelete: (row: OrderRow) => void;
+  onViewDetail: (row: OrderRow) => void;
 }
 
 export function OrderTable({
@@ -38,6 +39,7 @@ export function OrderTable({
   title,
   onStatusChange,
   onDelete,
+  onViewDetail,
 }: OrderTableProps) {
   const columns = useMemo(() => {
     const base: DataTableColumn<OrderRow>[] = [
@@ -91,6 +93,22 @@ export function OrderTable({
         ),
       });
     }
+
+    base.push({
+      id: "detail",
+      header: <span className="sr-only">Detail</span>,
+      align: "right",
+      cell: (order) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-[32px] px-2.5 text-meta"
+          onClick={() => onViewDetail(order)}
+        >
+          Detail
+        </Button>
+      ),
+    });
 
     base.push({
       id: "status",
@@ -151,7 +169,7 @@ export function OrderTable({
     }
 
     return base;
-  }, [canDelete, canManage, onDelete, onStatusChange, showSales]);
+  }, [canDelete, canManage, onDelete, onStatusChange, onViewDetail, showSales]);
 
   return (
     <Card className="p-5">
