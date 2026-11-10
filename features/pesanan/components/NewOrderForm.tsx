@@ -55,7 +55,11 @@ function getRowPricing(
           gross,
           Math.round((gross * Math.min(100, row.discountValue)) / 100),
         )
-      : Math.min(gross, Math.max(0, Math.round(row.discountValue)));
+      : Math.min(
+          gross,
+          Math.max(0, Math.round(row.discountValue)) *
+            Math.max(0, Math.round(row.quantity)),
+        );
 
   return { unitPrice, gross, discount, total: gross - discount };
 }
@@ -292,7 +296,7 @@ export function NewOrderForm({
                     }
                     className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
                   >
-                    <option value="nominal">Rp</option>
+                    <option value="nominal">Rp/pcs</option>
                     <option value="percent">%</option>
                   </select>
 

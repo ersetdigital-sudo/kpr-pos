@@ -45,11 +45,29 @@ export function calculateDiscountAmount(
   return Math.min(subtotal, Math.round(safeValue));
 }
 
+/** Diskon nominal dihitung per pcs; persen dihitung dari total baris. */
+export function calculateItemDiscount(
+  gross: number,
+  type: DiscountType,
+  value: number,
+  quantity: number,
+): number {
+  if (type === "percent") {
+    return calculateDiscountAmount(gross, type, value);
+  }
+
+  const perPiece = Math.max(0, Math.round(value));
+  const pieces = Math.max(0, Math.round(quantity));
+
+  return Math.min(gross, perPiece * pieces);
+}
+
 export function calculateLineDiscount(line: CartLine): number {
-  return calculateDiscountAmount(
+  return calculateItemDiscount(
     calculateLineGross(line),
     line.discountType,
     line.discountValue,
+    line.quantity,
   );
 }
 

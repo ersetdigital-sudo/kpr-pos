@@ -217,7 +217,7 @@ export function CartPanel({
                       }
                       className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
                     >
-                      <option value="nominal">Rp</option>
+                      <option value="nominal">Rp/pcs</option>
                       <option value="percent">%</option>
                     </select>
                     {line.discountType === "nominal" ? (

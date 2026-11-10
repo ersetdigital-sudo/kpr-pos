@@ -129,7 +129,7 @@ export function OrderDetailModal({
                           <div className="text-meta text-ink-muted">
                             {item.discountType === "percent"
                               ? `${item.discountValue ?? 0}%`
-                              : "nominal"}
+                              : `${formatRupiah(item.discountValue ?? 0)}/pcs`}
                           </div>
                         </div>
                       ) : (

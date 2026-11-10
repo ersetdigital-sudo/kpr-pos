@@ -98,7 +98,7 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
                   Diskon{" "}
                   {item.discountType === "percent"
                     ? `${item.discountValue ?? 0}%`
-                    : formatRupiah(item.discountValue ?? 0)}
+                    : `${formatRupiah(item.discountValue ?? 0)}/pcs`}
                   {" · -"}
                   {formatRupiah(item.discountAmount)}
                 </div>

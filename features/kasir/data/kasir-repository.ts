@@ -17,7 +17,7 @@ import { formatDateTimeShort, formatRupiah } from "@/lib/format";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import {
   calculateCartTotals,
-  calculateDiscountAmount,
+  calculateItemDiscount,
   getNextInvoiceNumber,
 } from "@/features/kasir/data/kasir-calculations";
 import { selectSession } from "@/features/session/data/session-repository";
@@ -345,10 +345,11 @@ export async function createTransaction(
         ? product.wholesalePrice
         : product.price;
     const gross = unitPrice * item.quantity;
-    const discountAmount = calculateDiscountAmount(
+    const discountAmount = calculateItemDiscount(
       gross,
       discountType,
       discountValue,
+      item.quantity,
     );
 
     return {
