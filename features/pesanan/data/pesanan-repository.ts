@@ -62,6 +62,9 @@ export async function createSalesOrder(
   );
 
   if (!salesEmployee) throw new Error("Pilih sales yang valid");
+  if (input.shippingMethod === "paid" && input.shippingCost <= 0) {
+    throw new Error("Nominal ongkir harus lebih dari 0");
+  }
 
   const merged = new Map<string, number>();
   input.items.forEach((item) => {
@@ -98,6 +101,10 @@ export async function createSalesOrder(
           discountType: item.discountType,
           discountValue: item.discountValue,
         })),
+      taxEnabled: input.taxEnabled,
+      taxRate: input.taxRate,
+      shippingMethod: input.shippingMethod,
+      shippingCost: input.shippingCost,
     }),
   );
 

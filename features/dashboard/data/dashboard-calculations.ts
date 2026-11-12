@@ -1,6 +1,6 @@
 import { getLastDays, getMonthRange, isSameDay } from "@/lib/date-range";
 import { formatDateLong, formatTime } from "@/lib/format";
-import { collectSales, sumSalesAmount } from "@/lib/store/sales";
+import { collectSales, sumSalesAmount, sumSalesTax } from "@/lib/store/sales";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { AppDatabase, AttendanceRecord } from "@/lib/store/types";
 import {
@@ -46,6 +46,10 @@ export function buildDashboardData(
     sales.filter((sale) => isSameDay(new Date(sale.at), yesterday)),
   );
   const salesToday = sumSalesAmount(todaySales);
+  const taxToday = sumSalesTax(todaySales);
+  const taxTransactionCount = todaySales.filter(
+    (sale) => sale.taxEnabled && sale.taxAmount > 0,
+  ).length;
 
   // Rincian metode bayar tetap hanya dari transaksi kasir.
   const transactions = database.transactions.filter(
@@ -173,6 +177,8 @@ export function buildDashboardData(
     },
     stats: {
       salesToday,
+      taxToday,
+      taxTransactionCount,
       growthPercent,
       transactionCount: todaySales.length,
       salesOrderCount: todaySales.filter(

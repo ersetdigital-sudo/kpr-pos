@@ -12,7 +12,7 @@ export function CashBookSummaryCards({ summary }: CashBookSummaryCardsProps) {
       <StatCard
         label="Total Pemasukan"
         value={formatRupiahCompact(summary.totalMasuk)}
-        hint="Termasuk penjualan otomatis"
+        hint="Termasuk penjualan otomatis, PPN & ongkir"
         valueTone="success"
         hintTone="success"
       />

@@ -10,12 +10,15 @@ import {
   getLineUnitPrice,
 } from "@/features/kasir/data/kasir-calculations";
 import { PaymentSection } from "@/features/kasir/components/PaymentSection";
+import { SalesChargeFields } from "@/features/sales/components/SalesChargeFields";
 import { formatRupiah } from "@/lib/format";
+import type { SalesChargeTotals } from "@/lib/store/charges";
 import type {
   BankAccount,
   DiscountType,
   Employee,
   PriceType,
+  ShippingMethod,
 } from "@/lib/store/types";
 import type {
   CartLine,
@@ -54,6 +57,14 @@ interface CartPanelProps {
   onPay: () => void;
   onQtyChange: (productId: string, delta: number) => void;
   onRemoveItem: (productId: string) => void;
+  taxEnabled: boolean;
+  taxRate: number;
+  onTaxEnabledChange: (enabled: boolean) => void;
+  shippingMethod: ShippingMethod | "";
+  shippingCost: number;
+  onShippingMethodChange: (method: ShippingMethod) => void;
+  onShippingCostChange: (value: number) => void;
+  charges: SalesChargeTotals;
 }
 
 export function CartPanel({
@@ -82,6 +93,14 @@ export function CartPanel({
   onPay,
   onQtyChange,
   onRemoveItem,
+  taxEnabled,
+  taxRate,
+  onTaxEnabledChange,
+  shippingMethod,
+  shippingCost,
+  onShippingMethodChange,
+  onShippingCostChange,
+  charges,
 }: CartPanelProps) {
   return (
     <aside
@@ -266,7 +285,21 @@ export function CartPanel({
         )}
       </div>
 
-      <div className="flex flex-col gap-2 px-5 py-3.5 text-body">
+      <div className="border-t border-line px-5 py-3.5">
+        <SalesChargeFields
+          taxEnabled={taxEnabled}
+          taxRate={taxRate}
+          taxAmount={charges.taxAmount}
+          onTaxEnabledChange={onTaxEnabledChange}
+          shippingMethod={shippingMethod}
+          shippingCost={shippingCost}
+          shippingAmount={charges.shippingCost}
+          onShippingMethodChange={onShippingMethodChange}
+          onShippingCostChange={onShippingCostChange}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-line px-5 py-3.5 text-body">
         <div className="flex justify-between">
           <span className="text-ink-muted">Subtotal</span>
           <span className="text-ink">{formatRupiah(totals.subtotal)}</span>
@@ -279,16 +312,39 @@ export function CartPanel({
           </span>
         </div>
 
+        {taxEnabled ? (
+          <div className="flex justify-between">
+            <span className="text-ink-muted">PPN {taxRate}%</span>
+            <span className="text-ink">{formatRupiah(charges.taxAmount)}</span>
+          </div>
+        ) : null}
+
+        {shippingMethod === "paid" ? (
+          <div className="flex justify-between">
+            <span className="text-ink-muted">Ongkir</span>
+            <span className="text-ink">
+              {formatRupiah(charges.shippingCost)}
+            </span>
+          </div>
+        ) : null}
+
+        {shippingMethod === "free" ? (
+          <div className="flex justify-between">
+            <span className="text-ink-muted">Ongkir</span>
+            <span className="font-semibold text-success-ink">Gratis ongkir</span>
+          </div>
+        ) : null}
+
         <div className="flex items-baseline justify-between border-t border-dashed border-line-strong pt-2">
-          <span className="font-bold text-ink">Total</span>
+          <span className="font-bold text-ink">Total bayar</span>
           <span className="text-stat font-extrabold text-ink">
-            {formatRupiah(totals.total)}
+            {formatRupiah(charges.total)}
           </span>
         </div>
       </div>
 
       <PaymentSection
-        total={totals.total}
+        total={charges.total}
         methods={methods}
         method={method}
         onMethodChange={onMethodChange}

@@ -15,8 +15,8 @@ export function SalesSourceCard({ breakdown }: SalesSourceCardProps) {
             Kasir vs Pesanan Sales
           </h2>
           <p className="mt-0.5 mb-0 text-meta text-ink-muted">
-            Omzet per sumber. Metode bayar &amp; per kasir hanya dari transaksi
-            kasir.
+            Omzet per sumber (tanpa PPN, ongkir termasuk). Metode bayar &amp;
+            per kasir hanya dari transaksi kasir.
           </p>
         </div>
 

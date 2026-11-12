@@ -15,6 +15,7 @@ import type {
   CartDraft,
   SalesOrder,
   SalesOrderStatus,
+  ShippingMethod,
   Transaction,
 } from "@/lib/store/types";
 import type {
@@ -34,6 +35,11 @@ interface TransactionJson {
   subtotal: number;
   discount: { type: "nominal" | "percent"; value: number; amount: number };
   total: number;
+  taxEnabled: boolean;
+  taxRate: number;
+  taxAmount: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
   payment: {
     method: "Cash" | "QRIS" | "Transfer";
     cashReceived: number | null;
@@ -70,6 +76,11 @@ interface SalesOrderJson {
   branchId: string;
   salesEmployeeId: string;
   total: number;
+  taxEnabled: boolean;
+  taxRate: number;
+  taxAmount: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
   status: string;
   paidAt: string | null;
   transactionId: string | null;
@@ -135,6 +146,11 @@ function mapTransactionJson(row: TransactionJson): Transaction {
     subtotal: row.subtotal,
     discount: row.discount,
     total: row.total,
+    taxEnabled: row.taxEnabled ?? false,
+    taxRate: row.taxRate ?? 0,
+    taxAmount: row.taxAmount ?? 0,
+    shippingMethod: row.shippingMethod ?? "pickup",
+    shippingCost: row.shippingCost ?? 0,
     payment: {
       method: row.payment.method,
       cashReceived: row.payment.cashReceived ?? undefined,
@@ -166,6 +182,11 @@ function mapSalesOrderJson(row: SalesOrderJson): SalesOrder {
       discountAmount: item.discountAmount,
     })),
     total: row.total,
+    taxEnabled: row.taxEnabled ?? false,
+    taxRate: row.taxRate ?? 0,
+    taxAmount: row.taxAmount ?? 0,
+    shippingMethod: row.shippingMethod ?? "pickup",
+    shippingCost: row.shippingCost ?? 0,
     status: row.status as SalesOrderStatus,
     transactionId: row.transactionId ?? undefined,
     paidAt: row.paidAt ?? undefined,

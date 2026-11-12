@@ -3,6 +3,7 @@ import type {
   DiscountType,
   PriceType,
   SalesOrder,
+  ShippingMethod,
   Transaction,
 } from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
@@ -31,6 +32,10 @@ export interface CreateTransactionPayload {
   cashReceived: number;
   bankAccountId?: string;
   salesOrderId?: string;
+  taxEnabled: boolean;
+  taxRate: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
 }
 
 export interface CreateSalesOrderPayload {
@@ -40,6 +45,10 @@ export interface CreateSalesOrderPayload {
   customerPhone: string;
   note: string;
   items: OrderItemPayload[];
+  taxEnabled: boolean;
+  taxRate: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
 }
 
 export interface SaveDraftPayload {

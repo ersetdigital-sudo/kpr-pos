@@ -15,6 +15,7 @@ import { CashierReportCard } from "@/features/laporan/components/CashierReportCa
 import { PaymentMethodCard } from "@/features/laporan/components/PaymentMethodCard";
 import { ReportPrintSheet } from "@/features/laporan/components/ReportPrintSheet";
 import { ReportStatsCards } from "@/features/laporan/components/ReportStatsCards";
+import { ReportTaxRecapCard } from "@/features/laporan/components/ReportTaxRecapCard";
 import { SalesSourceCard } from "@/features/laporan/components/SalesSourceCard";
 import {
   buildLogUsers,
@@ -223,6 +224,11 @@ function LaporanBody({
         </div>
 
         <SalesSourceCard breakdown={data.sourceBreakdown} />
+
+        <ReportTaxRecapCard
+          rows={data.taxRecap}
+          total={data.stats.taxCollected}
+        />
 
         <ActivityLogTable
           logs={data.activityLog}

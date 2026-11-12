@@ -3,14 +3,21 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
+import { CurrencyInput } from "@/components/ui/CurrencyInput";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 import { createSalesOrder } from "@/features/pesanan/data/pesanan-repository";
-import { formatRupiah } from "@/lib/format";
-import type { DiscountType, PriceType } from "@/lib/store/types";
+import { SalesChargeFields } from "@/features/sales/components/SalesChargeFields";
+import { formatPercent, formatRupiah } from "@/lib/format";
+import { calculateSalesCharges } from "@/lib/store/charges";
+import type {
+  DiscountType,
+  PriceType,
+  ShippingMethod,
+} from "@/lib/store/types";
 import type {
   NewOrderRow,
   OrderProductOption,
@@ -24,6 +31,8 @@ interface NewOrderFormProps {
   salesOptions: readonly SalesEmployeeOption[];
   defaultSalesId: string;
   canChooseSales: boolean;
+  /** Tarif PPN default dari pengaturan; disalin saat pesanan dibuat. */
+  taxRate: number;
   /** Dipanggil setelah pesanan tersimpan, mis. untuk menutup dialog. */
   onSaved?: () => void;
 }
@@ -72,6 +81,7 @@ export function NewOrderForm({
   salesOptions,
   defaultSalesId,
   canChooseSales,
+  taxRate,
   onSaved,
 }: NewOrderFormProps) {
   const { showToast } = useToast();
@@ -82,6 +92,9 @@ export function NewOrderForm({
   const [rows, setRows] = useState<NewOrderRow[]>(() =>
     productOptions[0] ? [createRow(productOptions[0].id)] : [],
   );
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod | "">("");
+  const [shippingCost, setShippingCost] = useState(0);
   const [saving, setSaving] = useState(false);
 
   const activeSalesId = salesOptions.some((sales) => sales.id === salesId)
@@ -90,12 +103,27 @@ export function NewOrderForm({
   const activeSales = salesOptions.find((sales) => sales.id === activeSalesId);
 
   const totalQuantity = rows.reduce((sum, row) => sum + row.quantity, 0);
+  const subtotalAmount = rows.reduce((sum, row) => {
+    const product = productOptions.find(
+      (option) => option.id === row.productId,
+    );
+    return sum + getRowPricing(row, product).gross;
+  }, 0);
   const totalAmount = rows.reduce((sum, row) => {
     const product = productOptions.find(
       (option) => option.id === row.productId,
     );
     return sum + getRowPricing(row, product).total;
   }, 0);
+  const discountAmount = subtotalAmount - totalAmount;
+  const charges = calculateSalesCharges({
+    subtotal: subtotalAmount,
+    discountAmount,
+    taxEnabled,
+    taxRate,
+    shippingMethod,
+    shippingCost,
+  });
 
   function updateRow(key: string, patch: Partial<NewOrderRow>) {
     setRows((current) =>
@@ -119,6 +147,14 @@ export function NewOrderForm({
       showToast("Sales belum dipilih", "error");
       return;
     }
+    if (!shippingMethod) {
+      showToast("Pilih pengiriman dulu (ambil di toko, ongkir, atau gratis)", "error");
+      return;
+    }
+    if (shippingMethod === "paid" && shippingCost <= 0) {
+      showToast("Nominal ongkir harus lebih dari 0", "error");
+      return;
+    }
 
     setSaving(true);
 
@@ -136,6 +172,10 @@ export function NewOrderForm({
           discountType: row.discountType,
           discountValue: row.discountValue,
         })),
+        taxEnabled,
+        taxRate,
+        shippingMethod,
+        shippingCost,
       });
 
       showToast(`Pesanan ${order.orderNumber} disimpan`, "success");
@@ -145,6 +185,9 @@ export function NewOrderForm({
       setRows(
         productOptions[0] ? [createRow(productOptions[0].id)] : [],
       );
+      setTaxEnabled(false);
+      setShippingMethod("");
+      setShippingCost(0);
       onSaved?.();
     } catch (caught) {
       showToast(
@@ -364,13 +407,61 @@ export function NewOrderForm({
           />
         </Field>
 
-        <div className="flex items-baseline justify-between border-t border-dashed border-line-strong pt-2.5">
-          <span className="text-body text-ink-muted">
-            Total · {totalQuantity} pcs
-          </span>
-          <span className="text-page-title font-extrabold text-ink">
-            {formatRupiah(totalAmount)}
-          </span>
+        <div className="rounded-control border border-line px-3 py-3">
+          <SalesChargeFields
+            taxEnabled={taxEnabled}
+            taxRate={taxRate}
+            taxAmount={charges.taxAmount}
+            onTaxEnabledChange={setTaxEnabled}
+            shippingMethod={shippingMethod}
+            shippingCost={shippingCost}
+            shippingAmount={charges.shippingCost}
+            onShippingMethodChange={setShippingMethod}
+            onShippingCostChange={setShippingCost}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5 border-t border-dashed border-line-strong pt-2.5 text-label">
+          <div className="flex justify-between">
+            <span className="text-ink-muted">Subtotal</span>
+            <span className="text-ink">{formatRupiah(subtotalAmount)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-ink-muted">Diskon</span>
+            <span className="text-ink">- {formatRupiah(discountAmount)}</span>
+          </div>
+          {taxEnabled ? (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">
+                PPN {formatPercent(taxRate)}
+              </span>
+              <span className="text-ink">{formatRupiah(charges.taxAmount)}</span>
+            </div>
+          ) : null}
+          {shippingMethod === "paid" ? (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Ongkir</span>
+              <span className="text-ink">
+                {formatRupiah(charges.shippingCost)}
+              </span>
+            </div>
+          ) : null}
+          {shippingMethod === "free" ? (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Ongkir</span>
+              <span className="font-semibold text-success-ink">
+                Gratis ongkir
+              </span>
+            </div>
+          ) : null}
+          <div className="flex items-baseline justify-between border-t border-dashed border-line-strong pt-2">
+            <span className="text-body text-ink-muted">
+              Total bayar · {totalQuantity} pcs
+            </span>
+            <span className="text-page-title font-extrabold text-ink">
+              {formatRupiah(charges.total)}
+            </span>
+          </div>
         </div>
 
         <Button

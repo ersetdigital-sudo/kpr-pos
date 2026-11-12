@@ -16,6 +16,7 @@ interface NewOrderDialogProps {
   salesOptions: readonly SalesEmployeeOption[];
   defaultSalesId: string;
   canChooseSales: boolean;
+  taxRate: number;
 }
 
 /**
@@ -31,6 +32,7 @@ export function NewOrderDialog({
   salesOptions,
   defaultSalesId,
   canChooseSales,
+  taxRate,
 }: NewOrderDialogProps) {
   return (
     <Drawer
@@ -47,6 +49,7 @@ export function NewOrderDialog({
         salesOptions={salesOptions}
         defaultSalesId={defaultSalesId}
         canChooseSales={canChooseSales}
+        taxRate={taxRate}
         onSaved={onClose}
       />
     </Drawer>

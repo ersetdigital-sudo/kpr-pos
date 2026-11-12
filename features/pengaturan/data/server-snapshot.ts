@@ -24,6 +24,7 @@ interface SettingsRow {
   bonus_type: string;
   bonus_per_piece_amount: number;
   bonus_percent_rate: number | string;
+  tax_rate: number | string | null;
 }
 
 interface BankAccountRow {
@@ -69,7 +70,7 @@ export async function readSettingsBranchSnapshot(): Promise<SettingsBranchSnapsh
       admin
         .from("settings")
         .select(
-          "business_name,business_address,business_phone,business_logo_url,enabled_payment_methods,receipt_paper_size,receipt_footer,work_start_time,work_end_time,bonus_type,bonus_per_piece_amount,bonus_percent_rate",
+          "business_name,business_address,business_phone,business_logo_url,enabled_payment_methods,receipt_paper_size,receipt_footer,work_start_time,work_end_time,bonus_type,bonus_per_piece_amount,bonus_percent_rate,tax_rate",
         )
         .eq("id", 1)
         .maybeSingle(),
@@ -142,6 +143,7 @@ export async function readSettingsBranchSnapshot(): Promise<SettingsBranchSnapsh
     },
     salesBonusPerPiece: salesBonus.perPieceAmount,
     salesBonus,
+    taxRate: Number(settingsRow.tax_rate ?? 11),
     receipt: {
       paperSize: settingsRow.receipt_paper_size as ReceiptPaperSize,
       footerText: settingsRow.receipt_footer,

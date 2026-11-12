@@ -15,9 +15,15 @@ export function ReportStatsCards({ stats }: ReportStatsCardsProps) {
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-4">
       <StatCard
-        label="Omzet"
+        label="Omzet (tanpa PPN)"
         value={formatRupiahCompact(stats.revenue)}
         hint={`${formatNumber(stats.transactionCount)} transaksi`}
+      />
+      <StatCard
+        label="PPN Terkumpul"
+        value={formatRupiahCompact(stats.taxCollected)}
+        valueTone="brand"
+        hint={`${formatNumber(stats.taxTransactionCount)} transaksi ber-PPN`}
       />
       <StatCard
         label="Laba Kotor"

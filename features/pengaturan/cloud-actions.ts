@@ -87,6 +87,10 @@ export async function updateReceiptSettingsAction(
   });
 }
 
+export async function updateTaxRateAction(rate: number): Promise<CloudActionResult> {
+  return settingsWrite("fn_update_tax_rate", { p_rate: rate });
+}
+
 export async function updateAttendanceSettingsAction(
   workStartTime: string,
   workEndTime: string,

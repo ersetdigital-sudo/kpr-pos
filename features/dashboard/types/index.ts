@@ -8,6 +8,9 @@ export interface DashboardPaymentCounts {
 
 export interface DashboardStats {
   salesToday: number;
+  /** PPN terkumpul hari ini; omzet di atas tidak termasuk PPN. */
+  taxToday: number;
+  taxTransactionCount: number;
   growthPercent: number;
   transactionCount: number;
   /** Pesanan sales Lunas hari ini; tidak punya metode pembayaran. */

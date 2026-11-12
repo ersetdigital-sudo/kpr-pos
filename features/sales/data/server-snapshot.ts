@@ -8,6 +8,7 @@ import type {
   CartDraft,
   SalesOrder,
   SalesOrderStatus,
+  ShippingMethod,
   Transaction,
   TransactionItem,
 } from "@/lib/store/types";
@@ -37,6 +38,11 @@ export interface TransactionRow {
   discount_value: number;
   discount_amount: number;
   total: number;
+  tax_enabled: boolean | null;
+  tax_rate: number | string | null;
+  tax_amount: number | null;
+  shipping_method: ShippingMethod | null;
+  shipping_cost: number | null;
   payment_method: "Cash" | "QRIS" | "Transfer";
   cash_received: number | null;
   change_amount: number | null;
@@ -70,6 +76,11 @@ export interface SalesOrderRow {
   branch_id: string;
   sales_employee_id: string;
   total: number;
+  tax_enabled: boolean | null;
+  tax_rate: number | string | null;
+  tax_amount: number | null;
+  shipping_method: ShippingMethod | null;
+  shipping_cost: number | null;
   status: string;
   paid_at: string | null;
   transaction_id: string | null;
@@ -98,10 +109,10 @@ interface CartDraftRow {
 }
 
 export const TRANSACTION_COLUMNS =
-  "id,invoice_number,branch_id,cashier_id,sales_employee_id,subtotal,discount_type,discount_value,discount_amount,total,payment_method,cash_received,change_amount,bank_account_id,refunded_at,refunded_by_id,refunded_by_name,refund_reason,refund_amount,created_at,transaction_items(product_id,product_name,unit_price,unit_cost,quantity,line_total,price_type,discount_type,discount_value,discount_amount)";
+  "id,invoice_number,branch_id,cashier_id,sales_employee_id,subtotal,discount_type,discount_value,discount_amount,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,payment_method,cash_received,change_amount,bank_account_id,refunded_at,refunded_by_id,refunded_by_name,refund_reason,refund_amount,created_at,transaction_items(product_id,product_name,unit_price,unit_cost,quantity,line_total,price_type,discount_type,discount_value,discount_amount)";
 
 export const SALES_ORDER_COLUMNS =
-  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,status,paid_at,transaction_id,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_price,unit_cost,quantity,price_type,discount_type,discount_value,discount_amount)";
+  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,status,paid_at,transaction_id,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_price,unit_cost,quantity,price_type,discount_type,discount_value,discount_amount)";
 
 export const CART_DRAFT_COLUMNS =
   "id,label,branch_id,cashier_id,sales_employee_id,discount_type,discount_value,created_at,updated_at,cart_draft_items(product_id,quantity)";
@@ -144,6 +155,11 @@ export function mapTransactionRow(row: TransactionRow): Transaction {
       amount: row.discount_amount,
     },
     total: row.total,
+    taxEnabled: row.tax_enabled ?? false,
+    taxRate: Number(row.tax_rate ?? 0),
+    taxAmount: row.tax_amount ?? 0,
+    shippingMethod: row.shipping_method ?? "pickup",
+    shippingCost: row.shipping_cost ?? 0,
     payment: {
       method: row.payment_method,
       cashReceived: row.cash_received ?? undefined,
@@ -183,6 +199,11 @@ export function mapSalesOrderRow(row: SalesOrderRow): SalesOrder {
       discountAmount: item.discount_amount,
     })),
     total: row.total,
+    taxEnabled: row.tax_enabled ?? false,
+    taxRate: Number(row.tax_rate ?? 0),
+    taxAmount: row.tax_amount ?? 0,
+    shippingMethod: row.shipping_method ?? "pickup",
+    shippingCost: row.shipping_cost ?? 0,
     status: row.status as SalesOrderStatus,
     transactionId: row.transaction_id ?? undefined,
     paidAt: row.paid_at ?? undefined,

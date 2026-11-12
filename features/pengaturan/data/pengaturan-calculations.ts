@@ -64,6 +64,11 @@ function buildSampleTransaction(database: AppDatabase): Transaction {
     subtotal: unitPrice,
     discount: { type: "nominal", value: 0, amount: 0 },
     total: unitPrice,
+    taxEnabled: false,
+    taxRate: 0,
+    taxAmount: 0,
+    shippingMethod: "pickup",
+    shippingCost: 0,
     payment: { method: "Cash", cashReceived: unitPrice, change: 0 },
     createdAt: "2026-01-01T00:00:00.000Z",
   };

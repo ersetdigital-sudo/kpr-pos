@@ -20,6 +20,12 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
         hintTone={stats.growthPercent >= 0 ? "success" : "muted"}
       />
       <StatCard
+        label="PPN Terkumpul Hari Ini"
+        value={formatRupiah(stats.taxToday)}
+        valueTone="brand"
+        hint={`${formatNumber(stats.taxTransactionCount)} transaksi ber-PPN`}
+      />
+      <StatCard
         label="Jumlah Transaksi"
         value={formatNumber(stats.transactionCount)}
         hint={`Cash ${stats.paymentCounts.cash} · QRIS ${stats.paymentCounts.qris} · Transfer ${stats.paymentCounts.transfer}${

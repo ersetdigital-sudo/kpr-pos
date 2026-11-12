@@ -325,6 +325,7 @@ function PesananBody({
           salesOptions={salesOptions}
           defaultSalesId={defaultSalesId}
           canChooseSales={!isSales}
+          taxRate={database.settings.taxRate}
         />
       ) : null}
     </>

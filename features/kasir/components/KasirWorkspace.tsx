@@ -17,6 +17,7 @@ import {
   calculateCartTotals,
   filterProducts,
 } from "@/features/kasir/data/kasir-calculations";
+import { calculateSalesCharges } from "@/lib/store/charges";
 import {
   buildReceiptView,
   createTransaction,
@@ -32,7 +33,11 @@ import {
 import { usePermissions } from "@/features/session/data/session-repository";
 import { getDatabase } from "@/lib/store/store";
 import { formatRupiah } from "@/lib/format";
-import type { SalesOrder, Transaction } from "@/lib/store/types";
+import type {
+  SalesOrder,
+  ShippingMethod,
+  Transaction,
+} from "@/lib/store/types";
 import type {
   CartItemInput,
   CartLine,
@@ -65,6 +70,10 @@ export function KasirWorkspace() {
   const handledOrderRef = useRef<string | null>(null);
   const [method, setMethod] = useState<PaymentMethod>("Cash");
   const [cashReceived, setCashReceived] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [taxRate, setTaxRate] = useState(0);
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod | "">("");
+  const [shippingCost, setShippingCost] = useState(0);
   const [selectedBankId, setSelectedBankId] = useState("");
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
@@ -105,6 +114,16 @@ export function KasirWorkspace() {
 
   const canEditDiscount = permissions.canApplyDiscount;
   const totals = calculateCartTotals(lines);
+  // Tarif pesanan bisa berbeda dari pengaturan bila pesanan dibuat lebih dulu.
+  const activeTaxRate = taxRate > 0 ? taxRate : data.settings.taxRate;
+  const charges = calculateSalesCharges({
+    subtotal: totals.subtotal,
+    discountAmount: totals.discountAmount,
+    taxEnabled,
+    taxRate: activeTaxRate,
+    shippingMethod,
+    shippingCost,
+  });
   const pendingOrders = data.salesOrders.filter(
     (order) =>
       order.branchId === data.branch.id &&
@@ -131,11 +150,13 @@ export function KasirWorkspace() {
     : (data.bankAccounts[0]?.id ?? "");
 
   const cashSufficient =
-    activeMethod !== "Cash" || cashReceived >= totals.total;
+    activeMethod !== "Cash" || cashReceived >= charges.total;
   const transferReady = activeMethod !== "Transfer" || activeBankId !== "";
   const canPay =
     totals.itemCount > 0 &&
     data.enabledMethods.length > 0 &&
+    shippingMethod !== "" &&
+    (shippingMethod !== "paid" || shippingCost > 0) &&
     cashSufficient &&
     transferReady;
 
@@ -229,6 +250,10 @@ export function KasirWorkspace() {
     setSalesEmployeeId("");
     setSalesOrderId(null);
     setCashReceived(0);
+    setTaxEnabled(false);
+    setTaxRate(0);
+    setShippingMethod("");
+    setShippingCost(0);
   }
 
   async function handleSaveDraft() {
@@ -306,6 +331,11 @@ export function KasirWorkspace() {
       setItems(restored);
       setSalesOrderId(null);
       setSalesEmployeeId(draft.salesEmployeeId ?? "");
+      // Draft tidak menyimpan PPN/ongkir; jangan bawa nilai keranjang sebelumnya.
+      setTaxEnabled(false);
+      setTaxRate(0);
+      setShippingMethod("");
+      setShippingCost(0);
       showToast(
         adjusted
           ? "Draft dibuka, sebagian qty disesuaikan dengan stok"
@@ -395,6 +425,11 @@ export function KasirWorkspace() {
     setSalesOrderId(order.id);
     setOrdersOpen(false);
     setCashReceived(0);
+    // PPN dan ongkir pesanan terbawa otomatis; kasir masih bisa menyesuaikan.
+    setTaxEnabled(order.taxEnabled);
+    setTaxRate(order.taxRate);
+    setShippingMethod(order.shippingMethod);
+    setShippingCost(order.shippingCost);
     showToast(`Pesanan ${order.orderNumber} dimuat ke kasir`, "success");
   }
 
@@ -461,6 +496,16 @@ export function KasirWorkspace() {
       return;
     }
 
+    if (!shippingMethod) {
+      showToast("Pilih pengiriman dulu (ambil di toko, ongkir, atau gratis)", "error");
+      return;
+    }
+
+    if (shippingMethod === "paid" && shippingCost <= 0) {
+      showToast("Nominal ongkir harus lebih dari 0", "error");
+      return;
+    }
+
     if (!cashSufficient) {
       showToast("Uang diterima kurang dari total", "error");
       return;
@@ -477,6 +522,10 @@ export function KasirWorkspace() {
           activeMethod === "Transfer" ? activeBankId : undefined,
         salesEmployeeId: activeSalesId || null,
         salesOrderId: salesOrderId ?? undefined,
+        taxEnabled,
+        taxRate: activeTaxRate,
+        shippingMethod: shippingMethod as ShippingMethod,
+        shippingCost,
       });
 
       setReceipt(result.receipt);
@@ -561,6 +610,14 @@ export function KasirWorkspace() {
           onPay={handlePay}
           onQtyChange={handleQtyChange}
           onRemoveItem={handleRemoveItem}
+          taxEnabled={taxEnabled}
+          taxRate={activeTaxRate}
+          onTaxEnabledChange={setTaxEnabled}
+          shippingMethod={shippingMethod}
+          shippingCost={shippingCost}
+          onShippingMethodChange={setShippingMethod}
+          onShippingCostChange={setShippingCost}
+          charges={charges}
         />
       </div>
 

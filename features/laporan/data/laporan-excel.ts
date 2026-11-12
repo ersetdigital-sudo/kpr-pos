@@ -13,7 +13,9 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
     ["Periode", data.header.subtitle],
     [],
     ["Metrik", "Nilai"],
-    ["Omzet", data.stats.revenue],
+    ["Omzet (tanpa PPN)", data.stats.revenue],
+    ["PPN Terkumpul", data.stats.taxCollected],
+    ["Transaksi Ber-PPN", data.stats.taxTransactionCount],
     ["Laba Kotor", data.stats.grossProfit],
     ["Margin (%)", Number(data.stats.marginPercent.toFixed(1))],
     ["Jumlah Transaksi", data.stats.transactionCount],
@@ -68,7 +70,10 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
       "Metode",
       "Subtotal",
       "Diskon",
-      "Total",
+      "PPN",
+      "Tarif PPN (%)",
+      "Ongkir",
+      "Total Bayar",
       "Laba Kotor",
     ],
     ...data.transactions.map((item) => [
@@ -80,6 +85,9 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
       item.method,
       item.subtotal,
       item.discount,
+      item.taxAmount,
+      item.taxEnabled ? item.taxRate : 0,
+      item.shippingCost,
       item.total,
       item.profit,
     ]),
@@ -93,10 +101,50 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
     { wch: 12 },
     { wch: 14 },
     { wch: 12 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 12 },
     { wch: 14 },
     { wch: 14 },
   ];
   XLSX.utils.book_append_sheet(workbook, transactions, "Transaksi");
+
+  const taxRecap = XLSX.utils.aoa_to_sheet([
+    [
+      "No. Dokumen",
+      "Sumber",
+      "Tanggal",
+      "Cabang",
+      "Pelanggan / Kasir",
+      "Dasar PPN",
+      "Tarif PPN (%)",
+      "PPN",
+    ],
+    ...data.taxRecap.map((row) => [
+      row.number,
+      row.source,
+      formatDateTimeShort(row.at),
+      row.branchName,
+      row.customerName || row.cashierName || "-",
+      row.taxBase,
+      row.taxRate,
+      row.taxAmount,
+    ]),
+    [],
+    ["Total PPN Terkumpul", data.stats.taxCollected],
+    ["Jumlah Transaksi Ber-PPN", data.stats.taxTransactionCount],
+  ]);
+  taxRecap["!cols"] = [
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 24 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 14 },
+  ];
+  XLSX.utils.book_append_sheet(workbook, taxRecap, "Rekap PPN");
 
   const logs = XLSX.utils.aoa_to_sheet([
     ["Waktu", "Pengguna", "Role", "Cabang", "Aksi", "Detail"],

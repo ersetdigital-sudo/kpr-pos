@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { formatDateTimeLong, formatRupiah } from "@/lib/format";
+import { formatDateTimeLong, formatPercent, formatRupiah } from "@/lib/format";
+import { shippingChargeLabel } from "@/lib/store/charges";
 import type { ReceiptViewData } from "@/features/kasir/types";
 
 export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
@@ -122,6 +123,22 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
           <div className="flex justify-between gap-2">
             <span>Diskon</span>
             <span>- {formatRupiah(transaction.discount.amount)}</span>
+          </div>
+        ) : null}
+        {transaction.taxEnabled && transaction.taxAmount > 0 ? (
+          <div className="flex justify-between gap-2">
+            <span>PPN {formatPercent(transaction.taxRate)}</span>
+            <span>{formatRupiah(transaction.taxAmount)}</span>
+          </div>
+        ) : null}
+        {transaction.shippingMethod !== "pickup" ? (
+          <div className="flex justify-between gap-2">
+            <span>Ongkir</span>
+            <span>
+              {transaction.shippingMethod === "free"
+                ? "Gratis ongkir"
+                : formatRupiah(transaction.shippingCost)}
+            </span>
           </div>
         ) : null}
         <div className="flex justify-between gap-2 border-t border-ink/20 pt-1 text-[12px] font-bold">

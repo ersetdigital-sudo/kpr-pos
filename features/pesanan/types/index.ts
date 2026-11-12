@@ -3,6 +3,7 @@ import type {
   PriceType,
   SalesBonusSettings,
   SalesOrderStatus,
+  ShippingMethod,
 } from "@/lib/store/types";
 
 export interface OrderRow {
@@ -79,6 +80,10 @@ export interface CreateOrderInput {
     discountType: DiscountType;
     discountValue: number;
   }[];
+  taxEnabled: boolean;
+  taxRate: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
 }
 
 export interface BonusEntry {

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { formatDateTimeLong, formatRupiah } from "@/lib/format";
+import { formatDateTimeLong, formatPercent, formatRupiah } from "@/lib/format";
 import type { SalesOrder } from "@/lib/store/types";
 
 interface OrderDetailModalProps {
@@ -155,6 +155,24 @@ export function OrderDetailModal({
             <span className="text-ink-muted">Total diskon</span>
             <span className="text-ink">- {formatRupiah(discount)}</span>
           </div>
+          {order.taxEnabled && order.taxAmount > 0 ? (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">
+                PPN {formatPercent(order.taxRate)}
+              </span>
+              <span className="text-ink">{formatRupiah(order.taxAmount)}</span>
+            </div>
+          ) : null}
+          {order.shippingMethod !== "pickup" ? (
+            <div className="flex justify-between">
+              <span className="text-ink-muted">Ongkir</span>
+              <span className="text-ink">
+                {order.shippingMethod === "free"
+                  ? "Gratis ongkir"
+                  : formatRupiah(order.shippingCost)}
+              </span>
+            </div>
+          ) : null}
           <div className="flex justify-between text-body font-bold text-ink">
             <span>Total</span>
             <span>{formatRupiah(order.total)}</span>

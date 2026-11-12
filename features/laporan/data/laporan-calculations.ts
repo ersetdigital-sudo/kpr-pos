@@ -9,6 +9,7 @@ import {
   filterSales,
   summarizeSalesBySource,
   sumSalesAmount,
+  sumSalesTax,
 } from "@/lib/store/sales";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { DateRange } from "@/lib/date-range";
@@ -24,6 +25,7 @@ import type {
   ReportData,
   ReportLogRow,
   ReportLogUser,
+  ReportTaxRow,
   ReportTransactionRow,
 } from "@/features/laporan/types";
 import type { Role } from "@/constants/roles";
@@ -91,8 +93,18 @@ export function buildReportData(
     );
 
   const revenue = sumSalesAmount(sales);
+  const taxCollected = sumSalesTax(sales);
+  const taxTransactionCount = sales.filter(
+    (sale) => sale.taxEnabled && sale.taxAmount > 0,
+  ).length;
+  // Laba kotor hanya dari barang: PPN dan ongkir tidak ikut dihitung.
   const grossProfit = sales.reduce(
-    (sum, sale) => sum + calculateGrossProfit(sale, productCostById),
+    (sum, sale) =>
+      sum +
+      calculateGrossProfit(
+        { total: sale.goodsTotal, items: sale.items },
+        productCostById,
+      ),
     0,
   );
   const transactionCount = sales.length;
@@ -214,8 +226,38 @@ export function buildReportData(
     subtotal: sale.subtotal,
     discount: sale.discount,
     total: sale.total,
-    profit: calculateGrossProfit(sale, productCostById),
+    taxEnabled: sale.taxEnabled,
+    taxRate: sale.taxRate,
+    taxAmount: sale.taxAmount,
+    shippingCost: sale.shippingCost,
+    profit: calculateGrossProfit(
+      { total: sale.goodsTotal, items: sale.items },
+      productCostById,
+    ),
   }));
+
+  const orderById = new Map(
+    database.salesOrders.map((order) => [order.id, order]),
+  );
+  const taxRecap: ReportTaxRow[] = sales
+    .filter((sale) => sale.taxEnabled && sale.taxAmount > 0)
+    .map((sale) => ({
+      id: sale.id,
+      number: sale.number,
+      source: sale.source,
+      at: sale.at,
+      customerName:
+        sale.source === "Pesanan Sales"
+          ? (orderById.get(sale.id)?.customerName ?? null)
+          : null,
+      cashierName: sale.cashierId
+        ? (employeeById.get(sale.cashierId)?.name ?? "Kasir")
+        : null,
+      branchName: branchById.get(sale.branchId)?.name ?? "-",
+      taxBase: sale.goodsTotal,
+      taxRate: sale.taxRate,
+      taxAmount: sale.taxAmount,
+    }));
 
   return {
     header: {
@@ -229,6 +271,8 @@ export function buildReportData(
     range,
     stats: {
       revenue,
+      taxCollected,
+      taxTransactionCount,
       grossProfit,
       marginPercent: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
       transactionCount,
@@ -245,5 +289,6 @@ export function buildReportData(
     logUsers: buildLogUsers(database),
     roles: ALL_ROLES,
     transactions: transactionRows,
+    taxRecap,
   };
 }

@@ -7,6 +7,7 @@ import { BusinessProfileCard } from "@/features/pengaturan/components/BusinessPr
 import { PaymentSettingsCard } from "@/features/pengaturan/components/PaymentSettingsCard";
 import { ReceiptSettingsCard } from "@/features/pengaturan/components/ReceiptSettingsCard";
 import { SalesBonusCard } from "@/features/pengaturan/components/SalesBonusCard";
+import { TaxSettingsCard } from "@/features/pengaturan/components/TaxSettingsCard";
 import { usePengaturanData } from "@/features/pengaturan/data/pengaturan-repository";
 import { buildReceiptPreview } from "@/features/pengaturan/data/pengaturan-calculations";
 import { usePermissions } from "@/features/session/data/session-repository";
@@ -67,6 +68,7 @@ function SettingsBody({ database }: { database: AppDatabase }) {
       <div className="grid items-start gap-[18px] p-4 sm:p-5 lg:px-7 lg:py-5 xl:grid-cols-2">
         <BusinessProfileCard business={database.settings.business} />
         <PaymentSettingsCard payment={database.settings.payment} />
+        <TaxSettingsCard rate={database.settings.taxRate} />
         <SalesBonusCard settings={database.settings.salesBonus} />
         <ReceiptSettingsCard
           settings={database.settings.receipt}

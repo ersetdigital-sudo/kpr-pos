@@ -48,7 +48,7 @@ export function ReportPrintSheet({ data, business }: ReportPrintSheetProps) {
         <table className="mt-4 w-full border-collapse text-[11px]">
           <tbody>
             <tr>
-              <td className="py-1 pr-4 text-ink-muted">Omzet</td>
+              <td className="py-1 pr-4 text-ink-muted">Omzet (tanpa PPN)</td>
               <td className="py-1 text-right font-semibold">
                 {formatRupiah(data.stats.revenue)}
               </td>
@@ -67,6 +67,18 @@ export function ReportPrintSheet({ data, business }: ReportPrintSheetProps) {
               </td>
               <td className="py-1 text-right font-semibold">
                 {formatRupiah(data.stats.averageTransaction)}
+              </td>
+            </tr>
+            <tr>
+              <td className="py-1 pr-4 text-ink-muted">PPN terkumpul</td>
+              <td className="py-1 text-right font-semibold">
+                {formatRupiah(data.stats.taxCollected)}
+              </td>
+              <td className="py-1 pl-8 pr-4 text-ink-muted">
+                Transaksi ber-PPN
+              </td>
+              <td className="py-1 text-right font-semibold">
+                {formatNumber(data.stats.taxTransactionCount)}
               </td>
             </tr>
             <tr>
@@ -161,6 +173,65 @@ export function ReportPrintSheet({ data, business }: ReportPrintSheetProps) {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="mt-5">
+          <h2 className="m-0 mb-1.5 text-[12px] font-bold">Rekap PPN</h2>
+          <p className="m-0 mb-1 text-[10px] text-ink-muted">
+            Omzet pada laporan ini tidak termasuk PPN. Ongkir tidak dikenai
+            PPN.
+          </p>
+          <table className="w-full border-collapse text-[10px]">
+            <thead>
+              <tr className="border-b border-ink/30 text-left text-ink-muted">
+                <th className="py-1 font-semibold">Dokumen</th>
+                <th className="py-1 font-semibold">Tanggal</th>
+                <th className="py-1 font-semibold">Pelanggan / Kasir</th>
+                <th className="py-1 text-right font-semibold">Dasar PPN</th>
+                <th className="py-1 text-right font-semibold">Tarif</th>
+                <th className="py-1 text-right font-semibold">PPN</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.taxRecap.length === 0 ? (
+                <tr>
+                  <td className="py-1 text-ink-muted" colSpan={6}>
+                    Belum ada transaksi ber-PPN pada filter ini
+                  </td>
+                </tr>
+              ) : null}
+              {data.taxRecap.map((row) => (
+                <tr key={row.id} className="border-t border-line">
+                  <td className="py-1 font-semibold whitespace-nowrap">
+                    {row.number}
+                  </td>
+                  <td className="py-1 whitespace-nowrap">
+                    {formatDateTimeShort(row.at)}
+                  </td>
+                  <td className="py-1">
+                    {row.customerName || row.cashierName || "-"}
+                  </td>
+                  <td className="py-1 text-right">
+                    {formatRupiah(row.taxBase)}
+                  </td>
+                  <td className="py-1 text-right">
+                    {formatPercent(row.taxRate)}
+                  </td>
+                  <td className="py-1 text-right font-semibold">
+                    {formatRupiah(row.taxAmount)}
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t border-ink/30">
+                <td className="py-1 font-bold" colSpan={5}>
+                  Total PPN terkumpul
+                </td>
+                <td className="py-1 text-right font-bold">
+                  {formatRupiah(data.stats.taxCollected)}
+                </td>
+              </tr>
             </tbody>
           </table>
         </section>

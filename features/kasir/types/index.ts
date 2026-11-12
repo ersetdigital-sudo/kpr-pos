@@ -7,6 +7,7 @@ import type {
   PriceType,
   ReceiptPaperSize,
   SalesOrder,
+  ShippingMethod,
   StoreSettings,
   Transaction,
 } from "@/lib/store/types";
@@ -84,6 +85,10 @@ export interface CreateTransactionInput {
   salesEmployeeId: string | null;
   /** Diisi bila pembayaran berasal dari pesanan sales. */
   salesOrderId?: string;
+  taxEnabled: boolean;
+  taxRate: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
 }
 
 export interface SaveDraftInput {

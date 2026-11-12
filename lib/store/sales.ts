@@ -4,6 +4,7 @@ import type { DateRange } from "@/lib/date-range";
 import type {
   AppDatabase,
   SalesOrder,
+  ShippingMethod,
   Transaction,
 } from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
@@ -16,6 +17,7 @@ interface SalesItem {
   unitPrice: number;
   unitCost?: number;
   quantity: number;
+  discountAmount?: number;
 }
 
 /**
@@ -34,7 +36,16 @@ export interface SalesRecord {
   method: PaymentMethod | null;
   subtotal: number;
   discount: number;
+  /** Total bayar final termasuk PPN dan ongkir. */
   total: number;
+  /** Dasar PPN: barang setelah diskon, tanpa ongkir. */
+  goodsTotal: number;
+  taxEnabled: boolean;
+  taxRate: number;
+  /** PPN yang dipungut; 0 untuk data lama dan transaksi tanpa PPN. */
+  taxAmount: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
   items: readonly SalesItem[];
 }
 
@@ -53,7 +64,21 @@ function mapItems(items: readonly SalesItem[]): SalesItem[] {
     unitPrice: item.unitPrice,
     unitCost: item.unitCost,
     quantity: item.quantity,
+    discountAmount: item.discountAmount,
   }));
+}
+
+/** Dasar barang pesanan: harga × qty dikurangi diskon item. */
+function calculateGoodsTotal(items: readonly SalesItem[]): number {
+  return items.reduce(
+    (total, item) =>
+      total +
+      Math.max(
+        0,
+        item.unitPrice * item.quantity - (item.discountAmount ?? 0),
+      ),
+    0,
+  );
 }
 
 /**
@@ -97,26 +122,42 @@ export function collectSalesFrom(source: SalesSourceData): SalesRecord[] {
       subtotal: transaction.subtotal,
       discount: transaction.discount.amount,
       total: transaction.total,
+      goodsTotal: Math.max(0, transaction.subtotal - transaction.discount.amount),
+      taxEnabled: transaction.taxEnabled,
+      taxRate: transaction.taxRate,
+      taxAmount: transaction.taxAmount,
+      shippingMethod: transaction.shippingMethod,
+      shippingCost: transaction.shippingCost,
       items: mapItems(transaction.items),
     }));
 
   const salesOrders: SalesRecord[] = source.salesOrders
     .filter(isCountedSalesOrder)
-    .map((order) => ({
-      id: order.id,
-      number: order.orderNumber,
-      source: "Pesanan Sales",
-      at: order.paidAt ?? order.createdAt,
-      createdAt: order.createdAt,
-      branchId: order.branchId,
-      cashierId: null,
-      salesEmployeeId: order.salesEmployeeId,
-      method: null,
-      subtotal: order.total,
-      discount: 0,
-      total: order.total,
-      items: mapItems(order.items),
-    }));
+    .map((order) => {
+      const items = mapItems(order.items);
+
+      return {
+        id: order.id,
+        number: order.orderNumber,
+        source: "Pesanan Sales" as const,
+        at: order.paidAt ?? order.createdAt,
+        createdAt: order.createdAt,
+        branchId: order.branchId,
+        cashierId: null,
+        salesEmployeeId: order.salesEmployeeId,
+        method: null,
+        subtotal: calculateGoodsTotal(items),
+        discount: 0,
+        total: order.total,
+        goodsTotal: calculateGoodsTotal(items),
+        taxEnabled: order.taxEnabled,
+        taxRate: order.taxRate,
+        taxAmount: order.taxAmount,
+        shippingMethod: order.shippingMethod,
+        shippingCost: order.shippingCost,
+        items,
+      };
+    });
 
   return [...transactions, ...salesOrders].sort(
     (first, second) =>
@@ -141,8 +182,17 @@ export function filterSales(
   );
 }
 
+/** Omzet toko: tanpa PPN, tetapi ongkir tetap dihitung sebagai penjualan. */
+export function saleRevenue(sale: SalesRecord): number {
+  return Math.max(0, sale.total - sale.taxAmount);
+}
+
 export function sumSalesAmount(sales: readonly SalesRecord[]): number {
-  return sales.reduce((total, sale) => total + sale.total, 0);
+  return sales.reduce((total, sale) => total + saleRevenue(sale), 0);
+}
+
+export function sumSalesTax(sales: readonly SalesRecord[]): number {
+  return sales.reduce((total, sale) => total + sale.taxAmount, 0);
 }
 
 export function summarizeSalesBySource(

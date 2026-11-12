@@ -3,6 +3,9 @@ import type { PaymentMethod } from "@/types";
 
 export type DiscountType = "nominal" | "percent";
 
+/** Pengiriman: ambil di toko, ongkir dibayar pelanggan, atau gratis ongkir. */
+export type ShippingMethod = "pickup" | "paid" | "free";
+
 /** Harga ecer (retail) atau grosir per item. */
 export type PriceType = "retail" | "wholesale";
 
@@ -119,6 +122,8 @@ export interface StoreSettings {
   /** Nilai lama, dipertahankan agar data fase 1 tetap terbaca. */
   salesBonusPerPiece: number;
   salesBonus: SalesBonusSettings;
+  /** Tarif PPN default dalam persen (awal 11). */
+  taxRate: number;
   receipt: ReceiptSettings;
   attendance: AttendanceSettings;
 }
@@ -169,7 +174,15 @@ export interface Transaction {
   items: TransactionItem[];
   subtotal: number;
   discount: TransactionDiscount;
+  /** Total bayar final: dasar + PPN + ongkir. */
   total: number;
+  /** PPN hanya aktif bila dipilih saat transaksi. */
+  taxEnabled: boolean;
+  /** Snapshot tarif PPN dalam persen; 0 bila tidak dipakai. */
+  taxRate: number;
+  taxAmount: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
   payment: TransactionPayment;
   createdAt: string;
   /** Terisi bila transaksi sudah dibatalkan dan stoknya dikembalikan. */
@@ -221,7 +234,14 @@ export interface SalesOrder {
   branchId: string;
   salesEmployeeId: string;
   items: SalesOrderItem[];
+  /** Total bayar final: dasar + PPN + ongkir. */
   total: number;
+  taxEnabled: boolean;
+  /** Snapshot tarif PPN saat pesanan dibuat. */
+  taxRate: number;
+  taxAmount: number;
+  shippingMethod: ShippingMethod;
+  shippingCost: number;
   status: SalesOrderStatus;
   /** Transaksi kasir yang melunasi pesanan ini, bila ada. */
   transactionId?: string;

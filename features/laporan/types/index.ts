@@ -10,6 +10,9 @@ import type { DateRangeValue } from "@/components/ui/DateRangePicker";
 
 export interface ReportStats {
   revenue: number;
+  /** PPN terkumpul pada periode; omzet di atas tidak termasuk PPN. */
+  taxCollected: number;
+  taxTransactionCount: number;
   grossProfit: number;
   marginPercent: number;
   transactionCount: number;
@@ -63,8 +66,27 @@ export interface ReportTransactionRow {
   method: PaymentMethod | "-";
   subtotal: number;
   discount: number;
+  /** Total bayar final termasuk PPN dan ongkir. */
   total: number;
+  taxEnabled: boolean;
+  taxRate: number;
+  taxAmount: number;
+  shippingCost: number;
   profit: number;
+}
+
+export interface ReportTaxRow {
+  id: string;
+  number: string;
+  source: SalesSource;
+  at: string;
+  customerName: string | null;
+  cashierName: string | null;
+  branchName: string;
+  /** Dasar PPN: barang setelah diskon, tanpa ongkir. */
+  taxBase: number;
+  taxRate: number;
+  taxAmount: number;
 }
 
 export interface ReportData {
@@ -83,6 +105,8 @@ export interface ReportData {
   logUsers: readonly ReportLogUser[];
   roles: readonly Role[];
   transactions: readonly ReportTransactionRow[];
+  /** Rincian transaksi/pesanan yang memakai PPN pada filter aktif. */
+  taxRecap: readonly ReportTaxRow[];
 }
 
 export interface ReportFilterState {

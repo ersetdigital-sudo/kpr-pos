@@ -202,7 +202,7 @@ function buildAutomaticRows(
     branchName: branchNameById.get(group.branchId) ?? "Cabang",
     actorName: "Otomatis",
     automatic: true,
-    automaticLabel: "Rekap otomatis penjualan",
+    automaticLabel: "Rekap otomatis penjualan · termasuk PPN & ongkir",
   }));
 }
 

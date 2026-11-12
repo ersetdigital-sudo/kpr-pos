@@ -194,7 +194,7 @@ export function BukuKasPageContent() {
         <Card className="flex flex-col gap-3.5 p-[18px]">
           <CardHeader
             title="Tabel Buku Kas"
-            subtitle="Urut tanggal. Rekap penjualan bersifat otomatis dan tidak bisa diedit."
+            subtitle="Urut tanggal. Penjualan otomatis memakai total dibayar termasuk PPN & ongkir; omzet di Laporan tanpa PPN."
             action={
               loading ? (
                 <span className="text-meta text-ink-muted">Memuat…</span>

@@ -34,6 +34,7 @@ export const EMPTY_SETTINGS: StoreSettings = {
   },
   salesBonusPerPiece: 0,
   salesBonus: DEFAULT_SALES_BONUS,
+  taxRate: 11,
   receipt: {
     paperSize: 80,
     footerText: "",

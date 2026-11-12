@@ -15,6 +15,7 @@ import type {
 } from "@/lib/store/types";
 import { formatDateTimeShort, formatRupiah } from "@/lib/format";
 import { isTransactionRefunded } from "@/lib/store/transactions";
+import { calculateSalesCharges } from "@/lib/store/charges";
 import {
   calculateCartTotals,
   calculateItemDiscount,
@@ -372,7 +373,20 @@ export async function createTransaction(
     (total, item) => total + item.discountAmount,
     0,
   );
-  const total = Math.max(0, subtotal - discountAmount);
+
+  if (input.shippingMethod === "paid" && input.shippingCost <= 0) {
+    throw new Error("Nominal ongkir harus lebih dari 0");
+  }
+
+  const charges = calculateSalesCharges({
+    subtotal,
+    discountAmount,
+    taxEnabled: input.taxEnabled,
+    taxRate: input.taxRate,
+    shippingMethod: input.shippingMethod,
+    shippingCost: input.shippingCost,
+  });
+  const total = charges.total;
 
   if (!database.settings.payment.enabledMethods.includes(input.paymentMethod)) {
     throw new Error(`Metode ${input.paymentMethod} sedang tidak aktif`);
@@ -415,6 +429,10 @@ export async function createTransaction(
       cashReceived: input.cashReceived,
       bankAccountId: input.bankAccountId,
       salesOrderId: input.salesOrderId,
+      taxEnabled: input.taxEnabled,
+      taxRate: input.taxRate,
+      shippingMethod: input.shippingMethod,
+      shippingCost: input.shippingCost,
     }),
   );
 

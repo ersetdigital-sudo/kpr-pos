@@ -22,6 +22,7 @@ import {
   updateBusinessProfileAction,
   updateReceiptSettingsAction,
   updateSalesBonusAction,
+  updateTaxRateAction,
 } from "@/features/pengaturan/cloud-actions";
 import {
   syncAppFromCloud,
@@ -229,6 +230,22 @@ export async function updateReceiptSettings(
   recordActivity({
     action: "Mengubah",
     detail: `Pengaturan struk ${input.paperSize}mm diperbarui`,
+  });
+}
+
+export async function updateTaxRate(rate: number): Promise<void> {
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+    throw new Error("Tarif PPN harus antara 0 dan 100");
+  }
+
+  const result = await trackCloudWrite(() =>
+    updateTaxRateAction(Math.round(rate * 100) / 100),
+  );
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Tarif PPN default menjadi ${Math.round(rate * 100) / 100}%`,
   });
 }
 
