@@ -56,6 +56,15 @@ function mapItems(items: readonly SalesItem[]): SalesItem[] {
   }));
 }
 
+/**
+ * Satu-satunya aturan kapan pesanan sales dihitung sebagai penjualan sendiri:
+ * sudah Lunas dan belum dibayar lewat Kasir (`transactionId` kosong). Pesanan
+ * yang dibayar lewat Kasir dihitung lewat transaksi kasirnya.
+ */
+export function isCountedSalesOrder(order: SalesOrder): boolean {
+  return order.status === "Lunas" && !order.transactionId;
+}
+
 /** Sumber penjualan minimal yang dibutuhkan aturan rekap penjualan. */
 export interface SalesSourceData {
   transactions: readonly Transaction[];
@@ -92,7 +101,7 @@ export function collectSalesFrom(source: SalesSourceData): SalesRecord[] {
     }));
 
   const salesOrders: SalesRecord[] = source.salesOrders
-    .filter((order) => order.status === "Lunas" && !order.transactionId)
+    .filter(isCountedSalesOrder)
     .map((order) => ({
       id: order.id,
       number: order.orderNumber,

@@ -3,6 +3,7 @@ import type { DateRange } from "@/lib/date-range";
 import { isWithinRange } from "@/lib/date-range";
 import { getNextDailyDocumentNumber } from "@/lib/document-number";
 import { formatPercent, formatRupiah } from "@/lib/format";
+import { isCountedSalesOrder } from "@/lib/store/sales";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type {
   AppDatabase,
@@ -88,7 +89,7 @@ export function collectBonusEntries(
   });
 
   database.salesOrders.forEach((order) => {
-    if (order.status !== "Lunas") return;
+    if (!isCountedSalesOrder(order)) return;
     if (branchId && order.branchId !== branchId) return;
 
     // Bonus mengikuti tanggal lunas, bukan tanggal pesanan dibuat.
@@ -213,6 +214,7 @@ export function buildOrderRows(
       quantity: getOrderQuantity(order),
       total: order.total,
       status: order.status,
+      transactionId: order.transactionId ?? null,
       note: order.note,
       createdAt: order.createdAt,
     }))

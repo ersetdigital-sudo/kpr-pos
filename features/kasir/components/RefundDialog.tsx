@@ -30,7 +30,7 @@ export function RefundDialog({
       open
       onClose={onClose}
       title="Refund transaksi?"
-      description="Transaksi dibatalkan, uang dikembalikan, dan stok masuk lagi ke cabang."
+      description="Transaksi dibatalkan, uang dikembalikan, dan stok masuk lagi ke cabang. Pesanan sales yang terhubung ikut dibatalkan."
       size="sm"
       footer={
         <>

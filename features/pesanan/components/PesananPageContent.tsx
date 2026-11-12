@@ -58,7 +58,9 @@ export function PesananPageContent() {
       showToast(
         status === "Lunas"
           ? `Pesanan ${row.orderNumber} lunas, stok cabang berkurang`
-          : `Status ${row.orderNumber} menjadi ${status}`,
+          : status === "Dibatalkan" && row.transactionId
+            ? `Pesanan ${row.orderNumber} dibatalkan, transaksi kasir ikut direfund`
+            : `Status ${row.orderNumber} menjadi ${status}`,
         "success",
       );
     } catch (caught) {
@@ -137,7 +139,11 @@ export function PesananPageContent() {
         title="Batalkan pesanan?"
         description={
           pendingCancel
-            ? `Pesanan ${pendingCancel.orderNumber} untuk ${pendingCancel.customerName} akan dibatalkan. Stok yang sudah terpotong dikembalikan.`
+            ? `Pesanan ${pendingCancel.orderNumber} untuk ${pendingCancel.customerName} akan dibatalkan. Stok yang sudah terpotong dikembalikan.${
+                pendingCancel.transactionId
+                  ? " Transaksi kasir terkait ikut direfund dengan alasannya."
+                  : ""
+              }`
             : ""
         }
         confirmLabel="Ya, batalkan"

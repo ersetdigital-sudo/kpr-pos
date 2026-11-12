@@ -17,6 +17,8 @@ export interface OrderRow {
   quantity: number;
   total: number;
   status: SalesOrderStatus;
+  /** Transaksi kasir yang membayar pesanan ini, jika ada. */
+  transactionId: string | null;
   note: string;
   createdAt: string;
 }

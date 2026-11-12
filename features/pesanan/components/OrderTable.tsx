@@ -175,7 +175,7 @@ export function OrderTable({
     <Card className="p-5">
       <CardHeader
         title={title}
-        subtitle="Status lunas otomatis mengurangi stok cabang. Pesanan yang sudah dibatalkan bisa dihapus."
+        subtitle="Status lunas otomatis mengurangi stok cabang. Membatalkan pesanan Lunas ikut me-refund transaksi kasirnya. Pesanan yang sudah dibatalkan bisa dihapus."
         className="mb-3.5"
       />
 

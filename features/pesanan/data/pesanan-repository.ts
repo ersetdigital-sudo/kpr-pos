@@ -163,6 +163,6 @@ export async function updateSalesOrderStatus(
 
   recordActivity({
     action: nextStatus === "Dibatalkan" ? "Membatalkan" : "Mengubah",
-    detail: `Pesanan ${order.orderNumber} · ${order.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} pcs` : ""}`,
+    detail: `Pesanan ${order.orderNumber} · ${order.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} pcs` : ""}${nextStatus === "Dibatalkan" && order.transactionId ? " · transaksi kasir direfund" : ""}`,
   });
 }

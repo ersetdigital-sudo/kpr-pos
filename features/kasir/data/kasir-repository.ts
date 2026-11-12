@@ -467,9 +467,13 @@ export async function refundTransaction(
 
   await refreshAfterSale();
 
+  const linkedOrder = database.salesOrders.find(
+    (order) => order.transactionId === transaction.id,
+  );
+
   recordActivity({
     action: "Refund",
-    detail: `Refund ${transaction.invoiceNumber} · ${formatRupiah(transaction.total)} · ${reason}`,
+    detail: `Refund ${transaction.invoiceNumber} · ${formatRupiah(transaction.total)} · ${reason}${linkedOrder ? ` · pesanan ${linkedOrder.orderNumber} dibatalkan` : ""}`,
   });
 
   return {
