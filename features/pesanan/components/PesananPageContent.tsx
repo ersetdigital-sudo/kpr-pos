@@ -25,7 +25,9 @@ import {
   getVisibleOrders,
 } from "@/features/pesanan/data/pesanan-calculations";
 import {
+  cancelCreditOrder,
   deleteSalesOrder,
+  settleCreditOrder,
   updateSalesOrderStatus,
   usePesananData,
 } from "@/features/pesanan/data/pesanan-repository";
@@ -35,14 +37,17 @@ import {
 } from "@/features/session/data/session-repository";
 import { ROLES } from "@/constants/roles";
 import { getMonthRange } from "@/lib/date-range";
-import { formatMonthYear } from "@/lib/format";
+import { formatMonthYear, formatRupiah } from "@/lib/format";
 import type {
   AppDatabase,
   Employee,
   SalesOrder,
   SalesOrderStatus,
 } from "@/lib/store/types";
-import type { OrderRow } from "@/features/pesanan/types";
+import type {
+  OrderRow,
+  ScopePermissions,
+} from "@/features/pesanan/types";
 
 export function PesananPageContent() {
   const database = usePesananData();
@@ -52,6 +57,9 @@ export function PesananPageContent() {
   const router = useRouter();
   const [pendingCancel, setPendingCancel] = useState<OrderRow | null>(null);
   const [pendingDelete, setPendingDelete] = useState<OrderRow | null>(null);
+  const [pendingSettle, setPendingSettle] = useState<OrderRow | null>(null);
+  const [pendingCreditCancel, setPendingCreditCancel] =
+    useState<OrderRow | null>(null);
   const [detailOrder, setDetailOrder] = useState<SalesOrder | null>(null);
 
   async function applyStatus(row: OrderRow, status: SalesOrderStatus) {
@@ -79,6 +87,47 @@ export function PesananPageContent() {
       return;
     }
     applyStatus(row, status);
+  }
+
+  async function handleSettle() {
+    if (!pendingSettle) return;
+
+    try {
+      await settleCreditOrder(pendingSettle.id);
+      showToast(
+        `Pesanan ${pendingSettle.orderNumber} lunas, pemasukan masuk Buku Kas`,
+        "success",
+      );
+    } catch (caught) {
+      showToast(
+        caught instanceof Error ? caught.message : "Pelunasan gagal disimpan",
+        "error",
+      );
+    } finally {
+      setPendingSettle(null);
+    }
+  }
+
+  async function handleCancelCredit() {
+    if (!pendingCreditCancel) return;
+
+    try {
+      await cancelCreditOrder(
+        pendingCreditCancel.id,
+        `Pesanan ${pendingCreditCancel.paymentScheme === "tempo" ? "tempo" : "COD"} dibatalkan`,
+      );
+      showToast(
+        `Pesanan ${pendingCreditCancel.orderNumber} dibatalkan, stok dikembalikan`,
+        "success",
+      );
+    } catch (caught) {
+      showToast(
+        caught instanceof Error ? caught.message : "Pesanan gagal dibatalkan",
+        "error",
+      );
+    } finally {
+      setPendingCreditCancel(null);
+    }
   }
 
   async function handleDelete() {
@@ -129,11 +178,15 @@ export function PesananPageContent() {
         database={database}
         employee={employee}
         canCreate={permissions.canCreateSalesOrder}
-        canManage={permissions.canManageSalesOrders}
-        canDelete={permissions.canDeleteSalesOrder}
+        permissions={permissions}
+        canDelete={
+          permissions.canDeleteSalesOrder || permissions.canDeleteTransaction
+        }
         onStatusChange={handleStatusChange}
         onDelete={setPendingDelete}
         onViewDetail={handleViewDetail}
+        onSettle={setPendingSettle}
+        onCancelCredit={setPendingCreditCancel}
       />
 
       <ConfirmDialog
@@ -157,11 +210,37 @@ export function PesananPageContent() {
       />
 
       <ConfirmDialog
+        open={pendingSettle !== null}
+        title="Tandai pesanan lunas?"
+        description={
+          pendingSettle
+            ? `Pesanan ${pendingSettle.paymentScheme === "tempo" ? "tempo" : "COD"} ${pendingSettle.orderNumber} milik ${pendingSettle.customerName} akan ditandai lunas. Pemasukan sebesar ${formatRupiah(pendingSettle.total)} masuk Buku Kas otomatis.`
+            : ""
+        }
+        confirmLabel="Ya, tandai lunas"
+        onClose={() => setPendingSettle(null)}
+        onConfirm={handleSettle}
+      />
+
+      <ConfirmDialog
+        open={pendingCreditCancel !== null}
+        title="Batalkan pesanan?"
+        description={
+          pendingCreditCancel
+            ? `Pesanan ${pendingCreditCancel.orderNumber} untuk ${pendingCreditCancel.customerName} akan dibatalkan. Stok dikembalikan satu kali dan tidak ada pemasukan Buku Kas. Riwayat pesanan tetap tersimpan.`
+            : ""
+        }
+        confirmLabel="Ya, batalkan"
+        onClose={() => setPendingCreditCancel(null)}
+        onConfirm={handleCancelCredit}
+      />
+
+      <ConfirmDialog
         open={pendingDelete !== null}
-        title="Hapus pesanan?"
+        title="Hapus pesanan permanen?"
         description={
           pendingDelete
-            ? `Pesanan ${pendingDelete.orderNumber} untuk ${pendingDelete.customerName} akan dihapus permanen dari daftar pesanan.`
+            ? `Pesanan ${pendingDelete.orderNumber} untuk ${pendingDelete.customerName} akan dihapus permanen. Stok yang masih terpotong dikembalikan dan pemasukan terkait dihapus. Tindakan ini tercatat di Log Aktivitas.`
             : ""
         }
         confirmLabel="Ya, hapus"
@@ -185,6 +264,13 @@ export function PesananPageContent() {
               )?.name ?? "-")
             : "-"
         }
+        transactionNumber={
+          detailOrder?.transactionId
+            ? (database.transactions.find(
+                (item) => item.id === detailOrder.transactionId,
+              )?.invoiceNumber ?? null)
+            : null
+        }
         canProcess={permissions.canUseCashier}
         onProcess={() => {
           if (!detailOrder) return;
@@ -200,22 +286,26 @@ interface PesananBodyProps {
   database: AppDatabase;
   employee: Employee;
   canCreate: boolean;
-  canManage: boolean;
+  permissions: ScopePermissions;
   canDelete: boolean;
   onStatusChange: (row: OrderRow, status: SalesOrderStatus) => void;
   onDelete: (row: OrderRow) => void;
   onViewDetail: (row: OrderRow) => void;
+  onSettle: (row: OrderRow) => void;
+  onCancelCredit: (row: OrderRow) => void;
 }
 
 function PesananBody({
   database,
   employee,
   canCreate,
-  canManage,
+  permissions,
   canDelete,
   onStatusChange,
   onDelete,
   onViewDetail,
+  onSettle,
+  onCancelCredit,
 }: PesananBodyProps) {
   const today = new Date();
   const monthRange = getMonthRange(today);
@@ -294,13 +384,15 @@ function PesananBody({
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
           <OrderList
             rows={orderRows}
-            canManage={canManage}
+            permissions={permissions}
             canDelete={canDelete}
             showSales={!isSales}
             title={isSales ? "Pesanan Saya" : "Semua Pesanan Sales"}
             onStatusChange={onStatusChange}
             onDelete={onDelete}
             onViewDetail={onViewDetail}
+            onSettle={onSettle}
+            onCancelCredit={onCancelCredit}
           />
 
           <LeaderboardTable

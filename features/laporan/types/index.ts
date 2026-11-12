@@ -19,6 +19,24 @@ export interface ReportStats {
   averageTransaction: number;
   totalSalesBonus: number;
   activeSalespeople: number;
+  /** Total piutang COD + Tempo yang belum lunas. */
+  receivableTotal: number;
+  receivableCount: number;
+  /** Bagian piutang yang sudah melewati jatuh tempo. */
+  overdueReceivableTotal: number;
+}
+
+export interface ReportReceivableRow {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  scheme: "cod" | "tempo";
+  total: number;
+  processedAt: string;
+  dueDate: string | null;
+  isOverdue: boolean;
+  salesName: string;
+  branchName: string;
 }
 
 export interface PaymentBreakdown {
@@ -73,6 +91,12 @@ export interface ReportTransactionRow {
   taxAmount: number;
   shippingCost: number;
   profit: number;
+  /** Skema bayar baris ini; COD/Tempo bisa belum lunas. */
+  paymentScheme: "cash" | "cod" | "tempo";
+  settled: boolean;
+  dueDate: string | null;
+  /** Lunas, belum lunas (COD/Tempo), atau batal/direfund. */
+  status: "Lunas" | "Belum lunas" | "Batal";
 }
 
 export interface ReportTaxRow {
@@ -107,6 +131,8 @@ export interface ReportData {
   transactions: readonly ReportTransactionRow[];
   /** Rincian transaksi/pesanan yang memakai PPN pada filter aktif. */
   taxRecap: readonly ReportTaxRow[];
+  /** Daftar piutang COD/Tempo yang belum lunas pada filter aktif. */
+  receivables: readonly ReportReceivableRow[];
 }
 
 export interface ReportFilterState {

@@ -1,9 +1,13 @@
 import { ROLES } from "@/constants/roles";
+import type { RolePermissions } from "@/config/permissions";
 import type { DateRange } from "@/lib/date-range";
 import { isWithinRange } from "@/lib/date-range";
 import { getNextDailyDocumentNumber } from "@/lib/document-number";
 import { formatPercent, formatRupiah } from "@/lib/format";
-import { isCountedSalesOrder } from "@/lib/store/sales";
+import {
+  isCountedSalesOrder,
+  isOverdueTempoSalesOrder,
+} from "@/lib/store/sales";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type {
   AppDatabase,
@@ -214,6 +218,13 @@ export function buildOrderRows(
       quantity: getOrderQuantity(order),
       total: order.total,
       status: order.status,
+      paymentScheme: order.paymentScheme ?? "cash",
+      tempoDays: order.tempoDays,
+      dueDate: order.dueDate ?? null,
+      isOverdue: isOverdueTempoSalesOrder(order),
+      processedAt: order.processedAt ?? null,
+      paidAt: order.paidAt ?? null,
+      settledByName: order.settledByName ?? null,
       transactionId: order.transactionId ?? null,
       note: order.note,
       createdAt: order.createdAt,
@@ -230,7 +241,10 @@ export function countAwaitingPayment(
 ): number {
   return orders.filter(
     (order) =>
-      order.status === "Menunggu bayar" || order.status === "Belum sinkron",
+      order.status === "Menunggu bayar" ||
+      order.status === "Belum sinkron" ||
+      order.status === "COD - menunggu pembayaran" ||
+      order.status === "Tempo - menunggu pembayaran",
   ).length;
 }
 
@@ -336,6 +350,10 @@ const ORDER_STATUS_TRANSITIONS: Record<
 > = {
   "Belum sinkron": ["Menunggu bayar", "Dibatalkan"],
   "Menunggu bayar": ["Lunas", "Dibatalkan"],
+  // COD/Tempo memakai aksi khusus (tandai lunas / batalkan) yang menjaga stok
+  // dan Buku Kas, jadi tidak lewat dialog ubah status biasa.
+  "COD - menunggu pembayaran": [],
+  "Tempo - menunggu pembayaran": [],
   Lunas: ["Dibatalkan"],
   Dibatalkan: [],
 };
@@ -352,4 +370,42 @@ export function canChangeOrderStatus(
   next: SalesOrderStatus,
 ): boolean {
   return ORDER_STATUS_TRANSITIONS[current].includes(next);
+}
+
+/** COD/Tempo yang sudah diproses tetapi uangnya belum diterima. */
+export function isCreditPendingStatus(status: SalesOrderStatus): boolean {
+  return (
+    status === "COD - menunggu pembayaran" ||
+    status === "Tempo - menunggu pembayaran"
+  );
+}
+
+/** Tenor yang boleh dipilih; 14 & 30 hari hanya untuk role berwenang. */
+export function getTempoTenorOptions(
+  permissions: Pick<RolePermissions, "canSetTempoExtended">,
+): number[] {
+  return permissions.canSetTempoExtended ? [3, 7, 14, 30] : [3, 7];
+}
+
+export function canSettleCreditOrder(
+  paymentScheme: SalesOrder["paymentScheme"],
+  permissions: Pick<RolePermissions, "canSettleCod" | "canSettleTempo">,
+): boolean {
+  if (paymentScheme === "cod") return permissions.canSettleCod;
+  if (paymentScheme === "tempo") return permissions.canSettleTempo;
+
+  return false;
+}
+
+export function canCancelCreditOrder(
+  permissions: Pick<
+    RolePermissions,
+    "canManageSalesOrders" | "canSettleCod" | "canSettleTempo"
+  >,
+): boolean {
+  return (
+    permissions.canManageSalesOrders ||
+    permissions.canSettleCod ||
+    permissions.canSettleTempo
+  );
 }

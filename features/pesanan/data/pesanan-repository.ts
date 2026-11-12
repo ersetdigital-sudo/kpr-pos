@@ -16,8 +16,11 @@ import {
   getStockShortage,
 } from "@/features/pesanan/data/pesanan-calculations";
 import {
+  cancelCreditOrderAction,
   createSalesOrderAction,
   deleteSalesOrderAction,
+  processCreditOrderAction,
+  settleCreditOrderAction,
   updateSalesOrderStatusAction,
 } from "@/features/sales/cloud-actions";
 import {
@@ -125,10 +128,6 @@ export async function deleteSalesOrder(orderId: string): Promise<void> {
   const order = database.salesOrders.find((item) => item.id === orderId);
   if (!order) throw new Error("Pesanan tidak ditemukan");
 
-  if (order.status !== "Dibatalkan") {
-    throw new Error("Batalkan pesanan terlebih dahulu sebelum menghapus");
-  }
-
   const result = await trackCloudWrite(() => deleteSalesOrderAction(orderId));
   if (!result.ok) throw new Error(result.error);
 
@@ -136,8 +135,85 @@ export async function deleteSalesOrder(orderId: string): Promise<void> {
 
   recordActivity({
     action: "Menghapus",
-    detail: `Pesanan ${order.orderNumber} · ${order.customerName} · ${formatRupiah(order.total)}`,
+    detail: `Pesanan ${order.orderNumber} · ${order.customerName} · ${formatRupiah(order.total)}${order.stockApplied ? " · stok dikembalikan" : ""}`,
   });
+}
+
+/** Proses pesanan menunggu bayar sebagai COD atau Tempo. */
+export async function processCreditOrder(input: {
+  orderId: string;
+  method: "cod" | "tempo";
+  tempoDays?: number;
+  customerId?: string;
+}): Promise<SalesOrder> {
+  const database = getDatabase();
+  const order = database.salesOrders.find(
+    (item) => item.id === input.orderId,
+  );
+  if (!order) throw new Error("Pesanan tidak ditemukan");
+
+  const result = await trackCloudWrite(() =>
+    processCreditOrderAction({
+      orderId: input.orderId,
+      method: input.method,
+      tempoDays: input.tempoDays ?? null,
+      customerId: input.customerId ?? null,
+    }),
+  );
+  if (!result.ok) throw new Error(result.error);
+
+  await refreshAfterOrder();
+
+  recordActivity({
+    action: "Mengubah",
+    detail: `Pesanan ${order.orderNumber} diproses ${input.method === "cod" ? "COD" : `Tempo ${input.tempoDays ?? ""} hari`} · stok keluar · ${formatRupiah(order.total)}`,
+  });
+
+  return result.data;
+}
+
+/** Tandai lunas COD/Tempo; pemasukan Buku Kas mengikuti paid_at. */
+export async function settleCreditOrder(orderId: string): Promise<SalesOrder> {
+  const database = getDatabase();
+  const order = database.salesOrders.find((item) => item.id === orderId);
+  if (!order) throw new Error("Pesanan tidak ditemukan");
+  if (order.status === "Lunas") throw new Error("Pesanan ini sudah lunas");
+
+  const result = await trackCloudWrite(() => settleCreditOrderAction(orderId));
+  if (!result.ok) throw new Error(result.error);
+
+  await refreshAfterOrder();
+
+  recordActivity({
+    action: "Membayar",
+    detail: `Pelunasan ${order.paymentScheme === "tempo" ? "tempo" : "COD"} ${order.orderNumber} · ${order.customerName} · ${formatRupiah(order.total)}`,
+  });
+
+  return result.data;
+}
+
+/** Batalkan COD/Tempo; RPC mengembalikan stok tepat satu kali. */
+export async function cancelCreditOrder(
+  orderId: string,
+  reason: string,
+): Promise<SalesOrder> {
+  const database = getDatabase();
+  const order = database.salesOrders.find((item) => item.id === orderId);
+  if (!order) throw new Error("Pesanan tidak ditemukan");
+
+  const result = await trackCloudWrite(() =>
+    cancelCreditOrderAction(orderId, reason),
+  );
+  if (!result.ok) throw new Error(result.error);
+
+  await refreshAfterOrder();
+
+  recordActivity({
+    action: "Membatalkan",
+    detail: `Pesanan ${order.paymentScheme === "tempo" ? "tempo" : "COD"} ${order.orderNumber} dibatalkan · stok dikembalikan · ${formatRupiah(order.total)}`,
+  });
+
+  return result.data;
 }
 
 export async function updateSalesOrderStatus(

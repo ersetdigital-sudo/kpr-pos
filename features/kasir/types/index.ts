@@ -2,6 +2,7 @@ import type {
   BankAccount,
   Branch,
   CartDraft,
+  Customer,
   DiscountType,
   Employee,
   PriceType,
@@ -12,6 +13,16 @@ import type {
   Transaction,
 } from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
+
+/** Metode di kasir: metode biasa + COD/Tempo untuk pesanan sales. */
+export type CashierPaymentMethod = PaymentMethod | "COD" | "Tempo";
+
+export interface ProcessCreditOrderInput {
+  orderId: string;
+  method: "cod" | "tempo";
+  tempoDays?: number;
+  customerId?: string;
+}
 
 export interface KasirProduct {
   id: string;
@@ -68,6 +79,8 @@ export interface CashierData {
   salesEmployees: Employee[];
   bankAccounts: BankAccount[];
   enabledMethods: PaymentMethod[];
+  /** Pelanggan yang boleh tempo. */
+  tempoCustomers: Customer[];
   drafts: DraftSummary[];
   transactions: TransactionHistoryRow[];
   salesOrders: SalesOrder[];
@@ -101,6 +114,10 @@ export interface SaveDraftInput {
 export interface TransactionResult {
   transaction: Transaction;
   receipt: ReceiptViewData;
+}
+
+export interface CreditOrderResult {
+  order: SalesOrder;
 }
 
 export interface TransactionHistoryRow {

@@ -51,6 +51,15 @@ export interface CreateSalesOrderPayload {
   shippingCost: number;
 }
 
+export interface ProcessCreditOrderPayload {
+  orderId: string;
+  method: "cod" | "tempo";
+  /** Tenor tempo dalam hari; diabaikan untuk COD. */
+  tempoDays?: number | null;
+  /** Pelanggan pemilik tempo; wajib untuk tempo. */
+  customerId?: string | null;
+}
+
 export interface SaveDraftPayload {
   branchId: string;
   cashierId: string;

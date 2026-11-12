@@ -22,6 +22,8 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
     ["Rata-rata Transaksi", data.stats.averageTransaction],
     ["Total Bonus Sales", data.stats.totalSalesBonus],
     ["Sales Aktif", data.stats.activeSalespeople],
+    ["Piutang Berjalan", data.stats.receivableTotal],
+    ["Piutang Lewat Jatuh Tempo", data.stats.overdueReceivableTotal],
     ["Selisih Kas", data.cashDifference],
   ]);
   summary["!cols"] = [{ wch: 26 }, { wch: 42 }];
@@ -75,6 +77,9 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
       "Ongkir",
       "Total Bayar",
       "Laba Kotor",
+      "Skema Bayar",
+      "Status",
+      "Jatuh Tempo",
     ],
     ...data.transactions.map((item) => [
       item.source,
@@ -90,6 +95,13 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
       item.shippingCost,
       item.total,
       item.profit,
+      item.paymentScheme === "tempo"
+        ? "Tempo"
+        : item.paymentScheme === "cod"
+          ? "COD"
+          : "Tunai",
+      item.status,
+      item.dueDate ?? "-",
     ]),
   ]);
   transactions["!cols"] = [
@@ -104,6 +116,9 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
     { wch: 12 },
     { wch: 14 },
     { wch: 12 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 14 },
     { wch: 14 },
     { wch: 14 },
   ];
@@ -145,6 +160,46 @@ export async function exportReportExcel(data: ReportData): Promise<void> {
     { wch: 14 },
   ];
   XLSX.utils.book_append_sheet(workbook, taxRecap, "Rekap PPN");
+
+  const receivables = XLSX.utils.aoa_to_sheet([
+    [
+      "No. Pesanan",
+      "Pelanggan",
+      "Skema",
+      "Sales",
+      "Cabang",
+      "Tanggal Diproses",
+      "Jatuh Tempo",
+      "Status",
+      "Nominal",
+    ],
+    ...data.receivables.map((row) => [
+      row.orderNumber,
+      row.customerName,
+      row.scheme === "tempo" ? "Tempo" : "COD",
+      row.salesName,
+      row.branchName,
+      formatDateTimeShort(row.processedAt),
+      row.dueDate ?? "Bayar saat pengiriman",
+      row.isOverdue ? "Jatuh tempo" : "Belum lunas",
+      row.total,
+    ]),
+    [],
+    ["Total Piutang", data.stats.receivableTotal],
+    ["Lewat Jatuh Tempo", data.stats.overdueReceivableTotal],
+  ]);
+  receivables["!cols"] = [
+    { wch: 18 },
+    { wch: 24 },
+    { wch: 10 },
+    { wch: 22 },
+    { wch: 18 },
+    { wch: 20 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 14 },
+  ];
+  XLSX.utils.book_append_sheet(workbook, receivables, "Piutang");
 
   const logs = XLSX.utils.aoa_to_sheet([
     ["Waktu", "Pengguna", "Role", "Cabang", "Aksi", "Detail"],

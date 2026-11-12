@@ -10,17 +10,22 @@ import {
 } from "@/features/pesanan/components/OrderFilterBar";
 import { OrderCard, OrderListRow } from "@/features/pesanan/components/OrderListRow";
 import { OrderStatusDialog } from "@/features/pesanan/components/OrderStatusDialog";
-import type { OrderRow } from "@/features/pesanan/types";
+import type {
+  OrderRow,
+  ScopePermissions,
+} from "@/features/pesanan/types";
 
 interface OrderListProps {
   rows: readonly OrderRow[];
-  canManage: boolean;
+  permissions: ScopePermissions;
   canDelete: boolean;
   showSales: boolean;
   title: string;
   onStatusChange: (row: OrderRow, status: SalesOrderStatus) => void;
   onDelete: (row: OrderRow) => void;
   onViewDetail: (row: OrderRow) => void;
+  onSettle: (row: OrderRow) => void;
+  onCancelCredit: (row: OrderRow) => void;
 }
 
 function countByStatus(rows: readonly OrderRow[]): Record<OrderStatusFilter, number> {
@@ -28,6 +33,8 @@ function countByStatus(rows: readonly OrderRow[]): Record<OrderStatusFilter, num
     all: rows.length,
     "Belum sinkron": 0,
     "Menunggu bayar": 0,
+    "COD - menunggu pembayaran": 0,
+    "Tempo - menunggu pembayaran": 0,
     Lunas: 0,
     Dibatalkan: 0,
   };
@@ -45,13 +52,15 @@ function countByStatus(rows: readonly OrderRow[]): Record<OrderStatusFilter, num
  */
 export function OrderList({
   rows,
-  canManage,
+  permissions,
   canDelete,
   showSales,
   title,
   onStatusChange,
   onDelete,
   onViewDetail,
+  onSettle,
+  onCancelCredit,
 }: OrderListProps) {
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>("all");
   const [search, setSearch] = useState("");
@@ -84,7 +93,7 @@ export function OrderList({
     <Card className="flex min-w-0 flex-col p-5">
       <CardHeader
         title={title}
-        subtitle="Status lunas otomatis mengurangi stok cabang. Membatalkan pesanan Lunas ikut me-refund transaksi kasirnya."
+        subtitle="Lunas otomatis mengurangi stok cabang. COD/Tempo memotong stok saat diproses dan baru menjadi pemasukan saat lunas."
         action={
           <span className="text-meta text-ink-muted">
             {filteredRows.length} dari {rows.length} pesanan
@@ -138,21 +147,25 @@ export function OrderList({
             <li key={order.id}>
               <OrderListRow
                 order={order}
-                canManage={canManage}
+                permissions={permissions}
                 canDelete={canDelete}
                 showSales={showSales}
                 onStatusChange={() => setStatusTarget(order)}
                 onDelete={() => onDelete(order)}
                 onViewDetail={() => onViewDetail(order)}
+                onSettle={() => onSettle(order)}
+                onCancelCredit={() => onCancelCredit(order)}
               />
               <OrderCard
                 order={order}
-                canManage={canManage}
+                permissions={permissions}
                 canDelete={canDelete}
                 showSales={showSales}
                 onStatusChange={() => setStatusTarget(order)}
                 onDelete={() => onDelete(order)}
                 onViewDetail={() => onViewDetail(order)}
+                onSettle={() => onSettle(order)}
+                onCancelCredit={() => onCancelCredit(order)}
               />
             </li>
           ))}

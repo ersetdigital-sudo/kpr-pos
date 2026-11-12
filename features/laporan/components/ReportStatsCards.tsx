@@ -40,6 +40,16 @@ export function ReportStatsCards({ stats }: ReportStatsCardsProps) {
         value={formatRupiahCompact(stats.totalSalesBonus)}
         hint={`${stats.activeSalespeople} sales aktif`}
       />
+      <StatCard
+        label="Piutang Berjalan"
+        value={formatRupiahCompact(stats.receivableTotal)}
+        valueTone={stats.overdueReceivableTotal > 0 ? "brand" : undefined}
+        hint={
+          stats.overdueReceivableTotal > 0
+            ? `${stats.receivableCount} tagihan · lewat tempo ${formatRupiahCompact(stats.overdueReceivableTotal)}`
+            : `${stats.receivableCount} tagihan COD/Tempo`
+        }
+      />
     </div>
   );
 }

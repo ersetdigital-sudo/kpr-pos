@@ -7,6 +7,9 @@ import { Chip } from "@/components/ui/Chip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { CartPanel } from "@/features/kasir/components/CartPanel";
+import { CreditOrderListModal } from "@/features/kasir/components/CreditOrderListModal";
+import { CreditOrderReceiptModal } from "@/features/kasir/components/CreditOrderReceiptModal";
+import { CreditPaymentPanel } from "@/features/kasir/components/CreditPaymentPanel";
 import { DraftListModal } from "@/features/kasir/components/DraftListModal";
 import { ProductCatalog } from "@/features/kasir/components/ProductCatalog";
 import { ReceiptModal } from "@/features/kasir/components/ReceiptModal";
@@ -25,14 +28,21 @@ import {
   buildReceiptView,
   createTransaction,
   deleteDraft,
+  deleteTransactionRecord,
   loadTransactionHistory,
   logCartCancellation,
+  processSalesOrderCredit,
   refundTransaction,
   saveDraft,
   takeDraft,
   useCashierData,
   useNextInvoiceNumber,
 } from "@/features/kasir/data/kasir-repository";
+import {
+  cancelCreditOrder,
+  settleCreditOrder,
+} from "@/features/pesanan/data/pesanan-repository";
+import { getTempoTenorOptions } from "@/features/pesanan/data/pesanan-calculations";
 import { usePermissions } from "@/features/session/data/session-repository";
 import { getDatabase } from "@/lib/store/store";
 import { formatRupiah } from "@/lib/format";
@@ -44,11 +54,11 @@ import type {
 import type {
   CartItemInput,
   CartLine,
+  CashierPaymentMethod,
   KasirProduct,
   ReceiptViewData,
   TransactionHistoryRow,
 } from "@/features/kasir/types";
-import type { PaymentMethod } from "@/types";
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error
@@ -71,8 +81,17 @@ export function KasirWorkspace() {
   const [salesOrderId, setSalesOrderId] = useState<string | null>(null);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const handledOrderRef = useRef<string | null>(null);
-  const [method, setMethod] = useState<PaymentMethod>("Cash");
+  const [method, setMethod] = useState<CashierPaymentMethod>("Cash");
   const [cashReceived, setCashReceived] = useState(0);
+  const [creditCustomerId, setCreditCustomerId] = useState("");
+  const [tempoDays, setTempoDays] = useState(7);
+  const [creditReceipt, setCreditReceipt] = useState<SalesOrder | null>(null);
+  const [creditListOpen, setCreditListOpen] = useState(false);
+  const [creditSettleTarget, setCreditSettleTarget] =
+    useState<SalesOrder | null>(null);
+  const [creditCancelTarget, setCreditCancelTarget] =
+    useState<SalesOrder | null>(null);
+  const [creditWorking, setCreditWorking] = useState(false);
   const [taxEnabled, setTaxEnabled] = useState(DEFAULT_TAX_ENABLED);
   const [taxRate, setTaxRate] = useState(0);
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod | "">("");
@@ -89,6 +108,9 @@ export function KasirWorkspace() {
   >([]);
   const [refundTarget, setRefundTarget] =
     useState<TransactionHistoryRow | null>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<TransactionHistoryRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptViewData | null>(null);
   const [paying, setPaying] = useState(false);
@@ -132,15 +154,40 @@ export function KasirWorkspace() {
       order.branchId === data.branch.id &&
       (order.status === "Menunggu bayar" || order.status === "Belum sinkron"),
   );
+  const activeOrder = salesOrderId
+    ? (data.salesOrders.find((order) => order.id === salesOrderId) ?? null)
+    : null;
+  const tenorOptions = getTempoTenorOptions(permissions);
+  const unpaidCreditOrders = data.salesOrders.filter(
+    (order) =>
+      order.branchId === data.branch.id &&
+      (order.status === "COD - menunggu pembayaran" ||
+        order.status === "Tempo - menunggu pembayaran"),
+  );
+  const creditMethods: readonly CashierPaymentMethod[] = activeOrder
+    ? (["COD", "Tempo"] as const)
+    : [];
+  const availableMethods: CashierPaymentMethod[] = [
+    ...data.enabledMethods,
+    ...creditMethods,
+  ];
+  const activeTempoCustomer = data.salesOrders.some(
+    (order) =>
+      order.customerId === creditCustomerId &&
+      order.paymentScheme === "tempo" &&
+      order.status === "Tempo - menunggu pembayaran",
+  );
 
   const filteredProducts = useMemo(
     () => filterProducts(products, search, activeCategoryId),
     [products, search, activeCategoryId],
   );
 
-  const activeMethod: PaymentMethod = data.enabledMethods.includes(method)
+  const activeMethod: CashierPaymentMethod = availableMethods.includes(method)
     ? method
-    : (data.enabledMethods[0] ?? "Cash");
+    : (availableMethods[0] ?? "Cash");
+  const isCreditMethod =
+    activeMethod === "COD" || activeMethod === "Tempo";
   const activeSalesId = data.salesEmployees.some(
     (employee) => employee.id === salesEmployeeId,
   )
@@ -155,13 +202,19 @@ export function KasirWorkspace() {
   const cashSufficient =
     activeMethod !== "Cash" || cashReceived >= charges.total;
   const transferReady = activeMethod !== "Transfer" || activeBankId !== "";
+  const creditReady =
+    isCreditMethod &&
+    activeOrder !== null &&
+    (activeMethod === "COD" ||
+      (creditCustomerId !== "" && !activeTempoCustomer));
   const canPay =
     totals.itemCount > 0 &&
-    data.enabledMethods.length > 0 &&
+    availableMethods.length > 0 &&
     shippingMethod !== "" &&
     (shippingMethod !== "paid" || shippingCost > 0) &&
     cashSufficient &&
-    transferReady;
+    transferReady &&
+    (!isCreditMethod || creditReady);
 
   function handleAddProduct(product: KasirProduct) {
     if (product.stock <= 0) {
@@ -253,6 +306,8 @@ export function KasirWorkspace() {
     setSalesEmployeeId("");
     setSalesOrderId(null);
     setCashReceived(0);
+    setCreditCustomerId("");
+    setTempoDays(7);
     setTaxEnabled(DEFAULT_TAX_ENABLED);
     setTaxRate(0);
     setShippingMethod("");
@@ -394,6 +449,17 @@ export function KasirWorkspace() {
   }
 
   function handleSelectOrder(order: SalesOrder) {
+    if (
+      order.status !== "Menunggu bayar" &&
+      order.status !== "Belum sinkron"
+    ) {
+      showToast(
+        `Pesanan ${order.orderNumber} sudah diproses (${order.status})`,
+        "error",
+      );
+      return;
+    }
+
     const restored: CartItemInput[] = [];
 
     for (const item of order.items) {
@@ -433,6 +499,12 @@ export function KasirWorkspace() {
     setTaxRate(order.taxRate);
     setShippingMethod(order.shippingMethod);
     setShippingCost(order.shippingCost);
+    setCreditCustomerId(
+      data.tempoCustomers.some((customer) => customer.id === order.customerId)
+        ? (order.customerId ?? "")
+        : "",
+    );
+    setTempoDays(tenorOptions.includes(7) ? 7 : (tenorOptions[0] ?? 3));
     showToast(`Pesanan ${order.orderNumber} dimuat ke kasir`, "success");
   }
 
@@ -491,6 +563,67 @@ export function KasirWorkspace() {
     }
   }
 
+  async function handleSettleCreditOrder() {
+    if (!creditSettleTarget || creditWorking) return;
+
+    setCreditWorking(true);
+
+    try {
+      await settleCreditOrder(creditSettleTarget.id);
+      showToast(
+        `Pesanan ${creditSettleTarget.orderNumber} lunas · ${formatRupiah(creditSettleTarget.total)} masuk Buku Kas`,
+        "success",
+      );
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    } finally {
+      setCreditWorking(false);
+      setCreditSettleTarget(null);
+    }
+  }
+
+  async function handleCancelCreditOrder() {
+    if (!creditCancelTarget || creditWorking) return;
+
+    setCreditWorking(true);
+
+    try {
+      await cancelCreditOrder(
+        creditCancelTarget.id,
+        `Pesanan ${creditCancelTarget.paymentScheme === "tempo" ? "tempo" : "COD"} dibatalkan`,
+      );
+      showToast(
+        `Pesanan ${creditCancelTarget.orderNumber} dibatalkan, stok dikembalikan`,
+        "success",
+      );
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    } finally {
+      setCreditWorking(false);
+      setCreditCancelTarget(null);
+    }
+  }
+
+  async function handleDeleteTransaction() {
+    if (!deleteTarget || deleting) return;
+
+    setDeleting(true);
+
+    try {
+      await deleteTransactionRecord(deleteTarget);
+      setDeleteTarget(null);
+      setHistoryRows(null);
+      showToast(
+        `Transaksi ${deleteTarget.invoiceNumber} dihapus, stok & pemasukan dibalik`,
+        "success",
+      );
+    } catch (error) {
+      showToast(getErrorMessage(error), "error");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handlePay() {
     if (paying) return;
 
@@ -506,6 +639,49 @@ export function KasirWorkspace() {
 
     if (shippingMethod === "paid" && shippingCost <= 0) {
       showToast("Nominal ongkir harus lebih dari 0", "error");
+      return;
+    }
+
+    if (activeMethod === "COD" || activeMethod === "Tempo") {
+      if (!activeOrder) {
+        showToast("Pilih pesanan sales dulu", "error");
+        return;
+      }
+      if (activeMethod === "Tempo" && !creditCustomerId) {
+        showToast("Pilih pelanggan yang boleh tempo", "error");
+        return;
+      }
+      if (activeMethod === "Tempo" && activeTempoCustomer) {
+        showToast(
+          "Pelanggan ini masih punya tempo aktif yang belum lunas",
+          "error",
+        );
+        return;
+      }
+
+      setPaying(true);
+
+      try {
+        const credit = await processSalesOrderCredit({
+          orderId: activeOrder.id,
+          method: activeMethod === "Tempo" ? "tempo" : "cod",
+          tempoDays: activeMethod === "Tempo" ? tempoDays : undefined,
+          customerId:
+            activeMethod === "Tempo" ? creditCustomerId : undefined,
+        });
+
+        setCreditReceipt(credit.order);
+        resetCart();
+        showToast(
+          `Pesanan ${credit.order.orderNumber} diproses ${activeMethod === "Tempo" ? "tempo" : "COD"}`,
+          "success",
+        );
+      } catch (error) {
+        showToast(getErrorMessage(error), "error");
+      } finally {
+        setPaying(false);
+      }
+
       return;
     }
 
@@ -565,6 +741,13 @@ export function KasirWorkspace() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setCreditListOpen(true)}
+            >
+              Piutang COD/Tempo ({unpaidCreditOrders.length})
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleOpenHistory}
             >
               Riwayat Transaksi
@@ -596,7 +779,7 @@ export function KasirWorkspace() {
           onSalesChange={setSalesEmployeeId}
           canEditDiscount={canEditDiscount}
           onLineChange={handleLineChange}
-          methods={data.enabledMethods}
+          methods={availableMethods}
           method={activeMethod}
           onMethodChange={setMethod}
           cashReceived={cashReceived}
@@ -621,6 +804,29 @@ export function KasirWorkspace() {
           onShippingMethodChange={setShippingMethod}
           onShippingCostChange={setShippingCost}
           charges={charges}
+          payLabel={
+            activeMethod === "COD"
+              ? "Proses COD & Cetak Bukti"
+              : activeMethod === "Tempo"
+                ? "Proses Tempo & Cetak Bukti"
+                : "Bayar & Cetak Struk"
+          }
+          creditPanel={
+            activeMethod === "COD" || activeMethod === "Tempo" ? (
+              <CreditPaymentPanel
+                method={activeMethod}
+                customers={data.tempoCustomers}
+                customerId={creditCustomerId}
+                onCustomerChange={setCreditCustomerId}
+                tempoDays={tempoDays}
+                tenorOptions={tenorOptions}
+                onTempoDaysChange={setTempoDays}
+                tempoBlocked={
+                  activeMethod === "Tempo" && activeTempoCustomer
+                }
+              />
+            ) : undefined
+          }
         />
       </div>
 
@@ -641,12 +847,35 @@ export function KasirWorkspace() {
         onClose={() => setOrdersOpen(false)}
       />
 
+      <CreditOrderListModal
+        open={creditListOpen}
+        orders={unpaidCreditOrders}
+        canSettleCod={permissions.canSettleCod}
+        canSettleTempo={permissions.canSettleTempo}
+        canCancel={
+          permissions.canManageSalesOrders ||
+          permissions.canSettleCod ||
+          permissions.canSettleTempo
+        }
+        onClose={() => setCreditListOpen(false)}
+        onSettle={(order) => {
+          setCreditListOpen(false);
+          setCreditSettleTarget(order);
+        }}
+        onCancel={(order) => {
+          setCreditListOpen(false);
+          setCreditCancelTarget(order);
+        }}
+      />
+
       <TransactionHistoryModal
         open={historyOpen}
         transactions={historyRows ?? data.transactions}
         canRefund={permissions.canCancelTransaction}
+        canDelete={permissions.canDeleteTransaction}
         onClose={() => setHistoryOpen(false)}
         onRequestRefund={setRefundTarget}
+        onRequestDelete={setDeleteTarget}
         onViewReceipt={handleViewReceipt}
       />
 
@@ -668,9 +897,59 @@ export function KasirWorkspace() {
         onConfirm={confirmCancelCart}
       />
 
+      <ConfirmDialog
+        open={creditSettleTarget !== null}
+        title="Tandai pesanan lunas?"
+        description={
+          creditSettleTarget
+            ? `Pesanan ${creditSettleTarget.orderNumber} milik ${creditSettleTarget.customerName} akan ditandai lunas. Pemasukan ${formatRupiah(creditSettleTarget.total)} masuk Buku Kas otomatis.`
+            : ""
+        }
+        confirmLabel={creditWorking ? "Memproses…" : "Ya, tandai lunas"}
+        onClose={() => {
+          if (!creditWorking) setCreditSettleTarget(null);
+        }}
+        onConfirm={handleSettleCreditOrder}
+      />
+
+      <ConfirmDialog
+        open={creditCancelTarget !== null}
+        title="Batalkan pesanan?"
+        description={
+          creditCancelTarget
+            ? `Pesanan ${creditCancelTarget.orderNumber} milik ${creditCancelTarget.customerName} akan dibatalkan. Stok dikembalikan satu kali dan tidak ada pemasukan Buku Kas.`
+            : ""
+        }
+        confirmLabel={creditWorking ? "Memproses…" : "Ya, batalkan"}
+        onClose={() => {
+          if (!creditWorking) setCreditCancelTarget(null);
+        }}
+        onConfirm={handleCancelCreditOrder}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Hapus transaksi permanen?"
+        description={
+          deleteTarget
+            ? `Transaksi ${deleteTarget.invoiceNumber} (${formatRupiah(deleteTarget.total)}) akan dihapus. Stok dikembalikan dan pemasukan Buku Kas dibalik satu kali. Tindakan ini tercatat di Log Aktivitas.`
+            : ""
+        }
+        confirmLabel={deleting ? "Menghapus…" : "Ya, hapus"}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+        onConfirm={handleDeleteTransaction}
+      />
+
       <ReceiptModal
         receipt={receipt}
         onClose={() => setReceipt(null)}
+      />
+
+      <CreditOrderReceiptModal
+        order={creditReceipt}
+        onClose={() => setCreditReceipt(null)}
       />
     </>
   );

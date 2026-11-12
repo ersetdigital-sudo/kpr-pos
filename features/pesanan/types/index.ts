@@ -1,10 +1,21 @@
+import type { RolePermissions } from "@/config/permissions";
 import type {
   DiscountType,
   PriceType,
   SalesBonusSettings,
   SalesOrderStatus,
+  SalesPaymentScheme,
   ShippingMethod,
 } from "@/lib/store/types";
+
+/** Izin yang dipakai daftar/aksi pesanan. */
+export type ScopePermissions = Pick<
+  RolePermissions,
+  | "canManageSalesOrders"
+  | "canSettleCod"
+  | "canSettleTempo"
+  | "canDeleteTransaction"
+>;
 
 export interface OrderRow {
   id: string;
@@ -18,6 +29,14 @@ export interface OrderRow {
   quantity: number;
   total: number;
   status: SalesOrderStatus;
+  paymentScheme: SalesPaymentScheme;
+  tempoDays?: number;
+  dueDate: string | null;
+  /** Tempo yang sudah melewati jatuh tempo dan belum lunas. */
+  isOverdue: boolean;
+  processedAt: string | null;
+  paidAt: string | null;
+  settledByName: string | null;
   /** Transaksi kasir yang membayar pesanan ini, jika ada. */
   transactionId: string | null;
   note: string;

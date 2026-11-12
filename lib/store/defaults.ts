@@ -60,6 +60,7 @@ export function createEmptyDatabase(): AppDatabase {
     transactions: [],
     drafts: [],
     salesOrders: [],
+    customers: [],
     attendance: [],
     leaveRequests: [],
     kasbon: [],

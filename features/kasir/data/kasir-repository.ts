@@ -25,7 +25,9 @@ import { selectSession } from "@/features/session/data/session-repository";
 import {
   createTransactionAction,
   deleteDraftAction,
+  deleteTransactionOwnerAction,
   fetchTransactionHistoryAction,
+  processCreditOrderAction,
   refundTransactionAction,
   saveDraftAction,
   takeDraftAction,
@@ -38,9 +40,11 @@ import type {
   CartLine,
   CashierData,
   CreateTransactionInput,
+  CreditOrderResult,
   DraftSummary,
   KasirCategory,
   KasirProduct,
+  ProcessCreditOrderInput,
   ReceiptViewData,
   RefundTransactionInput,
   RefundTransactionResult,
@@ -234,6 +238,9 @@ export function useCashierData(): CashierData {
     salesEmployees: getSalesEmployees(database, branch.id),
     bankAccounts: getBankAccounts(database),
     enabledMethods: getEnabledMethods(database),
+    tempoCustomers: database.customers.filter(
+      (customer) => customer.isActive && customer.allowTempo,
+    ),
     drafts: getDraftSummaries(database, branch.id),
     transactions: getTransactionHistory(database, branch.id),
     salesOrders: database.salesOrders,
@@ -498,6 +505,85 @@ export async function refundTransaction(
     transaction: result.data,
     refundedAmount: result.data.total,
   };
+}
+
+/**
+ * Proses pesanan sales sebagai COD/Tempo langsung dari Kasir. Stok keluar dan
+ * status pesanan diubah atomik di Supabase.
+ */
+export async function processSalesOrderCredit(
+  input: ProcessCreditOrderInput,
+): Promise<CreditOrderResult> {
+  const database = getDatabase();
+  const order = database.salesOrders.find((item) => item.id === input.orderId);
+
+  if (!order) throw new Error("Pesanan tidak ditemukan");
+  if (order.status !== "Menunggu bayar") {
+    throw new Error(`Pesanan berstatus ${order.status} tidak bisa diproses`);
+  }
+
+  if (input.method === "tempo") {
+    if (!input.customerId) throw new Error("Pilih pelanggan yang boleh tempo");
+    if (!input.tempoDays) throw new Error("Pilih tenor tempo");
+
+    const customer = database.customers.find(
+      (item) => item.id === input.customerId,
+    );
+
+    if (!customer?.allowTempo) {
+      throw new Error("Pelanggan ini tidak boleh mengambil tempo");
+    }
+
+    const activeTempo = database.salesOrders.some(
+      (item) =>
+        item.customerId === customer.id &&
+        item.paymentScheme === "tempo" &&
+        item.status === "Tempo - menunggu pembayaran",
+    );
+
+    if (activeTempo) {
+      throw new Error(
+        "Pelanggan ini masih punya tempo aktif yang belum lunas",
+      );
+    }
+  }
+
+  const result = await trackCloudWrite(() =>
+    processCreditOrderAction({
+      orderId: input.orderId,
+      method: input.method,
+      tempoDays: input.tempoDays ?? null,
+      customerId: input.customerId ?? null,
+    }),
+  );
+
+  if (!result.ok) throw new Error(result.error);
+
+  await refreshAfterSale();
+
+  recordActivity({
+    action: "Mengubah",
+    detail: `Pesanan ${result.data.orderNumber} diproses ${input.method === "cod" ? "COD" : `Tempo ${input.tempoDays ?? ""} hari`} · stok keluar · ${formatRupiah(result.data.total)}`,
+  });
+
+  return { order: result.data };
+}
+
+/** Hapus transaksi (khusus role berizin); stok & pemasukan dibalik sekali. */
+export async function deleteTransactionRecord(
+  row: TransactionHistoryRow,
+): Promise<void> {
+  const result = await trackCloudWrite(() =>
+    deleteTransactionOwnerAction(row.id),
+  );
+  if (!result.ok) throw new Error(result.error);
+
+  await refreshAfterSale();
+
+  recordActivity({
+    action: "Menghapus",
+    detail: `Transaksi ${row.invoiceNumber} · ${formatRupiah(row.total)} · stok & pemasukan dibalik`,
+  });
 }
 
 export async function saveDraft(input: SaveDraftInput): Promise<CartDraft> {

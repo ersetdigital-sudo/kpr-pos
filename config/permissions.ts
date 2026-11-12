@@ -125,6 +125,31 @@ export const PERMISSION_FIELDS = [
     column: "can_view_all_kasbon",
     label: "Lihat semua kasbon",
   },
+  {
+    key: "canSettleCod",
+    column: "can_settle_cod",
+    label: "Tandai lunas COD",
+  },
+  {
+    key: "canSettleTempo",
+    column: "can_settle_tempo",
+    label: "Tandai lunas tempo",
+  },
+  {
+    key: "canSetTempoExtended",
+    column: "can_set_tempo_extended",
+    label: "Tempo 14 & 30 hari",
+  },
+  {
+    key: "canSetCustomerTempo",
+    column: "can_set_customer_tempo",
+    label: "Penanda tempo pelanggan",
+  },
+  {
+    key: "canDeleteTransaction",
+    column: "can_delete_transaction",
+    label: "Hapus transaksi",
+  },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_FIELDS)[number]["key"];
@@ -157,6 +182,11 @@ export function mapRolePermissionsRow(
 
 export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.OWNER]: {
+    canSettleCod: true,
+    canSettleTempo: true,
+    canSetTempoExtended: true,
+    canSetCustomerTempo: true,
+    canDeleteTransaction: true,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: true,
@@ -183,6 +213,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewAllKasbon: true,
   },
   [ROLES.MANAGER]: {
+    canSettleCod: true,
+    canSettleTempo: true,
+    canSetTempoExtended: false,
+    canSetCustomerTempo: true,
+    canDeleteTransaction: false,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: false,
@@ -209,6 +244,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewAllKasbon: true,
   },
   [ROLES.SUPERVISOR]: {
+    canSettleCod: true,
+    canSettleTempo: true,
+    canSetTempoExtended: false,
+    canSetCustomerTempo: false,
+    canDeleteTransaction: false,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: false,
@@ -235,6 +275,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewAllKasbon: false,
   },
   [ROLES.CASHIER]: {
+    canSettleCod: true,
+    canSettleTempo: true,
+    canSetTempoExtended: false,
+    canSetCustomerTempo: false,
+    canDeleteTransaction: false,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: false,
@@ -261,6 +306,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewAllKasbon: false,
   },
   [ROLES.INVENTORY]: {
+    canSettleCod: false,
+    canSettleTempo: false,
+    canSetTempoExtended: false,
+    canSetCustomerTempo: false,
+    canDeleteTransaction: false,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: false,
@@ -287,6 +337,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewAllKasbon: false,
   },
   [ROLES.ACCOUNTANT]: {
+    canSettleCod: true,
+    canSettleTempo: true,
+    canSetTempoExtended: false,
+    canSetCustomerTempo: false,
+    canDeleteTransaction: false,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: false,
@@ -313,6 +368,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewAllKasbon: true,
   },
   [ROLES.SALES]: {
+    canSettleCod: true,
+    canSettleTempo: true,
+    canSetTempoExtended: false,
+    canSetCustomerTempo: false,
+    canDeleteTransaction: false,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: false,
@@ -339,6 +399,11 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
     canViewAllKasbon: false,
   },
   [ROLES.STAFF]: {
+    canSettleCod: false,
+    canSettleTempo: false,
+    canSetTempoExtended: false,
+    canSetCustomerTempo: false,
+    canDeleteTransaction: false,
     canViewDashboard: true,
     canAccessAttendance: true,
     canAccessCashBook: false,

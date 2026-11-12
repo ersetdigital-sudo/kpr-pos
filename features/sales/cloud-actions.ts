@@ -15,12 +15,14 @@ import type {
   CartDraft,
   SalesOrder,
   SalesOrderStatus,
+  SalesPaymentScheme,
   ShippingMethod,
   Transaction,
 } from "@/lib/store/types";
 import type {
   CreateSalesOrderPayload,
   CreateTransactionPayload,
+  ProcessCreditOrderPayload,
   SalesDataResult,
   SaveDraftPayload,
 } from "@/lib/cloud/sales-types";
@@ -82,7 +84,13 @@ interface SalesOrderJson {
   shippingMethod: ShippingMethod;
   shippingCost: number;
   status: string;
+  customerId: string | null;
+  paymentScheme: SalesPaymentScheme | null;
+  tempoDays: number | null;
+  dueDate: string | null;
+  processedAt: string | null;
   paidAt: string | null;
+  settledByName: string | null;
   transactionId: string | null;
   stockApplied: boolean;
   note: string;
@@ -188,8 +196,14 @@ function mapSalesOrderJson(row: SalesOrderJson): SalesOrder {
     shippingMethod: row.shippingMethod ?? "pickup",
     shippingCost: row.shippingCost ?? 0,
     status: row.status as SalesOrderStatus,
+    customerId: row.customerId ?? undefined,
+    paymentScheme: row.paymentScheme ?? "cash",
+    tempoDays: row.tempoDays ?? undefined,
+    dueDate: row.dueDate ?? undefined,
+    processedAt: row.processedAt ?? undefined,
     transactionId: row.transactionId ?? undefined,
     paidAt: row.paidAt ?? undefined,
+    settledByName: row.settledByName || undefined,
     stockApplied: row.stockApplied,
     note: row.note,
     createdAt: row.createdAt,
@@ -335,15 +349,134 @@ export async function updateSalesOrderStatusAction(
 export async function deleteSalesOrderAction(
   orderId: string,
 ): Promise<CloudActionResult> {
-  const session = await getAuthorizedSession("canManageSalesOrders");
-  if (!session) return fail("Role Anda tidak boleh menghapus pesanan");
+  const session = await getAuthSession();
+  if (!session) return fail("Sesi pengguna tidak ditemukan");
 
-  if (!session.permissions.canDeleteSalesOrder) {
+  if (
+    !session.permissions.canDeleteSalesOrder &&
+    !session.permissions.canDeleteTransaction
+  ) {
     return fail("Role Anda tidak boleh menghapus pesanan");
   }
 
-  const result = await callServiceRpc("fn_delete_sales_order", {
+  const result = await callServiceRpc("fn_delete_sales_order_safe", {
     p_order_id: orderId,
+    p_actor_id: session.employee.id,
+  });
+
+  return result.ok ? { ok: true } : fail(result.error);
+}
+
+/** Proses pesanan sebagai COD atau Tempo; stok keluar saat ini juga. */
+export async function processCreditOrderAction(
+  payload: ProcessCreditOrderPayload,
+): Promise<SalesDataResult<SalesOrder>> {
+  const session = await getAuthSession();
+  if (!session) return fail("Sesi pengguna tidak ditemukan");
+  if (
+    !session.permissions.canUseCashier &&
+    !session.permissions.canManageSalesOrders
+  ) {
+    return fail("Role Anda tidak boleh memproses pembayaran pesanan");
+  }
+
+  if (payload.method === "tempo") {
+    if (!payload.customerId) return fail("Pilih pelanggan yang boleh tempo");
+    if (!payload.tempoDays) return fail("Pilih tenor tempo");
+  }
+
+  const result = await callServiceRpc<SalesOrderJson>(
+    "fn_process_sales_order_credit",
+    {
+      p_payload: {
+        orderId: payload.orderId,
+        method: payload.method,
+        tempoDays: payload.method === "tempo" ? payload.tempoDays : null,
+        customerId:
+          payload.method === "tempo" ? payload.customerId : null,
+        actorId: session.employee.id,
+      },
+    },
+  );
+
+  if (!result.ok || !result.data) {
+    return fail(result.ok ? "Pesanan gagal diproses" : result.error);
+  }
+
+  return { ok: true, data: mapSalesOrderJson(result.data) };
+}
+
+/** Tandai lunas COD/Tempo; pemasukan Buku Kas dihitung dari paid_at. */
+export async function settleCreditOrderAction(
+  orderId: string,
+): Promise<SalesDataResult<SalesOrder>> {
+  const session = await getAuthSession();
+  if (!session) return fail("Sesi pengguna tidak ditemukan");
+
+  if (
+    !session.permissions.canSettleCod &&
+    !session.permissions.canSettleTempo
+  ) {
+    return fail("Role Anda tidak boleh menandai lunas COD/Tempo");
+  }
+
+  const result = await callServiceRpc<SalesOrderJson>(
+    "fn_settle_sales_order_credit",
+    {
+      p_order_id: orderId,
+      p_actor_id: session.employee.id,
+    },
+  );
+
+  if (!result.ok || !result.data) {
+    return fail(result.ok ? "Pesanan gagal ditandai lunas" : result.error);
+  }
+
+  return { ok: true, data: mapSalesOrderJson(result.data) };
+}
+
+/** Batalkan COD/Tempo; stok dikembalikan satu kali oleh RPC. */
+export async function cancelCreditOrderAction(
+  orderId: string,
+  reason: string,
+): Promise<SalesDataResult<SalesOrder>> {
+  const session = await getAuthSession();
+  if (!session) return fail("Sesi pengguna tidak ditemukan");
+
+  if (
+    !session.permissions.canManageSalesOrders &&
+    !session.permissions.canSettleCod &&
+    !session.permissions.canSettleTempo
+  ) {
+    return fail("Role Anda tidak boleh membatalkan COD/Tempo");
+  }
+
+  const result = await callServiceRpc<SalesOrderJson>(
+    "fn_cancel_sales_order_credit",
+    {
+      p_order_id: orderId,
+      p_actor_id: session.employee.id,
+      p_reason: reason,
+    },
+  );
+
+  if (!result.ok || !result.data) {
+    return fail(result.ok ? "Pesanan gagal dibatalkan" : result.error);
+  }
+
+  return { ok: true, data: mapSalesOrderJson(result.data) };
+}
+
+/** Hapus transaksi kasir beserta pesanan terkait (khusus role berizin). */
+export async function deleteTransactionOwnerAction(
+  transactionId: string,
+): Promise<CloudActionResult> {
+  const session = await getAuthorizedSession("canDeleteTransaction");
+  if (!session) return fail("Role Anda tidak boleh menghapus transaksi");
+
+  const result = await callServiceRpc("fn_delete_transaction_safe", {
+    p_transaction_id: transactionId,
+    p_actor_id: session.employee.id,
   });
 
   return result.ok ? { ok: true } : fail(result.error);

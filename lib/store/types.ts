@@ -210,8 +210,23 @@ export interface CartDraft {
 export type SalesOrderStatus =
   | "Belum sinkron"
   | "Menunggu bayar"
+  | "COD - menunggu pembayaran"
+  | "Tempo - menunggu pembayaran"
   | "Lunas"
   | "Dibatalkan";
+
+/** Skema pembayaran pesanan; data lama otomatis dianggap tunai. */
+export type SalesPaymentScheme = "cash" | "cod" | "tempo";
+
+/** Pelanggan; `allowTempo` hanya bisa diubah role berwenang. */
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  allowTempo: boolean;
+  isActive: boolean;
+  branchId: string | null;
+}
 
 export interface SalesOrderItem {
   productId: string;
@@ -243,10 +258,22 @@ export interface SalesOrder {
   shippingMethod: ShippingMethod;
   shippingCost: number;
   status: SalesOrderStatus;
+  /** Pelanggan yang tercatat pada master pelanggan, bila ada. */
+  customerId?: string;
+  /** Tunai, COD, atau Tempo. Data lama tanpa nilai dianggap tunai. */
+  paymentScheme: SalesPaymentScheme;
+  /** Tenor tempo dalam hari; kosong untuk tunai dan COD. */
+  tempoDays?: number;
+  /** Tanggal jatuh tempo tempo (YYYY-MM-DD). */
+  dueDate?: string;
+  /** Waktu stok keluar karena pesanan diproses sebagai COD/Tempo. */
+  processedAt?: string;
   /** Transaksi kasir yang melunasi pesanan ini, bila ada. */
   transactionId?: string;
-  /** Waktu pesanan berubah menjadi Lunas; kosong untuk status lainnya. */
+  /** Waktu pelunasan (termasuk COD/Tempo); kosong bila belum lunas. */
   paidAt?: string;
+  /** Nama karyawan yang menandai lunas COD/Tempo. */
+  settledByName?: string;
   /** Menandai stok cabang sudah dikurangi saat pesanan dilunasi. */
   stockApplied: boolean;
   note: string;
@@ -419,6 +446,7 @@ export interface AppDatabase {
   transactions: Transaction[];
   drafts: CartDraft[];
   salesOrders: SalesOrder[];
+  customers: Customer[];
   attendance: AttendanceRecord[];
   leaveRequests: LeaveRequest[];
   kasbon: Kasbon[];

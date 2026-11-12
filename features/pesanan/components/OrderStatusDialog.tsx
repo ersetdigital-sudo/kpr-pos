@@ -11,6 +11,10 @@ import type { OrderRow } from "@/features/pesanan/types";
 const TRANSITION_HINTS: Record<SalesOrderStatus, string> = {
   "Belum sinkron": "Pesanan belum tersinkron; belum mengubah stok.",
   "Menunggu bayar": "Pesanan menunggu pembayaran; stok belum berubah.",
+  "COD - menunggu pembayaran":
+    "COD sudah diproses. Gunakan aksi Tandai lunas atau Batalkan di daftar pesanan.",
+  "Tempo - menunggu pembayaran":
+    "Tempo sudah diproses. Gunakan aksi Tandai lunas atau Batalkan di daftar pesanan.",
   Lunas: "Pesanan ditandai lunas dan stok cabang berkurang.",
   Dibatalkan: "Pesanan dibatalkan dan stok yang terpotong dikembalikan.",
 };

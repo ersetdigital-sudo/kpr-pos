@@ -73,6 +73,21 @@ export const NAV_SECTIONS: readonly NavSection[] = [
           permissions.canManageSalesOrders,
       },
       {
+        label: "Bonus Sales",
+        href: "/bonus",
+        icon: "coins",
+        canAccess: (permissions) => permissions.canExportReports,
+      },
+      {
+        label: "Pelanggan",
+        href: "/pelanggan",
+        icon: "users",
+        canAccess: (permissions) =>
+          permissions.canCreateSalesOrder ||
+          permissions.canManageSalesOrders ||
+          permissions.canSetCustomerTempo,
+      },
+      {
         label: "Produk & Stok",
         href: "/produk",
         icon: "package",

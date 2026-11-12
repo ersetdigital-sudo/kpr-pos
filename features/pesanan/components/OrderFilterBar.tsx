@@ -13,6 +13,8 @@ export const ORDER_STATUS_FILTERS: readonly {
 }[] = [
   { id: "all", label: "Semua" },
   { id: "Menunggu bayar", label: "Menunggu bayar" },
+  { id: "COD - menunggu pembayaran", label: "COD" },
+  { id: "Tempo - menunggu pembayaran", label: "Tempo" },
   { id: "Lunas", label: "Lunas" },
   { id: "Dibatalkan", label: "Dibatalkan" },
 ];

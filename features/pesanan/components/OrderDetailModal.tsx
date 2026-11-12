@@ -2,13 +2,22 @@
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { formatDateTimeLong, formatPercent, formatRupiah } from "@/lib/format";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  formatDateShort,
+  formatDateTimeLong,
+  formatPercent,
+  formatRupiah,
+} from "@/lib/format";
+import { isOverdueTempoSalesOrder } from "@/lib/store/sales";
 import type { SalesOrder } from "@/lib/store/types";
 
 interface OrderDetailModalProps {
   order: SalesOrder | null;
   salesName: string;
   branchName: string;
+  /** Nomor invoice kasir yang melunasi pesanan, bila ada. */
+  transactionNumber?: string | null;
   canProcess: boolean;
   onProcess: () => void;
   onClose: () => void;
@@ -18,6 +27,7 @@ export function OrderDetailModal({
   order,
   salesName,
   branchName,
+  transactionNumber,
   canProcess,
   onProcess,
   onClose,
@@ -26,6 +36,13 @@ export function OrderDetailModal({
 
   const pending =
     order.status === "Menunggu bayar" || order.status === "Belum sinkron";
+  const schemeLabel =
+    order.paymentScheme === "cod"
+      ? "COD (bayar saat pengiriman)"
+      : order.paymentScheme === "tempo"
+        ? `Tempo ${order.tempoDays ?? ""} hari`
+        : "Tunai";
+  const overdue = isOverdueTempoSalesOrder(order);
   const subtotal = order.items.reduce(
     (total, item) => total + item.unitPrice * item.quantity,
     0,
@@ -77,8 +94,39 @@ export function OrderDetailModal({
           </div>
           <div>
             <dt className="text-ink-muted">Status</dt>
-            <dd className="m-0 font-semibold text-ink">{order.status}</dd>
+            <dd className="m-0 flex flex-wrap items-center gap-1.5 font-semibold text-ink">
+              {order.status}
+              {overdue ? <StatusBadge tone="danger" strong>Jatuh tempo</StatusBadge> : null}
+            </dd>
           </div>
+          <div>
+            <dt className="text-ink-muted">Pembayaran</dt>
+            <dd className="m-0 text-ink">{schemeLabel}</dd>
+          </div>
+          {order.dueDate ? (
+            <div>
+              <dt className="text-ink-muted">Jatuh tempo</dt>
+              <dd className="m-0 text-ink">{formatDateShort(order.dueDate)}</dd>
+            </div>
+          ) : null}
+          <div>
+            <dt className="text-ink-muted">Transaksi</dt>
+            <dd className="m-0 text-ink">
+              {transactionNumber ??
+                (order.paidAt
+                  ? "Pelunasan langsung (COD/Tempo)"
+                  : "Belum ada pembayaran")}
+            </dd>
+          </div>
+          {order.paidAt ? (
+            <div>
+              <dt className="text-ink-muted">Dilunasi</dt>
+              <dd className="m-0 text-ink">
+                {formatDateTimeLong(order.paidAt)}
+                {order.settledByName ? ` · ${order.settledByName}` : ""}
+              </dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-ink-muted">Catatan</dt>
             <dd className="m-0 text-ink">{order.note || "-"}</dd>
@@ -178,6 +226,16 @@ export function OrderDetailModal({
             <span>{formatRupiah(order.total)}</span>
           </div>
         </div>
+
+        {order.processedAt && !order.transactionId ? (
+          <p className="m-0 rounded-control bg-canvas px-3 py-2 text-meta text-ink-muted">
+            Rincian item di atas sudah final sejak pesanan diproses
+            {order.processedAt
+              ? ` (${formatDateTimeLong(order.processedAt)})`
+              : ""}
+            . Pemasukannya masuk Buku Kas saat pesanan ditandai lunas.
+          </p>
+        ) : null}
 
         {!canProcess && pending ? (
           <p className="m-0 rounded-control bg-canvas px-3 py-2 text-meta text-ink-muted">

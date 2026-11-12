@@ -5,6 +5,7 @@ import type {
   Branch,
   CartDraft,
   Category,
+  Customer,
   Employee,
   Kasbon,
   LeaveRequest,
@@ -37,6 +38,7 @@ export interface AppSnapshot {
   transactions: Transaction[];
   salesOrders: SalesOrder[];
   drafts: CartDraft[];
+  customers: Customer[];
   attendance: AttendanceRecord[];
   leaveRequests: LeaveRequest[];
   kasbon: Kasbon[];

@@ -8,6 +8,7 @@ import type {
   CartDraft,
   SalesOrder,
   SalesOrderStatus,
+  SalesPaymentScheme,
   ShippingMethod,
   Transaction,
   TransactionItem,
@@ -82,7 +83,13 @@ export interface SalesOrderRow {
   shipping_method: ShippingMethod | null;
   shipping_cost: number | null;
   status: string;
+  customer_id: string | null;
+  payment_scheme: SalesPaymentScheme | null;
+  tempo_days: number | null;
+  due_date: string | null;
+  processed_at: string | null;
   paid_at: string | null;
+  settled_by_name: string | null;
   transaction_id: string | null;
   stock_applied: boolean;
   note: string;
@@ -112,7 +119,7 @@ export const TRANSACTION_COLUMNS =
   "id,invoice_number,branch_id,cashier_id,sales_employee_id,subtotal,discount_type,discount_value,discount_amount,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,payment_method,cash_received,change_amount,bank_account_id,refunded_at,refunded_by_id,refunded_by_name,refund_reason,refund_amount,created_at,transaction_items(product_id,product_name,unit_price,unit_cost,quantity,line_total,price_type,discount_type,discount_value,discount_amount)";
 
 export const SALES_ORDER_COLUMNS =
-  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,status,paid_at,transaction_id,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_price,unit_cost,quantity,price_type,discount_type,discount_value,discount_amount)";
+  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,status,customer_id,payment_scheme,tempo_days,due_date,processed_at,paid_at,settled_by_name,transaction_id,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_price,unit_cost,quantity,price_type,discount_type,discount_value,discount_amount)";
 
 export const CART_DRAFT_COLUMNS =
   "id,label,branch_id,cashier_id,sales_employee_id,discount_type,discount_value,created_at,updated_at,cart_draft_items(product_id,quantity)";
@@ -205,8 +212,14 @@ export function mapSalesOrderRow(row: SalesOrderRow): SalesOrder {
     shippingMethod: row.shipping_method ?? "pickup",
     shippingCost: row.shipping_cost ?? 0,
     status: row.status as SalesOrderStatus,
+    customerId: row.customer_id ?? undefined,
+    paymentScheme: row.payment_scheme ?? "cash",
+    tempoDays: row.tempo_days ?? undefined,
+    dueDate: row.due_date ?? undefined,
+    processedAt: row.processed_at ?? undefined,
     transactionId: row.transaction_id ?? undefined,
     paidAt: row.paid_at ?? undefined,
+    settledByName: row.settled_by_name || undefined,
     stockApplied: row.stock_applied,
     note: row.note,
     createdAt: row.created_at,

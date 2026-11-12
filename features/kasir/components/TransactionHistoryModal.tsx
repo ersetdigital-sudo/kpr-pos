@@ -30,8 +30,11 @@ interface TransactionHistoryModalProps {
   open: boolean;
   transactions: readonly TransactionHistoryRow[];
   canRefund: boolean;
+  /** Hapus permanen (khusus role berizin, mis. Owner). */
+  canDelete: boolean;
   onClose: () => void;
   onRequestRefund: (row: TransactionHistoryRow) => void;
+  onRequestDelete: (row: TransactionHistoryRow) => void;
   onViewReceipt: (row: TransactionHistoryRow) => void;
 }
 
@@ -39,8 +42,10 @@ export function TransactionHistoryModal({
   open,
   transactions,
   canRefund,
+  canDelete,
   onClose,
   onRequestRefund,
+  onRequestDelete,
   onViewReceipt,
 }: TransactionHistoryModalProps) {
   const [query, setQuery] = useState("");
@@ -142,6 +147,17 @@ export function TransactionHistoryModal({
               Refund
             </Button>
           ) : null}
+          {canDelete ? (
+            <Button
+              variant="dangerOutline"
+              size="sm"
+              aria-label={`Hapus transaksi ${row.invoiceNumber}`}
+              title={`Hapus transaksi ${row.invoiceNumber}`}
+              onClick={() => onRequestDelete(row)}
+            >
+              Hapus
+            </Button>
+          ) : null}
         </div>
       ),
     },
@@ -152,7 +168,7 @@ export function TransactionHistoryModal({
       open={open}
       onClose={onClose}
       title="Riwayat Transaksi"
-      description="Transaksi cabang aktif. Refund mengembalikan stok dan tercatat di Log Aktivitas."
+      description="Transaksi cabang aktif. Refund mengembalikan stok; hapus transaksi hanya untuk role berizin dan tercatat di Log Aktivitas."
       size="lg"
       footer={
         <Button variant="outline" onClick={onClose}>

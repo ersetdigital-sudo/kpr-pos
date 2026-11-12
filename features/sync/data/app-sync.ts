@@ -46,6 +46,7 @@ function snapshotToDatabase(
     transactions: snapshot.transactions,
     drafts: snapshot.drafts,
     salesOrders: snapshot.salesOrders,
+    customers: snapshot.customers ?? [],
     attendance: snapshot.attendance,
     leaveRequests: snapshot.leaveRequests,
     kasbon: snapshot.kasbon ?? [],

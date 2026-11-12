@@ -5,18 +5,21 @@ import { QrisPayment } from "@/features/kasir/components/QrisPayment";
 import { TransferPayment } from "@/features/kasir/components/TransferPayment";
 import { cn } from "@/lib/cn";
 import type { BankAccount } from "@/lib/store/types";
-import type { PaymentMethod } from "@/types";
+import type { CashierPaymentMethod } from "@/features/kasir/types";
+import type { ReactNode } from "react";
 
 interface PaymentSectionProps {
   total: number;
-  methods: readonly PaymentMethod[];
-  method: PaymentMethod;
-  onMethodChange: (method: PaymentMethod) => void;
+  methods: readonly CashierPaymentMethod[];
+  method: CashierPaymentMethod;
+  onMethodChange: (method: CashierPaymentMethod) => void;
   cashReceived: number;
   onCashReceivedChange: (value: number) => void;
   bankAccounts: readonly BankAccount[];
   selectedBankId: string;
   onBankChange: (accountId: string) => void;
+  /** Panel COD/Tempo; hanya dikirim saat pesanan sales sedang dibayar. */
+  creditPanel?: ReactNode;
 }
 
 export function PaymentSection({
@@ -29,6 +32,7 @@ export function PaymentSection({
   bankAccounts,
   selectedBankId,
   onBankChange,
+  creditPanel,
 }: PaymentSectionProps) {
   return (
     <div className="flex flex-col gap-[10px] px-5 pb-3.5">
@@ -44,7 +48,7 @@ export function PaymentSection({
         <div
           className="grid gap-2"
           style={{
-            gridTemplateColumns: `repeat(${methods.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${Math.min(methods.length, 3)}, minmax(0, 1fr))`,
           }}
         >
           {methods.map((option) => {
@@ -89,6 +93,10 @@ export function PaymentSection({
           onSelect={onBankChange}
         />
       ) : null}
+
+      {method !== "Cash" && method !== "QRIS" && method !== "Transfer"
+        ? creditPanel
+        : null}
     </div>
   );
 }

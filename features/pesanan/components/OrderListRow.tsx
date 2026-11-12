@@ -2,33 +2,162 @@
 
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { formatDateTimeShort, formatNumber, formatRupiah } from "@/lib/format";
-import { getNextOrderStatuses } from "@/features/pesanan/data/pesanan-calculations";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  formatDateShort,
+  formatDateTimeShort,
+  formatNumber,
+  formatRupiah,
+} from "@/lib/format";
+import {
+  canSettleCreditOrder,
+  getNextOrderStatuses,
+  isCreditPendingStatus,
+} from "@/features/pesanan/data/pesanan-calculations";
 import { OrderStatusBadge } from "@/features/pesanan/components/OrderStatusBadge";
-import type { OrderRow } from "@/features/pesanan/types";
+import type {
+  OrderRow,
+  ScopePermissions,
+} from "@/features/pesanan/types";
 
 interface OrderListItemProps {
   order: OrderRow;
-  canManage: boolean;
+  permissions: ScopePermissions;
   canDelete: boolean;
   showSales: boolean;
   onStatusChange: () => void;
   onDelete: () => void;
   onViewDetail: () => void;
+  onSettle: () => void;
+  onCancelCredit: () => void;
 }
 
-/** Baris pesanan versi desktop; informasi dibuat dua baris agar tetap lega. */
-export function OrderListRow({
+function OverdueBadge() {
+  return (
+    <StatusBadge tone="danger" strong>
+      Jatuh tempo
+    </StatusBadge>
+  );
+}
+
+function creditLabel(order: OrderRow): string | null {
+  if (order.status === "COD - menunggu pembayaran") {
+    return "COD · menunggu pembayaran saat pengiriman";
+  }
+  if (order.status === "Tempo - menunggu pembayaran") {
+    return order.dueDate
+      ? `Tempo ${order.tempoDays ?? ""} hari · jatuh tempo ${formatDateShort(order.dueDate)}`
+      : `Tempo ${order.tempoDays ?? ""} hari`;
+  }
+
+  return null;
+}
+
+function OrderActions({
   order,
-  canManage,
+  permissions,
   canDelete,
-  showSales,
+  compact,
   onStatusChange,
   onDelete,
   onViewDetail,
-}: OrderListItemProps) {
+  onSettle,
+  onCancelCredit,
+}: Omit<OrderListItemProps, "showSales"> & { compact: boolean }) {
+  const creditPending = isCreditPendingStatus(order.status);
+  const canSettle =
+    creditPending && canSettleCreditOrder(order.paymentScheme, permissions);
+  const canCancel =
+    creditPending &&
+    (permissions.canManageSalesOrders ||
+      permissions.canSettleCod ||
+      permissions.canSettleTempo);
   const canChangeStatus =
-    canManage && getNextOrderStatuses(order.status).length > 0;
+    !creditPending &&
+    permissions.canManageSalesOrders &&
+    getNextOrderStatuses(order.status).length > 0;
+  const deletable =
+    canDelete &&
+    (order.status === "Dibatalkan" || permissions.canDeleteTransaction);
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Button
+        variant="outline"
+        size={compact ? "md" : "sm"}
+        className={compact ? "h-10 flex-1 text-label" : "h-[32px] px-2.5 text-meta"}
+        onClick={onViewDetail}
+      >
+        Detail
+      </Button>
+
+      {canSettle ? (
+        <Button
+          variant="primary"
+          size={compact ? "md" : "sm"}
+          className={compact ? "h-10 flex-1 text-label" : "h-[32px] px-2.5 text-meta"}
+          onClick={onSettle}
+        >
+          Tandai lunas
+        </Button>
+      ) : null}
+
+      {canCancel ? (
+        <Button
+          variant="dangerOutline"
+          size={compact ? "md" : "sm"}
+          className={compact ? "h-10 flex-1 text-label" : "h-[32px] px-2.5 text-meta"}
+          onClick={onCancelCredit}
+        >
+          Batalkan
+        </Button>
+      ) : null}
+
+      {canChangeStatus ? (
+        <Button
+          variant="outline"
+          size={compact ? "md" : "sm"}
+          className={compact ? "h-10 flex-1 text-label" : "h-[32px] px-2.5 text-meta"}
+          aria-haspopup="dialog"
+          aria-label={`Ubah status pesanan ${order.orderNumber}`}
+          title={`Ubah status pesanan ${order.orderNumber}`}
+          onClick={onStatusChange}
+        >
+          Ubah status
+          <Icon
+            name="chevronDown"
+            size={14}
+            strokeWidth={2}
+            className="text-ink-muted"
+          />
+        </Button>
+      ) : null}
+
+      {deletable ? (
+        <Button
+          variant="dangerOutline"
+          size={compact ? "md" : "sm"}
+          className={
+            compact
+              ? "h-10 w-[42px] shrink-0 px-0"
+              : "h-[32px] px-2.5 text-meta"
+          }
+          title={`Hapus pesanan ${order.orderNumber}`}
+          aria-label={`Hapus pesanan ${order.orderNumber}`}
+          onClick={onDelete}
+        >
+          <Icon name="trash" size={14} />
+          {compact ? null : "Hapus"}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Baris pesanan versi desktop; informasi dibuat dua baris agar tetap lega. */
+export function OrderListRow(props: OrderListItemProps) {
+  const { order, showSales, onViewDetail } = props;
+  const creditInfo = creditLabel(order);
 
   return (
     <div className="hidden flex-col gap-2.5 px-4 py-3.5 transition-colors hover:bg-line-subtle lg:flex">
@@ -45,11 +174,12 @@ export function OrderListRow({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-meta text-ink-muted">
             {formatDateTimeShort(order.createdAt)}
           </span>
           <OrderStatusBadge status={order.status} />
+          {order.isOverdue ? <OverdueBadge /> : null}
           <span className="text-body font-bold whitespace-nowrap text-ink">
             {formatRupiah(order.total)}
           </span>
@@ -71,74 +201,22 @@ export function OrderListRow({
               </span>
             </>
           ) : null}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-[32px] px-2.5 text-meta"
-            onClick={onViewDetail}
-          >
-            Detail
-          </Button>
-
-          {canChangeStatus ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-[32px] px-2.5 text-meta"
-              aria-haspopup="dialog"
-              aria-label={`Ubah status pesanan ${order.orderNumber}`}
-              title={`Ubah status pesanan ${order.orderNumber}`}
-              onClick={onStatusChange}
-            >
-              Ubah status
-              <Icon
-                name="chevronDown"
-                size={14}
-                strokeWidth={2}
-                className="text-ink-muted"
-              />
-            </Button>
-          ) : null}
-
-          {canDelete ? (
-            <Button
-              variant="dangerOutline"
-              size="sm"
-              className="h-[32px] px-2.5 text-meta"
-              disabled={order.status !== "Dibatalkan"}
-              title={
-                order.status === "Dibatalkan"
-                  ? `Hapus pesanan ${order.orderNumber}`
-                  : "Batalkan pesanan dulu untuk menghapus"
-              }
-              aria-label={`Hapus pesanan ${order.orderNumber}`}
-              onClick={onDelete}
-            >
-              <Icon name="trash" size={14} />
-              Hapus
-            </Button>
+          {creditInfo ? <span className="text-ink-soft">{creditInfo}</span> : null}
+          {order.status === "Lunas" && order.settledByName ? (
+            <span>Dilunasi {order.settledByName}</span>
           ) : null}
         </div>
+
+        <OrderActions {...props} compact={false} onViewDetail={onViewDetail} />
       </div>
     </div>
   );
 }
 
 /** Kartu pesanan versi mobile; pengganti tabel tanpa scroll horizontal. */
-export function OrderCard({
-  order,
-  canManage,
-  canDelete,
-  showSales,
-  onStatusChange,
-  onDelete,
-  onViewDetail,
-}: OrderListItemProps) {
-  const canChangeStatus =
-    canManage && getNextOrderStatuses(order.status).length > 0;
+export function OrderCard(props: OrderListItemProps) {
+  const { order, showSales, onViewDetail } = props;
+  const creditInfo = creditLabel(order);
 
   return (
     <div className="flex flex-col gap-3 px-4 py-4 lg:hidden">
@@ -151,7 +229,10 @@ export function OrderCard({
             {order.orderNumber} · {formatDateTimeShort(order.createdAt)}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} className="shrink-0" />
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <OrderStatusBadge status={order.status} />
+          {order.isOverdue ? <OverdueBadge /> : null}
+        </div>
       </div>
 
       <div className="flex items-end justify-between gap-3">
@@ -161,6 +242,7 @@ export function OrderCard({
             {showSales && order.salesName ? ` · ${order.salesName}` : ""}
           </div>
           {showSales ? <div className="truncate">{order.branchName}</div> : null}
+          {creditInfo ? <div>{creditInfo}</div> : null}
         </div>
         <div className="shrink-0 text-right">
           <div className="text-meta text-ink-muted">Total</div>
@@ -170,52 +252,8 @@ export function OrderCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-line-faint pt-3">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-[36px] flex-1 text-label"
-          onClick={onViewDetail}
-        >
-          Detail
-        </Button>
-
-        {canChangeStatus ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-[36px] flex-1 text-label"
-            aria-haspopup="dialog"
-            aria-label={`Ubah status pesanan ${order.orderNumber}`}
-            onClick={onStatusChange}
-          >
-            Ubah status
-            <Icon
-              name="chevronDown"
-              size={14}
-              strokeWidth={2}
-              className="text-ink-muted"
-            />
-          </Button>
-        ) : null}
-
-        {canDelete ? (
-          <Button
-            variant="dangerOutline"
-            size="sm"
-            className="h-[36px] w-[40px] shrink-0 px-0"
-            disabled={order.status !== "Dibatalkan"}
-            aria-label={`Hapus pesanan ${order.orderNumber}`}
-            title={
-              order.status === "Dibatalkan"
-                ? `Hapus pesanan ${order.orderNumber}`
-                : "Batalkan pesanan dulu untuk menghapus"
-            }
-            onClick={onDelete}
-          >
-            <Icon name="trash" size={15} />
-          </Button>
-        ) : null}
+      <div className="border-t border-line-faint pt-3">
+        <OrderActions {...props} compact onViewDetail={onViewDetail} />
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import { BestSellersCard } from "@/features/laporan/components/BestSellersCard";
 import { CashierReportCard } from "@/features/laporan/components/CashierReportCard";
 import { PaymentMethodCard } from "@/features/laporan/components/PaymentMethodCard";
 import { ReportPrintSheet } from "@/features/laporan/components/ReportPrintSheet";
+import { ReceivablesCard } from "@/features/laporan/components/ReceivablesCard";
 import { ReportStatsCards } from "@/features/laporan/components/ReportStatsCards";
 import { ReportTaxRecapCard } from "@/features/laporan/components/ReportTaxRecapCard";
 import { SalesSourceCard } from "@/features/laporan/components/SalesSourceCard";
@@ -224,6 +225,8 @@ function LaporanBody({
         </div>
 
         <SalesSourceCard breakdown={data.sourceBreakdown} />
+
+        <ReceivablesCard rows={data.receivables} stats={data.stats} />
 
         <ReportTaxRecapCard
           rows={data.taxRecap}

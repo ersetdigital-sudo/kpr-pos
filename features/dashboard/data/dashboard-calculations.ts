@@ -34,8 +34,10 @@ export function buildDashboardData(
   scope: DashboardScope,
   today: Date,
 ): DashboardData {
-  const sales = collectSales(database).filter((sale) =>
-    inScope(sale.branchId, scope),
+  // COD/Tempo yang sudah diproses ikut tampil sebagai penjualan; uangnya baru
+  // masuk Buku Kas saat lunas.
+  const sales = collectSales(database, { includeUnsettled: true }).filter(
+    (sale) => inScope(sale.branchId, scope),
   );
   const todaySales = sales.filter((sale) =>
     isSameDay(new Date(sale.at), today),

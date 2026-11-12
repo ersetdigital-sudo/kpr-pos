@@ -159,18 +159,23 @@ function buildAutomaticRows(
 ): CashBookRow[] {
   const isYearly = query.period === "tahunan";
 
+  // Buku Kas hanya mengenal uang yang sudah diterima: COD/Tempo memakai
+  // tanggal pelunasan (cashAt), bukan tanggal pesanan diproses.
   const sales = collectSalesFrom({
     transactions: source.transactions,
     salesOrders: source.salesOrders,
-  }).filter((sale) => isWithinPeriod(sale.at, range));
+  })
+    .filter((sale) => sale.cashAt !== null)
+    .filter((sale) => isWithinPeriod(sale.cashAt as string, range));
 
   const groups = new Map<string, SalesGroup>();
 
   sales.forEach((sale) => {
+    const cashAt = sale.cashAt as string;
     // Tampilan tahunan dikelompokkan per bulan, bukan per hari.
     const date = isYearly
-      ? `${jakartaMonthKey(sale.at)}-01`
-      : jakartaDateKey(sale.at);
+      ? `${jakartaMonthKey(cashAt)}-01`
+      : jakartaDateKey(cashAt);
     const key = `${date}|${sale.branchId}|${sale.source}`;
     const group = groups.get(key) ?? {
       date,

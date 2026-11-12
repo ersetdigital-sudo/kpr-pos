@@ -23,8 +23,9 @@ import type {
 import type {
   CartLine,
   CartTotals,
+  CashierPaymentMethod,
 } from "@/features/kasir/types";
-import type { PaymentMethod } from "@/types";
+import type { ReactNode } from "react";
 
 interface CartPanelProps {
   invoiceNumber: string;
@@ -40,9 +41,9 @@ interface CartPanelProps {
       Pick<CartLine, "priceType" | "discountType" | "discountValue">
     >,
   ) => void;
-  methods: readonly PaymentMethod[];
-  method: PaymentMethod;
-  onMethodChange: (method: PaymentMethod) => void;
+  methods: readonly CashierPaymentMethod[];
+  method: CashierPaymentMethod;
+  onMethodChange: (method: CashierPaymentMethod) => void;
   cashReceived: number;
   onCashReceivedChange: (value: number) => void;
   bankAccounts: readonly BankAccount[];
@@ -65,6 +66,10 @@ interface CartPanelProps {
   onShippingMethodChange: (method: ShippingMethod) => void;
   onShippingCostChange: (value: number) => void;
   charges: SalesChargeTotals;
+  /** Panel COD/Tempo dari halaman Kasir. */
+  creditPanel?: ReactNode;
+  /** Label tombol bayar menyesuaikan metode. */
+  payLabel?: string;
 }
 
 export function CartPanel({
@@ -101,6 +106,8 @@ export function CartPanel({
   onShippingMethodChange,
   onShippingCostChange,
   charges,
+  creditPanel,
+  payLabel = "Bayar & Cetak Struk",
 }: CartPanelProps) {
   return (
     <aside
@@ -353,6 +360,7 @@ export function CartPanel({
         bankAccounts={bankAccounts}
         selectedBankId={selectedBankId}
         onBankChange={onBankChange}
+        creditPanel={creditPanel}
       />
 
       <div className="mt-auto flex flex-col gap-2 px-5 pb-5">
@@ -363,7 +371,7 @@ export function CartPanel({
           disabled={!canPay}
           className="h-[54px] rounded-card text-card-title disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Bayar &amp; Cetak Struk
+          {payLabel}
         </Button>
 
         {canCancel ? (
@@ -399,7 +407,9 @@ export function CartPanel({
         )}
 
         <p className="mt-1 mb-0 text-center text-meta text-ink-muted">
-          Laci kasir terbuka otomatis setelah struk tercetak
+          {payLabel.startsWith("Proses")
+            ? "Bukti pesanan dicetak; uang dicatat saat pesanan lunas"
+            : "Laci kasir terbuka otomatis setelah struk tercetak"}
         </p>
       </div>
     </aside>

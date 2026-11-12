@@ -16,7 +16,12 @@ export function buildBranchRows(
   filters: BranchFilters,
   today: Date,
 ): BranchRow[] {
-  const monthlySales = filterSales(collectSales(database), getMonthRange(today));
+  // Omzet cabang memakai dasar yang sama dengan Laporan: COD/Tempo yang
+  // sudah diproses sudah dihitung walau uangnya belum masuk.
+  const monthlySales = filterSales(
+    collectSales(database, { includeUnsettled: true }),
+    getMonthRange(today),
+  );
 
   return database.branches
     .filter((branch) => {
@@ -62,7 +67,10 @@ export function calculateBranchSummary(
     totalEmployees: database.employees.filter((employee) => employee.isActive)
       .length,
     monthlyRevenue: sumSalesAmount(
-      filterSales(collectSales(database), getMonthRange(today)),
+      filterSales(
+        collectSales(database, { includeUnsettled: true }),
+        getMonthRange(today),
+      ),
     ),
   };
 }

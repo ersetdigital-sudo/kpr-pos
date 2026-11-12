@@ -7,6 +7,8 @@ import {
 import {
   collectSales,
   filterSales,
+  isOverdueTempoSalesOrder,
+  isUnsettledSalesOrder,
   summarizeSalesBySource,
   sumSalesAmount,
   sumSalesTax,
@@ -25,6 +27,7 @@ import type {
   ReportData,
   ReportLogRow,
   ReportLogUser,
+  ReportReceivableRow,
   ReportTaxRow,
   ReportTransactionRow,
 } from "@/features/laporan/types";
@@ -75,8 +78,9 @@ export function buildReportData(
   const productCostById = buildProductCostLookup(database.products);
 
   // Omzet, laba, jumlah transaksi, dan produk terlaris memakai semua penjualan.
+  // COD/Tempo ikut tercatat sejak diproses walau uangnya belum masuk.
   const sales = filterSales(
-    collectSales(database),
+    collectSales(database, { includeUnsettled: true }),
     range,
     branchScope === "all" ? undefined : branchScope,
   );
@@ -110,6 +114,36 @@ export function buildReportData(
   const transactionCount = sales.length;
   const averageTransaction =
     transactionCount > 0 ? Math.round(revenue / transactionCount) : 0;
+
+  // Piutang berjalan: semua COD/Tempo yang belum lunas pada cakupan cabang,
+  // termasuk yang diproses sebelum periode agar tidak ada tagihan yang hilang.
+  const receivables: ReportReceivableRow[] = database.salesOrders
+    .filter(isUnsettledSalesOrder)
+    .filter((order) => isInScope(order.branchId, branchScope))
+    .sort((first, second) => {
+      const firstDue = first.dueDate ?? "9999-12-31";
+      const secondDue = second.dueDate ?? "9999-12-31";
+      return firstDue.localeCompare(secondDue);
+    })
+    .map((order) => ({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      scheme: order.paymentScheme === "tempo" ? "tempo" : "cod",
+      total: order.total,
+      processedAt: order.processedAt ?? order.createdAt,
+      dueDate: order.dueDate ?? null,
+      isOverdue: isOverdueTempoSalesOrder(order),
+      salesName: employeeById.get(order.salesEmployeeId)?.name ?? "Sales",
+      branchName: branchById.get(order.branchId)?.name ?? "-",
+    }));
+  const receivableTotal = receivables.reduce(
+    (total, row) => total + row.total,
+    0,
+  );
+  const overdueReceivableTotal = receivables
+    .filter((row) => row.isOverdue)
+    .reduce((total, row) => total + row.total, 0);
 
   const bonusEntries = collectBonusEntries(
     database,
@@ -234,7 +268,75 @@ export function buildReportData(
       { total: sale.goodsTotal, items: sale.items },
       productCostById,
     ),
+    paymentScheme: sale.paymentScheme,
+    settled: sale.settled,
+    dueDate: sale.dueDate,
+    status: sale.settled ? "Lunas" : "Belum lunas",
   }));
+
+  // Riwayat batal tetap ikut rekap (nominal tidak dihitung sebagai omzet).
+  const cancelledRows: ReportTransactionRow[] = database.transactions
+    .filter((transaction) => isTransactionRefunded(transaction))
+    .filter((transaction) => isInScope(transaction.branchId, branchScope))
+    .filter((transaction) => isWithinRange(transaction.createdAt, range))
+    .map((transaction) => ({
+      invoiceNumber: transaction.invoiceNumber,
+      source: "Kasir" as const,
+      createdAt: transaction.createdAt,
+      cashierName: employeeById.get(transaction.cashierId)?.name ?? "Kasir",
+      branchName: branchById.get(transaction.branchId)?.name ?? "-",
+      method: transaction.payment.method,
+      subtotal: transaction.subtotal,
+      discount: transaction.discount.amount,
+      total: transaction.total,
+      taxEnabled: transaction.taxEnabled,
+      taxRate: transaction.taxRate,
+      taxAmount: transaction.taxAmount,
+      shippingCost: transaction.shippingCost,
+      profit: 0,
+      paymentScheme: "cash" as const,
+      settled: false,
+      dueDate: null,
+      status: "Batal" as const,
+    }));
+
+  const cancelledOrders: ReportTransactionRow[] = database.salesOrders
+    .filter((order) => order.status === "Dibatalkan" && !order.transactionId)
+    .filter((order) => isInScope(order.branchId, branchScope))
+    .filter((order) => isWithinRange(order.createdAt, range))
+    .map((order) => ({
+      invoiceNumber: order.orderNumber,
+      source: "Pesanan Sales" as const,
+      createdAt: order.createdAt,
+      cashierName: "-",
+      branchName: branchById.get(order.branchId)?.name ?? "-",
+      method: "-" as const,
+      subtotal: order.items.reduce(
+        (total, item) => total + item.unitPrice * item.quantity,
+        0,
+      ),
+      discount: order.items.reduce(
+        (total, item) => total + (item.discountAmount ?? 0),
+        0,
+      ),
+      total: order.total,
+      taxEnabled: order.taxEnabled,
+      taxRate: order.taxRate,
+      taxAmount: order.taxAmount,
+      shippingCost: order.shippingCost,
+      profit: 0,
+      paymentScheme: order.paymentScheme ?? ("cash" as const),
+      settled: false,
+      dueDate: order.dueDate ?? null,
+      status: "Batal" as const,
+    }));
+
+  transactionRows.push(...cancelledRows, ...cancelledOrders);
+  transactionRows.sort(
+    (first, second) =>
+      new Date(second.createdAt).getTime() -
+      new Date(first.createdAt).getTime(),
+  );
 
   const orderById = new Map(
     database.salesOrders.map((order) => [order.id, order]),
@@ -279,6 +381,9 @@ export function buildReportData(
       averageTransaction,
       totalSalesBonus,
       activeSalespeople,
+      receivableTotal,
+      receivableCount: receivables.length,
+      overdueReceivableTotal,
     },
     sourceBreakdown: summarizeSalesBySource(sales),
     paymentBreakdown,
@@ -290,5 +395,6 @@ export function buildReportData(
     roles: ALL_ROLES,
     transactions: transactionRows,
     taxRecap,
+    receivables,
   };
 }

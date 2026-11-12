@@ -4,6 +4,7 @@ import Image from "next/image";
 import { createPortal } from "react-dom";
 import { formatDateRange } from "@/lib/date-range";
 import {
+  formatDateShort,
   formatDateTimeShort,
   formatNumber,
   formatPercent,
@@ -230,6 +231,65 @@ export function ReportPrintSheet({ data, business }: ReportPrintSheetProps) {
                 </td>
                 <td className="py-1 text-right font-bold">
                   {formatRupiah(data.stats.taxCollected)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section className="mt-5">
+          <h2 className="m-0 mb-1.5 text-[12px] font-bold">
+            Piutang COD &amp; Tempo
+          </h2>
+          <p className="m-0 mb-1 text-[10px] text-ink-muted">
+            Semua tagihan yang belum lunas pada cakupan laporan, termasuk
+            periode sebelumnya. Uang baru masuk Buku Kas saat lunas.
+          </p>
+          <table className="w-full border-collapse text-[10px]">
+            <thead>
+              <tr className="border-b border-ink/30 text-left text-ink-muted">
+                <th className="py-1 font-semibold">No. Pesanan</th>
+                <th className="py-1 font-semibold">Pelanggan</th>
+                <th className="py-1 font-semibold">Skema</th>
+                <th className="py-1 font-semibold">Jatuh Tempo</th>
+                <th className="py-1 font-semibold">Status</th>
+                <th className="py-1 text-right font-semibold">Nominal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.receivables.length === 0 ? (
+                <tr>
+                  <td className="py-1 text-ink-muted" colSpan={6}>
+                    Tidak ada piutang pada cakupan ini
+                  </td>
+                </tr>
+              ) : null}
+              {data.receivables.map((row) => (
+                <tr key={row.id} className="border-t border-line">
+                  <td className="py-1 font-semibold whitespace-nowrap">
+                    {row.orderNumber}
+                  </td>
+                  <td className="py-1">{row.customerName}</td>
+                  <td className="py-1">
+                    {row.scheme === "tempo" ? "Tempo" : "COD"}
+                  </td>
+                  <td className="py-1 whitespace-nowrap">
+                    {row.dueDate ? formatDateShort(row.dueDate) : "Saat kirim"}
+                  </td>
+                  <td className="py-1">
+                    {row.isOverdue ? "Jatuh tempo" : "Belum lunas"}
+                  </td>
+                  <td className="py-1 text-right">
+                    {formatRupiah(row.total)}
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t border-ink/30">
+                <td className="py-1 font-bold" colSpan={5}>
+                  Total piutang berjalan
+                </td>
+                <td className="py-1 text-right font-bold">
+                  {formatRupiah(data.stats.receivableTotal)}
                 </td>
               </tr>
             </tbody>
