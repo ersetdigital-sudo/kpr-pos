@@ -99,9 +99,13 @@ export async function deleteCategoryAction(
 
 export async function createProductAction(
   input: ProductFormInput,
+  branchId: string,
 ): Promise<CloudActionResult> {
   const session = await getAuthorizedSession("canManageProducts");
   if (!session) return fail("Anda tidak punya akses menambah produk.");
+  if (!canUseBranch(session, branchId)) {
+    return fail("Cabang tidak sesuai akses Anda.");
+  }
 
   return callRpc("fn_create_product", {
     p_name: input.name,
@@ -112,6 +116,26 @@ export async function createProductAction(
     p_image_url: input.imageUrl ?? "",
     p_min_stock: input.minStock,
     p_wholesale_price: input.wholesalePrice,
+    p_branch_id: branchId,
+  });
+}
+
+export async function setProductBranchVisibilityAction(
+  productId: string,
+  branchId: string,
+  isVisible: boolean,
+): Promise<CloudActionResult> {
+  const session = await getAuthorizedSession("canManageProductVisibility");
+  if (!session) return fail("Anda tidak berwenang mengatur visibilitas produk.");
+  if (!canUseBranch(session, branchId)) {
+    return fail("Cabang tidak sesuai akses Anda.");
+  }
+
+  return callRpc("fn_set_product_branch_visibility", {
+    p_product_id: productId,
+    p_branch_id: branchId,
+    p_visible: isVisible,
+    p_actor_id: session.employee.id,
   });
 }
 

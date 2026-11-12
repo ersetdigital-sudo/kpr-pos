@@ -244,6 +244,7 @@ Semua perubahan skema ada di `supabase/migrations/` dan dijalankan berurutan:
 | `20261106000300_revoke_rls_auto_enable.sql` | Cabut execute `rls_auto_enable()` dari client    |
 | `20261112000500_tax_shipping.sql`           | PPN + ongkir di transaksi, pesanan, dan setelan   |
 | `20261112000600_cod_tempo.sql`              | COD, tempo/piutang, pelanggan, hapus transaksi    |
+| `20261112000700_product_branch_visibility.sql` | Visibilitas produk per cabang                 |
 
 Cara menjalankan:
 

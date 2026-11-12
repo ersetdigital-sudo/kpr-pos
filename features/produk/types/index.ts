@@ -30,6 +30,8 @@ export interface ProductRow {
   minStock: number;
   status: StockStatus;
   isActive: boolean;
+  /** Tampil di cabang yang sedang dipilih; false berarti disembunyikan. */
+  isVisible: boolean;
 }
 
 export interface ProductFilters {
@@ -37,6 +39,8 @@ export interface ProductFilters {
   categoryId: string | "all";
   branchId: StockScope;
   status: "all" | Exclude<StockStatus, "Nonaktif"> | "Nonaktif";
+  /** Filter khusus untuk mengelola produk yang disembunyikan di cabang. */
+  visibility: "visible" | "hidden";
   page: number;
   pageSize: number;
 }

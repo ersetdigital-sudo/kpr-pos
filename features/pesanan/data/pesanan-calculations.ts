@@ -254,18 +254,26 @@ export function buildProductOptions(
 ): OrderProductOption[] {
   return database.products
     .filter((product) => product.isActive)
-    .map((product) => ({
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      price: product.price,
-      wholesalePrice: product.wholesalePrice ?? 0,
-      stock:
-        database.stocks.find(
-          (level) =>
-            level.branchId === branchId && level.productId === product.id,
-        )?.quantity ?? 0,
-    }));
+    .flatMap((product) => {
+      const level = database.stocks.find(
+        (stock) =>
+          stock.branchId === branchId && stock.productId === product.id,
+      );
+
+      // Produk yang disembunyikan di cabang ini tidak bisa dipesan dari sini.
+      if (!level || level.isVisible === false) return [];
+
+      return [
+        {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          wholesalePrice: product.wholesalePrice ?? 0,
+          stock: level.quantity,
+        },
+      ];
+    });
 }
 
 export function buildSalesOptions(

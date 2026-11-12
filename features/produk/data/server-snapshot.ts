@@ -37,6 +37,7 @@ interface StockRow {
   product_id: string;
   quantity: number;
   min_stock: number;
+  is_visible: boolean;
 }
 
 interface StockInItemRow {
@@ -112,7 +113,9 @@ export async function readProductStockSnapshot(
         "id,name,sku,category_id,cost_price,price,wholesale_price,image_url,is_active",
       )
       .order("name"),
-    admin.from("stock_levels").select("branch_id,product_id,quantity,min_stock"),
+    admin
+      .from("stock_levels")
+      .select("branch_id,product_id,quantity,min_stock,is_visible"),
   ]);
 
   const error =
@@ -148,6 +151,7 @@ export async function readProductStockSnapshot(
       productId: row.product_id,
       quantity: row.quantity,
       minStock: row.min_stock,
+      isVisible: row.is_visible !== false,
     }),
   );
 

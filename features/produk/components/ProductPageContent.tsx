@@ -22,10 +22,12 @@ import {
   buildProductRows,
   calculateProductStats,
   hasSalesHistory,
+  isProductVisibleInScope,
 } from "@/features/produk/data/produk-calculations";
 import {
   deleteProduct,
   setProductActive,
+  setProductBranchVisibility,
   useProdukData,
 } from "@/features/produk/data/produk-repository";
 import {
@@ -33,6 +35,7 @@ import {
   useSession,
 } from "@/features/session/data/session-repository";
 import { toDateInputValue } from "@/lib/date-range";
+import { formatNumber } from "@/lib/format";
 import type { AppDatabase, Branch } from "@/lib/store/types";
 import type {
   ProductFilters,
@@ -54,6 +57,7 @@ export function ProductPageContent() {
     categoryId: "all",
     branchId: branch.id,
     status: "all",
+    visibility: "visible",
     page: 1,
     pageSize: PAGE_SIZE,
   });
@@ -107,6 +111,42 @@ export function ProductPageContent() {
     }
   }
 
+  async function handleToggleVisibility(product: ProductRow) {
+    if (branchScope === "all") {
+      showToast("Pilih satu cabang dulu untuk mengatur visibilitas", "error");
+      return;
+    }
+
+    const nextVisible = !product.isVisible;
+    const scopeName =
+      branches.find((item) => item.id === branchScope)?.name ?? branch.name;
+
+    if (product.isVisible && product.stock > 0) {
+      showToast(
+        `Stok ${product.name} di ${scopeName} masih ${formatNumber(product.stock)} pcs. Kosongkan stok dulu sebelum disembunyikan.`,
+        "error",
+      );
+      return;
+    }
+
+    try {
+      await setProductBranchVisibility(product.id, branchScope, nextVisible);
+      showToast(
+        nextVisible
+          ? `${product.name} ditampilkan di ${scopeName}`
+          : `${product.name} disembunyikan dari ${scopeName}`,
+        "success",
+      );
+    } catch (caught) {
+      showToast(
+        caught instanceof Error
+          ? caught.message
+          : "Visibilitas produk gagal diubah",
+        "error",
+      );
+    }
+  }
+
   async function handleReactivate(product: ProductRow) {
     try {
       await setProductActive(product.id, true);
@@ -148,7 +188,9 @@ export function ProductPageContent() {
       onFiltersChange={updateFilters}
       onPageChange={(page) => updateFilters({ page })}
       canManageProducts={permissions.canManageProducts}
+      canManageVisibility={permissions.canManageProductVisibility}
       canViewAllBranches={permissions.canViewAllBranches}
+      onToggleVisibility={handleToggleVisibility}
       onCreate={openCreate}
       onEdit={openEdit}
       onDelete={setDeleteTarget}
@@ -185,7 +227,9 @@ interface ProductPageBodyProps {
   onFiltersChange: (patch: Partial<ProductFilters>) => void;
   onPageChange: (page: number) => void;
   canManageProducts: boolean;
+  canManageVisibility: boolean;
   canViewAllBranches: boolean;
+  onToggleVisibility: (product: ProductRow) => void;
   onCreate: () => void;
   onEdit: (product: ProductRow) => void;
   onDelete: (product: ProductRow) => void;
@@ -214,7 +258,9 @@ function ProductPageBody({
   onFiltersChange,
   onPageChange,
   canManageProducts,
+  canManageVisibility,
   canViewAllBranches,
+  onToggleVisibility,
   onCreate,
   onEdit,
   onDelete,
@@ -251,15 +297,31 @@ function ProductPageBody({
     [database],
   );
 
+  const hiddenCount = useMemo(
+    () =>
+      database.products.filter(
+        (product) =>
+          product.isActive &&
+          !isProductVisibleInScope(database.stocks, product.id, branchScope),
+      ).length,
+    [database, branchScope],
+  );
+
+  // Pilihan stok masuk/opname/transfer mengikuti produk yang tampil di cabang.
   const stockOptions: StockProductOption[] = useMemo(() => {
     const stockByProduct = new Map(
       database.stocks
-        .filter((level) => level.branchId === branchId)
+        .filter(
+          (level) =>
+            level.branchId === branchId && level.isVisible !== false,
+        )
         .map((level) => [level.productId, level.quantity]),
     );
 
     return database.products
-      .filter((product) => product.isActive)
+      .filter(
+        (product) => product.isActive && stockByProduct.has(product.id),
+      )
       .map((product) => ({
         id: product.id,
         name: product.name,
@@ -267,6 +329,10 @@ function ProductPageBody({
         stock: stockByProduct.get(product.id) ?? 0,
       }));
   }, [database, branchId]);
+
+  const createBranchId = branchScope === "all" ? branchId : branchScope;
+  const createBranchName =
+    branches.find((branch) => branch.id === createBranchId)?.name ?? branchName;
 
   const stockIns = database.stockIns.filter(
     (record) => record.branchId === branchId,
@@ -322,12 +388,15 @@ function ProductPageBody({
               filters={filters}
               pagination={pagination}
               canManage={canManageProducts}
+              canManageVisibility={canManageVisibility}
               canViewAllBranches={canViewAllBranches}
+              hiddenCount={hiddenCount}
               onFiltersChange={onFiltersChange}
               onPageChange={onPageChange}
               onEdit={onEdit}
               onDelete={onDelete}
               onReactivate={onReactivate}
+              onToggleVisibility={onToggleVisibility}
             />
           </>
         ) : null}
@@ -376,10 +445,12 @@ function ProductPageBody({
       </div>
 
       <ProductFormDrawer
-        key={editing?.id ?? "new"}
+        key={`${editing?.id ?? "new"}:${createBranchId}`}
         open={formOpen}
         product={editing}
         categories={database.categories}
+        branchId={createBranchId}
+        branchName={createBranchName}
         onClose={onCloseForm}
       />
 

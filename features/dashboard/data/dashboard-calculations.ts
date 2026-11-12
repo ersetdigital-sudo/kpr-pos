@@ -95,6 +95,8 @@ export function buildDashboardData(
     );
 
     levels.forEach((level) => {
+      // Produk yang disembunyikan di cabang tidak dihitung sebagai stok menipis.
+      if (level.isVisible === false) return;
       if (level.quantity > level.minStock) return;
 
       lowStockProductIds.add(product.id);

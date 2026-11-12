@@ -25,6 +25,27 @@ export function getStockStatus(
   return "Aman";
 }
 
+/** Level stok dianggap tampil bila penandanya tidak eksplisit false. */
+export function isStockLevelVisible(
+  level: StockLevel | undefined,
+): boolean {
+  return level ? level.isVisible !== false : false;
+}
+
+/** Produk tampil di cabang bila punya level stok dengan is_visible = true. */
+export function isProductVisibleInScope(
+  stocks: readonly StockLevel[],
+  productId: string,
+  scope: StockScope,
+): boolean {
+  return stocks.some(
+    (level) =>
+      level.productId === productId &&
+      (scope === "all" || level.branchId === scope) &&
+      isStockLevelVisible(level),
+  );
+}
+
 export function getScopedStock(
   stocks: readonly StockLevel[],
   productId: string,
@@ -76,10 +97,17 @@ export function buildProductRows(
       minStock: stock.minStock,
       status: getStockStatus(stock.quantity, stock.minStock, product.isActive),
       isActive: product.isActive,
+      isVisible: isProductVisibleInScope(
+        database.stocks,
+        product.id,
+        filters.branchId,
+      ),
     };
   });
 
   const filtered = allRows.filter((row) => {
+    if (filters.visibility === "visible" && !row.isVisible) return false;
+    if (filters.visibility === "hidden" && row.isVisible) return false;
     if (row.status === "Nonaktif" && filters.status !== "Nonaktif") {
       return false;
     }
@@ -136,7 +164,13 @@ export function calculateProductStats(
   let lowStockCount = 0;
   let outOfStockCount = 0;
 
+  let visibleProducts = 0;
+
   activeProducts.forEach((product) => {
+    // Produk yang disembunyikan di cabang tidak ikut kartu stok.
+    if (!isProductVisibleInScope(database.stocks, product.id, scope)) return;
+
+    visibleProducts += 1;
     const stock = getScopedStock(database.stocks, product.id, scope);
     totalStockValue += stock.quantity * product.costPrice;
 
@@ -150,7 +184,7 @@ export function calculateProductStats(
     lowStockCount,
     outOfStockCount,
     incomingThisWeek: calculateIncomingThisWeek(database, scope, today),
-    totalProducts: activeProducts.length,
+    totalProducts: visibleProducts,
   };
 }
 

@@ -64,25 +64,30 @@ export function getProducts(
 
   return database.products
     .filter((product) => product.isActive)
-    .map((product) => {
+    .flatMap((product) => {
       const stock = database.stocks.find(
         (level) =>
           level.branchId === branchId && level.productId === product.id,
       );
 
-      return {
-        id: product.id,
-        name: product.name,
-        sku: product.sku,
-        price: product.price,
-        wholesalePrice: product.wholesalePrice ?? 0,
-        costPrice: product.costPrice,
-        stock: stock?.quantity ?? 0,
-        categoryId: product.categoryId,
-        categoryName:
-          categoryById.get(product.categoryId)?.name ?? "Tanpa kategori",
-        imageUrl: product.imageUrl,
-      };
+      // Produk yang disembunyikan di cabang ini tidak masuk katalog kasir.
+      if (!stock || stock.isVisible === false) return [];
+
+      return [
+        {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          wholesalePrice: product.wholesalePrice ?? 0,
+          costPrice: product.costPrice,
+          stock: stock.quantity,
+          categoryId: product.categoryId,
+          categoryName:
+            categoryById.get(product.categoryId)?.name ?? "Tanpa kategori",
+          imageUrl: product.imageUrl,
+        },
+      ];
     });
 }
 

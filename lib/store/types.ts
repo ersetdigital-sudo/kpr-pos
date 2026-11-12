@@ -65,6 +65,11 @@ export interface StockLevel {
   productId: string;
   quantity: number;
   minStock: number;
+  /**
+   * Apakah produk tampil di katalog cabang ini. Produk tetap tersimpan saat
+   * disembunyikan; stok, riwayat, dan laporan lama tidak berubah.
+   */
+  isVisible: boolean;
 }
 
 export interface BankAccount {

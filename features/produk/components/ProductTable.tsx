@@ -33,12 +33,15 @@ interface ProductTableProps {
   filters: ProductFilters;
   pagination: ProductPagination;
   canManage: boolean;
+  canManageVisibility: boolean;
   canViewAllBranches: boolean;
+  hiddenCount: number;
   onFiltersChange: (patch: Partial<ProductFilters>) => void;
   onPageChange: (page: number) => void;
   onEdit: (product: ProductRow) => void;
   onDelete: (product: ProductRow) => void;
   onReactivate: (product: ProductRow) => void;
+  onToggleVisibility: (product: ProductRow) => void;
 }
 
 export function ProductTable({
@@ -48,12 +51,15 @@ export function ProductTable({
   filters,
   pagination,
   canManage,
+  canManageVisibility,
   canViewAllBranches,
+  hiddenCount,
   onFiltersChange,
   onPageChange,
   onEdit,
   onDelete,
   onReactivate,
+  onToggleVisibility,
 }: ProductTableProps) {
   const columns = useMemo(() => {
     const base: DataTableColumn<ProductRow>[] = [
@@ -119,54 +125,88 @@ export function ProductTable({
         id: "status",
         header: "Status",
         cell: (product) => (
-          <StatusBadge tone={STATUS_TONES[product.status]}>
-            {product.status}
-          </StatusBadge>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge tone={STATUS_TONES[product.status]}>
+              {product.status}
+            </StatusBadge>
+            {product.isVisible ? null : (
+              <StatusBadge tone="neutral">Tersembunyi</StatusBadge>
+            )}
+          </div>
         ),
       },
     ];
 
-    if (!canManage) return base;
+    if (!canManage && !canManageVisibility) return base;
 
     const actionColumn: DataTableColumn<ProductRow> = {
       id: "action",
       header: <span className="sr-only">Aksi</span>,
       align: "right",
       cell: (product) => (
-          <div className="flex justify-end gap-1.5">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-[32px] px-2.5 text-meta"
-              onClick={() => onEdit(product)}
-            >
-              Edit
-            </Button>
-            {product.isActive ? (
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {canManage ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-[32px] px-2.5 text-meta"
+                  onClick={() => onEdit(product)}
+                >
+                  Edit
+                </Button>
+                {product.isActive ? (
+                  <Button
+                    variant="dangerOutline"
+                    size="sm"
+                    className="h-[32px] px-2.5 text-meta"
+                    onClick={() => onDelete(product)}
+                  >
+                    Hapus
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-[32px] px-2.5 text-meta"
+                    onClick={() => onReactivate(product)}
+                  >
+                    Aktifkan
+                  </Button>
+                )}
+              </>
+            ) : null}
+            {canManageVisibility && filters.branchId !== "all" ? (
               <Button
-                variant="dangerOutline"
+                variant={product.isVisible ? "dangerOutline" : "outline"}
                 size="sm"
                 className="h-[32px] px-2.5 text-meta"
-                onClick={() => onDelete(product)}
+                title={
+                  product.isVisible && product.stock > 0
+                    ? `Kosongkan stok cabang ini dulu (masih ${formatNumber(product.stock)} pcs)`
+                    : product.isVisible
+                      ? `Sembunyikan ${product.name} dari cabang ini`
+                      : `Tampilkan ${product.name} di cabang ini`
+                }
+                onClick={() => onToggleVisibility(product)}
               >
-                Hapus
+                {product.isVisible ? "Sembunyikan" : "Tampilkan"}
               </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-[32px] px-2.5 text-meta"
-                onClick={() => onReactivate(product)}
-              >
-                Aktifkan
-              </Button>
-            )}
+            ) : null}
           </div>
         ),
     };
 
     return [...base, actionColumn];
-  }, [canManage, onDelete, onEdit, onReactivate]);
+  }, [
+    canManage,
+    canManageVisibility,
+    filters.branchId,
+    onDelete,
+    onEdit,
+    onReactivate,
+    onToggleVisibility,
+  ]);
 
   return (
     <Card
@@ -233,15 +273,37 @@ export function ProductTable({
           <option value="Habis">Habis</option>
           <option value="Nonaktif">Nonaktif</option>
         </Select>
+        <Button
+          variant={filters.visibility === "hidden" ? "primary" : "outline"}
+          size="md"
+          aria-pressed={filters.visibility === "hidden"}
+          onClick={() =>
+            onFiltersChange({
+              visibility:
+                filters.visibility === "hidden" ? "visible" : "hidden",
+              page: 1,
+            })
+          }
+        >
+          {filters.visibility === "hidden"
+            ? "Kembali ke produk tampil"
+            : `Tersembunyi (${formatNumber(hiddenCount)})`}
+        </Button>
       </div>
 
       {rows.length === 0 ? (
         <div className="rounded-control border border-dashed border-line-strong bg-canvas px-4 py-8 text-center">
           <p className="m-0 text-body font-semibold text-ink">
-            Produk tidak ditemukan
+            {filters.visibility === "hidden"
+              ? "Tidak ada produk tersembunyi"
+              : "Produk tidak ditemukan"}
           </p>
           <p className="mt-1 mb-0 text-meta text-ink-muted">
-            Ubah kata kunci atau filter yang dipakai.
+            {filters.visibility === "hidden"
+              ? "Semua produk di cabang ini sudah tampil di katalog."
+              : hiddenCount > 0
+                ? `${formatNumber(hiddenCount)} produk disembunyikan dari cabang ini. Buka tombol Tersembunyi untuk menampilkannya.`
+                : "Ubah kata kunci atau filter yang dipakai."}
           </p>
         </div>
       ) : (

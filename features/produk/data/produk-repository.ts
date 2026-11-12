@@ -17,6 +17,7 @@ import {
   deleteProductAction,
   importProductsAction,
   setProductActiveAction,
+  setProductBranchVisibilityAction,
   submitOpnameAction,
   transferStockAction,
   updateCategoryAction,
@@ -62,13 +63,40 @@ async function refreshAfterWrite(): Promise<void> {
   }
 }
 
-export async function createProduct(input: ProductFormInput): Promise<void> {
-  const result = await trackCloudWrite(() => createProductAction(input));
+export async function createProduct(
+  input: ProductFormInput,
+  branchId: string,
+): Promise<void> {
+  const database = getDatabase();
+  const branch = database.branches.find((item) => item.id === branchId);
+  const result = await trackCloudWrite(() =>
+    createProductAction(input, branchId),
+  );
   assertOk(result);
   await refreshAfterWrite();
   recordActivity({
     action: "Membuat",
-    detail: `Produk ${input.name.trim()} (${input.sku.trim().toUpperCase()}) · ${formatRupiah(input.price)}`,
+    detail: `Produk ${input.name.trim()} (${input.sku.trim().toUpperCase()}) · ${formatRupiah(input.price)} · tampil di ${branch?.name ?? "cabang"}`,
+  });
+}
+
+export async function setProductBranchVisibility(
+  productId: string,
+  branchId: string,
+  isVisible: boolean,
+): Promise<void> {
+  const database = getDatabase();
+  const product = database.products.find((item) => item.id === productId);
+  const branch = database.branches.find((item) => item.id === branchId);
+
+  const result = await trackCloudWrite(() =>
+    setProductBranchVisibilityAction(productId, branchId, isVisible),
+  );
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Produk ${product?.name ?? productId} ${isVisible ? "ditampilkan di" : "disembunyikan dari"} ${branch?.name ?? "cabang"}`,
   });
 }
 

@@ -25,6 +25,9 @@ interface ProductFormDrawerProps {
   open: boolean;
   product: ProductRow | null;
   categories: readonly Category[];
+  /** Cabang tempat produk baru dibuat/ditampilkan. */
+  branchId: string;
+  branchName: string;
   onClose: () => void;
 }
 
@@ -32,6 +35,8 @@ export function ProductFormDrawer({
   open,
   product,
   categories,
+  branchId,
+  branchName,
   onClose,
 }: ProductFormDrawerProps) {
   const { showToast } = useToast();
@@ -94,7 +99,7 @@ export function ProductFormDrawer({
         await updateProduct(product.id, input);
         showToast(`Produk ${name.trim()} diperbarui`, "success");
       } else {
-        await createProduct(input);
+        await createProduct(input, branchId);
         showToast(`Produk ${name.trim()} ditambahkan`, "success");
       }
       onClose();
@@ -116,7 +121,7 @@ export function ProductFormDrawer({
       description={
         isEditing
           ? "Perubahan harga dan SKU langsung dipakai di Kasir."
-          : "Stok awal 0; tambahkan lewat tab Stok Masuk."
+          : `Produk baru hanya tampil di ${branchName}. Stok awal 0; tambahkan lewat tab Stok Masuk.`
       }
       size="md"
       footer={
