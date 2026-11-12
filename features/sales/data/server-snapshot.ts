@@ -26,7 +26,7 @@ interface TransactionItemRow {
   discount_amount: number;
 }
 
-interface TransactionRow {
+export interface TransactionRow {
   id: string;
   invoice_number: string;
   branch_id: string;
@@ -62,7 +62,7 @@ interface SalesOrderItemRow {
   discount_amount: number;
 }
 
-interface SalesOrderRow {
+export interface SalesOrderRow {
   id: string;
   order_number: string;
   customer_name: string;

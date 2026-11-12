@@ -1,7 +1,11 @@
 import { isWithinRange } from "@/lib/date-range";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import type { DateRange } from "@/lib/date-range";
-import type { AppDatabase } from "@/lib/store/types";
+import type {
+  AppDatabase,
+  SalesOrder,
+  Transaction,
+} from "@/lib/store/types";
 import type { PaymentMethod } from "@/types";
 
 export type SalesSource = "Kasir" | "Pesanan Sales";
@@ -52,13 +56,19 @@ function mapItems(items: readonly SalesItem[]): SalesItem[] {
   }));
 }
 
+/** Sumber penjualan minimal yang dibutuhkan aturan rekap penjualan. */
+export interface SalesSourceData {
+  transactions: readonly Transaction[];
+  salesOrders: readonly SalesOrder[];
+}
+
 /**
  * Menggabungkan transaksi kasir yang tidak direfund dengan pesanan sales Lunas.
  * Transaksi kasir tetap satu baris walau punya salesEmployeeId, jadi tidak ada
  * perhitungan ganda.
  */
-export function collectSales(database: AppDatabase): SalesRecord[] {
-  const transactions: SalesRecord[] = database.transactions
+export function collectSalesFrom(source: SalesSourceData): SalesRecord[] {
+  const transactions: SalesRecord[] = source.transactions
     .filter((transaction) => !isTransactionRefunded(transaction))
     .map((transaction) => ({
       id: transaction.id,
@@ -76,7 +86,7 @@ export function collectSales(database: AppDatabase): SalesRecord[] {
       items: mapItems(transaction.items),
     }));
 
-  const salesOrders: SalesRecord[] = database.salesOrders
+  const salesOrders: SalesRecord[] = source.salesOrders
     .filter((order) => order.status === "Lunas")
     .map((order) => ({
       id: order.id,
@@ -98,6 +108,11 @@ export function collectSales(database: AppDatabase): SalesRecord[] {
     (first, second) =>
       new Date(second.at).getTime() - new Date(first.at).getTime(),
   );
+}
+
+/** Aturan rekap penjualan untuk database lengkap (Laporan, dashboard, dst). */
+export function collectSales(database: AppDatabase): SalesRecord[] {
+  return collectSalesFrom(database);
 }
 
 export function filterSales(

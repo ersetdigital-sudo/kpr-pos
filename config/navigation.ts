@@ -91,6 +91,12 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         icon: "chart",
         canAccess: (permissions) => permissions.canExportReports,
       },
+      {
+        label: "Buku Kas",
+        href: "/buku-kas",
+        icon: "wallet",
+        canAccess: (permissions) => permissions.canAccessCashBook,
+      },
     ],
   },
   {

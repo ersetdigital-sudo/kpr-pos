@@ -16,6 +16,11 @@ export const PERMISSION_FIELDS = [
     label: "Akses absensi",
   },
   {
+    key: "canAccessCashBook",
+    column: "can_access_cash_book",
+    label: "Akses buku kas",
+  },
+  {
     key: "canApplyDiscount",
     column: "can_apply_discount",
     label: "Diskon kasir",
@@ -124,6 +129,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.OWNER]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: true,
     canApplyDiscount: true,
     canCancelTransaction: true,
     canManageProducts: true,
@@ -143,6 +149,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.MANAGER]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: false,
     canApplyDiscount: true,
     canCancelTransaction: true,
     canManageProducts: true,
@@ -162,6 +169,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.SUPERVISOR]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: false,
     canApplyDiscount: true,
     canCancelTransaction: true,
     canManageProducts: false,
@@ -181,6 +189,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.CASHIER]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: false,
     canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
@@ -200,6 +209,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.INVENTORY]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: false,
     canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: true,
@@ -219,6 +229,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.ACCOUNTANT]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: false,
     canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
@@ -238,6 +249,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.SALES]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: false,
     canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
@@ -257,6 +269,7 @@ export const ROLE_PERMISSIONS: Record<Role, RolePermissions> = {
   [ROLES.STAFF]: {
     canViewDashboard: true,
     canAccessAttendance: true,
+    canAccessCashBook: false,
     canApplyDiscount: true,
     canCancelTransaction: false,
     canManageProducts: false,
