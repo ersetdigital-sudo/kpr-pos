@@ -30,6 +30,7 @@ interface KasbonListProps {
   onApprove: (row: KasbonRow, stage: KasbonStage) => void;
   onReject: (row: KasbonRow, stage: KasbonStage) => void;
   onSettle: (row: KasbonRow) => void;
+  onViewDetail: (row: KasbonRow) => void;
 }
 
 /** Daftar kasbon: baris lega di desktop, kartu di mobile. */
@@ -44,6 +45,7 @@ export function KasbonList({
   onApprove,
   onReject,
   onSettle,
+  onViewDetail,
 }: KasbonListProps) {
   const [statusFilter, setStatusFilter] =
     useState<KasbonStatusFilter>("all");
@@ -142,6 +144,7 @@ export function KasbonList({
                 onApprove={onApprove}
                 onReject={onReject}
                 onSettle={onSettle}
+                onViewDetail={onViewDetail}
               />
               <KasbonCard
                 row={row}
@@ -151,6 +154,7 @@ export function KasbonList({
                 onApprove={onApprove}
                 onReject={onReject}
                 onSettle={onSettle}
+                onViewDetail={onViewDetail}
               />
             </li>
           ))}

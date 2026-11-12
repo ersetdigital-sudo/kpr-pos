@@ -105,7 +105,8 @@
   }
 
   body > #receipt-print-root,
-  body > #report-print-root {
+  body > #report-print-root,
+  body > #kasbon-print-root {
     display: block !important;
   }
 
@@ -114,7 +115,8 @@
     box-shadow: none;
   }
 
-  #report-print-root .report-paper {
+  #report-print-root .report-paper,
+  #kasbon-print-root .report-paper {
     width: 210mm;
     margin: 0 auto;
   }

@@ -1,7 +1,7 @@
 "use client";
 
+import { FilterChip } from "@/components/ui/FilterChip";
 import { SearchField } from "@/components/ui/SearchField";
-import { cn } from "@/lib/cn";
 import type { KasbonStatusFilter } from "@/features/kasbon/types";
 
 const KASBON_STATUS_FILTERS: readonly {
@@ -42,28 +42,14 @@ export function KasbonFilters({
           const active = filter.id === value;
 
           return (
-            <button
+            <FilterChip
               key={filter.id}
-              type="button"
-              aria-pressed={active}
+              active={active}
+              count={counts[filter.id]}
               onClick={() => onChange(filter.id)}
-              className={cn(
-                "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-pill border px-3 font-sans text-label font-semibold whitespace-nowrap",
-                active
-                  ? "border-brand bg-brand-soft text-brand"
-                  : "border-line bg-surface text-ink-muted hover:bg-line-subtle hover:text-ink",
-              )}
             >
               {filter.label}
-              <span
-                className={cn(
-                  "text-meta font-semibold",
-                  active ? "text-brand" : "text-ink-muted",
-                )}
-              >
-                {counts[filter.id]}
-              </span>
-            </button>
+            </FilterChip>
           );
         })}
       </div>

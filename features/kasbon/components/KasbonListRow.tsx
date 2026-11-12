@@ -22,6 +22,7 @@ export interface KasbonItemProps {
   onApprove: (row: KasbonRow, stage: KasbonStage) => void;
   onReject: (row: KasbonRow, stage: KasbonStage) => void;
   onSettle: (row: KasbonRow) => void;
+  onViewDetail: (row: KasbonRow) => void;
 }
 
 function rejectionNote(row: KasbonRow): string | null {
@@ -57,6 +58,7 @@ function KasbonActions({
   onApprove,
   onReject,
   onSettle,
+  onViewDetail,
 }: {
   row: KasbonRow;
   stage: KasbonStage | null;
@@ -65,9 +67,8 @@ function KasbonActions({
   onApprove: (row: KasbonRow, stage: KasbonStage) => void;
   onReject: (row: KasbonRow, stage: KasbonStage) => void;
   onSettle: (row: KasbonRow) => void;
+  onViewDetail: (row: KasbonRow) => void;
 }) {
-  if (!stage && !settleable) return null;
-
   return (
     <div
       className={cn(
@@ -75,6 +76,15 @@ function KasbonActions({
         compact && "border-t border-line-faint pt-3",
       )}
     >
+      <Button
+        variant="outline"
+        size={compact ? "md" : "sm"}
+        className={compact ? "h-10" : "h-[32px] px-2.5 text-meta"}
+        onClick={() => onViewDetail(row)}
+      >
+        Detail
+      </Button>
+
       {stage ? (
         <>
           <Button
@@ -169,6 +179,7 @@ export function KasbonListRow(props: KasbonItemProps) {
           onApprove={props.onApprove}
           onReject={props.onReject}
           onSettle={props.onSettle}
+          onViewDetail={props.onViewDetail}
         />
       </div>
     </div>
@@ -230,6 +241,7 @@ export function KasbonCard(props: KasbonItemProps) {
         onApprove={props.onApprove}
         onReject={props.onReject}
         onSettle={props.onSettle}
+        onViewDetail={props.onViewDetail}
       />
     </div>
   );
