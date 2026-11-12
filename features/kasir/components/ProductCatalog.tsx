@@ -11,6 +11,7 @@ import type {
 
 interface ProductCatalogProps {
   products: readonly KasirProduct[];
+  hasBranchProducts: boolean;
   categories: readonly KasirCategory[];
   search: string;
   activeCategoryId: string | null;
@@ -22,6 +23,7 @@ interface ProductCatalogProps {
 
 export function ProductCatalog({
   products,
+  hasBranchProducts,
   categories,
   search,
   activeCategoryId,
@@ -63,10 +65,14 @@ export function ProductCatalog({
       {products.length === 0 ? (
         <div className="rounded-card border border-dashed border-line-strong bg-surface px-5 py-10 text-center">
           <p className="m-0 text-body font-semibold text-ink">
-            Produk tidak ditemukan
+            {hasBranchProducts
+              ? "Produk tidak ditemukan"
+              : "Belum ada produk di cabang ini"}
           </p>
           <p className="mt-1 mb-0 text-label text-ink-muted">
-            Coba kata kunci atau kategori lain.
+            {hasBranchProducts
+              ? "Coba kata kunci atau kategori lain."
+              : "Produk bisa ditambahkan lewat Produk & Stok: tambah produk, stok masuk, atau transfer stok dari cabang lain."}
           </p>
         </div>
       ) : (

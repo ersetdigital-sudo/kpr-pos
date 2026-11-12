@@ -93,7 +93,7 @@ export function OrderList({
     <Card className="flex min-w-0 flex-col p-5">
       <CardHeader
         title={title}
-        subtitle="Lunas otomatis mengurangi stok cabang. COD/Tempo memotong stok saat diproses dan baru menjadi pemasukan saat lunas."
+        subtitle="Stok berkurang saat pesanan diproses di kasir. Pemasukan masuk Buku Kas saat pesanan lunas; COD/Tempo memotong stok lebih dulu."
         action={
           <span className="text-meta text-ink-muted">
             {filteredRows.length} dari {rows.length} pesanan

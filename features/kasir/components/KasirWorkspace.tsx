@@ -759,6 +759,7 @@ export function KasirWorkspace() {
       <div className="flex flex-wrap items-start gap-5 p-4 sm:p-5 lg:px-7 lg:py-5">
         <ProductCatalog
           products={filteredProducts}
+          hasBranchProducts={products.length > 0}
           categories={data.categories}
           search={search}
           activeCategoryId={activeCategoryId}

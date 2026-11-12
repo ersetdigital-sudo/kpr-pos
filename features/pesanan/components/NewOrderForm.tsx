@@ -251,9 +251,15 @@ export function NewOrderForm({
           <div className="text-label font-semibold text-ink-soft">Produk</div>
 
           {rows.length === 0 ? (
-            <p className="m-0 rounded-control border border-dashed border-line-strong px-3 py-2.5 text-meta text-ink-muted">
-              Belum ada produk aktif.
-            </p>
+            <div className="rounded-control border border-dashed border-line-strong px-3 py-2.5">
+              <p className="m-0 text-meta font-semibold text-ink">
+                Belum ada produk di cabang ini
+              </p>
+              <p className="mt-1 mb-0 text-meta text-ink-muted">
+                Tambahkan lewat Produk & Stok: buat produk, catat stok masuk,
+                atau transfer stok dari cabang lain.
+              </p>
+            </div>
           ) : null}
 
           {rows.map((row, index) => {
@@ -478,7 +484,9 @@ export function NewOrderForm({
       </form>
 
       <p className="m-0 text-meta text-ink-muted">
-        Pesanan berstatus menunggu bayar; stok berkurang saat ditandai lunas.
+        Pesanan berstatus menunggu bayar. Stok berkurang saat diproses kasir
+        (Cash, QRIS, Transfer, COD, atau Tempo); pemasukan masuk Buku Kas saat
+        pesanan lunas.
       </p>
     </div>
   );
