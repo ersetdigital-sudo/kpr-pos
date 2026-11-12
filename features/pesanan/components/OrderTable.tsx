@@ -1,24 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Icon } from "@/components/ui/Icon";
-import { Select } from "@/components/ui/Select";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import type { BadgeTone } from "@/components/ui/badge-tone";
 import { formatDateTimeShort, formatNumber, formatRupiah } from "@/lib/format";
 import type { SalesOrderStatus } from "@/lib/store/types";
 import { getNextOrderStatuses } from "@/features/pesanan/data/pesanan-calculations";
+import { OrderStatusBadge } from "@/features/pesanan/components/OrderStatusBadge";
+import { OrderStatusDialog } from "@/features/pesanan/components/OrderStatusDialog";
 import type { OrderRow } from "@/features/pesanan/types";
-
-const STATUS_TONES: Record<SalesOrderStatus, BadgeTone> = {
-  "Belum sinkron": "warning",
-  "Menunggu bayar": "brand",
-  Lunas: "success",
-  Dibatalkan: "danger",
-};
 
 interface OrderTableProps {
   rows: readonly OrderRow[];
@@ -41,6 +33,8 @@ export function OrderTable({
   onDelete,
   onViewDetail,
 }: OrderTableProps) {
+  const [statusTarget, setStatusTarget] = useState<OrderRow | null>(null);
+
   const columns = useMemo(() => {
     const base: DataTableColumn<OrderRow>[] = [
       {
@@ -95,81 +89,75 @@ export function OrderTable({
     }
 
     base.push({
-      id: "detail",
-      header: <span className="sr-only">Detail</span>,
-      align: "right",
-      cell: (order) => (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-[32px] px-2.5 text-meta"
-          onClick={() => onViewDetail(order)}
-        >
-          Detail
-        </Button>
-      ),
+      id: "status",
+      header: "Status",
+      cell: (order) => <OrderStatusBadge status={order.status} />,
     });
 
     base.push({
-      id: "status",
-      header: "Status",
+      id: "actions",
+      header: "Aksi",
+      align: "right",
       cell: (order) => {
-        const nextStatuses = getNextOrderStatuses(order.status);
+        const canChangeStatus =
+          canManage && getNextOrderStatuses(order.status).length > 0;
 
-        return canManage ? (
-          <Select
-            aria-label={`Status pesanan ${order.orderNumber}`}
-            value={order.status}
-            disabled={nextStatuses.length === 0}
-            onChange={(event) =>
-              onStatusChange(order, event.target.value as SalesOrderStatus)
-            }
-            className="h-8 w-[158px] px-1.5 text-label"
-          >
-            <option value={order.status} disabled>
-              {order.status}
-            </option>
-            {nextStatuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </Select>
-        ) : (
-          <StatusBadge tone={STATUS_TONES[order.status]}>
-            {order.status}
-          </StatusBadge>
+        return (
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-[32px] px-2.5 text-meta"
+              onClick={() => onViewDetail(order)}
+            >
+              Detail
+            </Button>
+
+            {canChangeStatus ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-[32px] px-2.5 text-meta"
+                aria-haspopup="dialog"
+                aria-label={`Ubah status pesanan ${order.orderNumber}`}
+                title={`Ubah status pesanan ${order.orderNumber}`}
+                onClick={() => setStatusTarget(order)}
+              >
+                Ubah status
+                <Icon
+                  name="chevronDown"
+                  size={14}
+                  strokeWidth={2}
+                  className="text-ink-muted"
+                />
+              </Button>
+            ) : null}
+
+            {canDelete ? (
+              <Button
+                variant="dangerOutline"
+                size="sm"
+                className="h-[32px] px-2.5 text-meta"
+                disabled={order.status !== "Dibatalkan"}
+                title={
+                  order.status === "Dibatalkan"
+                    ? `Hapus pesanan ${order.orderNumber}`
+                    : "Batalkan pesanan dulu untuk menghapus"
+                }
+                aria-label={`Hapus pesanan ${order.orderNumber}`}
+                onClick={() => onDelete(order)}
+              >
+                <Icon name="trash" size={14} />
+                Hapus
+              </Button>
+            ) : null}
+          </div>
         );
       },
     });
 
-    if (canDelete) {
-      base.push({
-        id: "actions",
-        header: "Aksi",
-        align: "right",
-        cell: (order) => (
-          <Button
-            variant="dangerOutline"
-            size="sm"
-            disabled={order.status !== "Dibatalkan"}
-            title={
-              order.status === "Dibatalkan"
-                ? `Hapus pesanan ${order.orderNumber}`
-                : "Batalkan pesanan dulu untuk menghapus"
-            }
-            aria-label={`Hapus pesanan ${order.orderNumber}`}
-            onClick={() => onDelete(order)}
-          >
-            <Icon name="trash" size={14} />
-            Hapus
-          </Button>
-        ),
-      });
-    }
-
     return base;
-  }, [canDelete, canManage, onDelete, onStatusChange, onViewDetail, showSales]);
+  }, [canDelete, canManage, onDelete, onViewDetail, showSales]);
 
   return (
     <Card className="p-5">
@@ -189,15 +177,29 @@ export function OrderTable({
           </p>
         </div>
       ) : (
-        <DataTable
-          ariaLabel={title}
-          columns={columns}
-          rows={rows}
-          rowKey={(order) => order.id}
-          minWidth={showSales ? 720 : 560}
-          density="roomy"
-          headerTone="soft"
-        />
+        <>
+          <DataTable
+            ariaLabel={title}
+            columns={columns}
+            rows={rows}
+            rowKey={(order) => order.id}
+            minWidth={showSales ? 820 : 660}
+            density="roomy"
+            headerTone="soft"
+          />
+
+          {statusTarget ? (
+            <OrderStatusDialog
+              order={statusTarget}
+              onClose={() => setStatusTarget(null)}
+              onSelect={(status) => {
+                const target = statusTarget;
+                setStatusTarget(null);
+                onStatusChange(target, status);
+              }}
+            />
+          ) : null}
+        </>
       )}
     </Card>
   );
