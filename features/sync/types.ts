@@ -6,6 +6,7 @@ import type {
   CartDraft,
   Category,
   Employee,
+  Kasbon,
   LeaveRequest,
   Product,
   SalesOrder,
@@ -38,5 +39,6 @@ export interface AppSnapshot {
   drafts: CartDraft[];
   attendance: AttendanceRecord[];
   leaveRequests: LeaveRequest[];
+  kasbon: Kasbon[];
   activityLogs: ActivityLog[];
 }

@@ -48,6 +48,7 @@ function snapshotToDatabase(
     salesOrders: snapshot.salesOrders,
     attendance: snapshot.attendance,
     leaveRequests: snapshot.leaveRequests,
+    kasbon: snapshot.kasbon ?? [],
     activityLogs: snapshot.activityLogs,
     // Snapshot tanpa baris settings tidak boleh menghapus pengaturan tampilan.
     settings: snapshot.settings ?? current.settings ?? EMPTY_SETTINGS,

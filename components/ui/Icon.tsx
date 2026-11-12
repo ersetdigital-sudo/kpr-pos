@@ -91,6 +91,14 @@ const ICON_PATHS = {
     </>
   ),
   check: <path d="M5 12l5 5L20 7" />,
+  coins: (
+    <>
+      <ellipse cx="9" cy="7.5" rx="5.5" ry="2.8" />
+      <path d="M3.5 7.5v4c0 1.5 2.5 2.8 5.5 2.8s5.5-1.3 5.5-2.8v-4" />
+      <path d="M3.5 11.5v4c0 1.5 2.5 2.8 5.5 2.8 1.2 0 2.4-.2 3.3-.6" />
+      <path d="M15.5 11.6c2.9.2 5 1.4 5 2.7 0 1.5-2.5 2.8-5.5 2.8" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof ICON_PATHS;

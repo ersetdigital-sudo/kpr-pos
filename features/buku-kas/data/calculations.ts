@@ -121,6 +121,14 @@ interface SalesGroup {
   count: number;
 }
 
+function automaticEntryLabel(entry: CashBookEntry): string | undefined {
+  if (!entry.isAutomatic) return undefined;
+
+  return entry.sourceType === "kasbon"
+    ? "Otomatis dari Kasbon"
+    : "Entri otomatis";
+}
+
 function buildManualRows(
   entries: readonly CashBookEntry[],
   categoryNameById: Map<string, string>,
@@ -138,7 +146,8 @@ function buildManualRows(
     branchId: entry.branchId,
     branchName: branchNameById.get(entry.branchId) ?? "Cabang",
     actorName: entry.createdByName || "—",
-    automatic: false,
+    automatic: entry.isAutomatic,
+    automaticLabel: automaticEntryLabel(entry),
   }));
 }
 
@@ -193,6 +202,7 @@ function buildAutomaticRows(
     branchName: branchNameById.get(group.branchId) ?? "Cabang",
     actorName: "Otomatis",
     automatic: true,
+    automaticLabel: "Rekap otomatis penjualan",
   }));
 }
 

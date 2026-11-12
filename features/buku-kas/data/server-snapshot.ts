@@ -39,6 +39,9 @@ interface CashBookEntryRow {
   entry_date: string;
   created_by: string | null;
   created_by_name: string;
+  is_automatic: boolean;
+  source_type: string | null;
+  source_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,7 +53,7 @@ interface BranchRow {
 
 const CATEGORY_COLUMNS = "id,type,name,is_active";
 const ENTRY_COLUMNS =
-  "id,branch_id,type,category_id,amount,description,entry_date,created_by,created_by_name,created_at,updated_at";
+  "id,branch_id,type,category_id,amount,description,entry_date,created_by,created_by_name,is_automatic,source_type,source_id,created_at,updated_at";
 
 function mapCategoryRow(row: CashBookCategoryRow): CashBookCategory {
   return {
@@ -72,6 +75,9 @@ function mapEntryRow(row: CashBookEntryRow): CashBookEntry {
     entryDate: row.entry_date,
     createdById: row.created_by,
     createdByName: row.created_by_name,
+    isAutomatic: row.is_automatic,
+    sourceType: row.source_type,
+    sourceId: row.source_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

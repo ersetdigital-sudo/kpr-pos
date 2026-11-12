@@ -52,9 +52,9 @@ export function CashBookTable({
       cell: (row) => (
         <div className="min-w-[180px]">
           <div className="font-medium text-ink">{row.description}</div>
-          {row.automatic ? (
+          {row.automatic && row.automaticLabel ? (
             <div className="text-meta text-ink-muted">
-              Rekap otomatis penjualan
+              {row.automaticLabel}
             </div>
           ) : null}
         </div>

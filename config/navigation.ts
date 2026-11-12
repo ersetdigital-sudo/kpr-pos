@@ -86,6 +86,12 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         canAccess: (permissions) => permissions.canAccessAttendance,
       },
       {
+        label: "Kasbon",
+        href: "/kasbon",
+        icon: "coins",
+        canAccess: (permissions) => permissions.canAccessKasbon,
+      },
+      {
         label: "Laporan",
         href: "/laporan",
         icon: "chart",

@@ -26,6 +26,10 @@ export interface CashBookEntry {
   entryDate: string;
   createdById: string | null;
   createdByName: string;
+  /** Entri dari fitur lain (mis. kasbon); tidak bisa diedit/dihapus. */
+  isAutomatic: boolean;
+  sourceType: string | null;
+  sourceId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,8 +77,10 @@ export interface CashBookRow {
   branchId: string;
   branchName: string;
   actorName: string;
-  /** True untuk baris rekap penjualan yang tidak bisa diedit. */
+  /** True untuk baris rekap penjualan atau entri otomatis yang tidak bisa diedit. */
   automatic: boolean;
+  /** Keterangan kecil untuk baris otomatis. */
+  automaticLabel?: string;
   entryId?: string;
 }
 

@@ -331,6 +331,56 @@ export interface ActivityLog {
   detail: string;
 }
 
+export type KasbonStatus =
+  | "Menunggu Accounting"
+  | "Menunggu Manager"
+  | "Menunggu Owner"
+  | "Disetujui"
+  | "Ditolak"
+  | "Lunas";
+
+export type KasbonStage = "Accounting" | "Manager" | "Owner";
+
+export type KasbonDecision = "Disetujui" | "Ditolak";
+
+export type KasbonRepaymentMethod = "potong_gaji" | "tempo";
+
+export type KasbonTempoUnit = "hari" | "minggu";
+
+/** Jejak satu tahap persetujuan kasbon. */
+export interface KasbonApproval {
+  id: string;
+  stage: KasbonStage;
+  decision: KasbonDecision;
+  note: string;
+  decidedById: string | null;
+  decidedByName: string;
+  decidedAt: string;
+}
+
+export interface Kasbon {
+  id: string;
+  employeeId: string;
+  branchId: string;
+  amount: number;
+  reason: string;
+  repaymentMethod: KasbonRepaymentMethod;
+  /** Jumlah tempo; null untuk metode potong gaji. */
+  tempoValue: number | null;
+  tempoUnit: KasbonTempoUnit | null;
+  /** Diisi saat Owner menyetujui; sebelum itu hanya estimasi di UI. */
+  dueDate: string | null;
+  status: KasbonStatus;
+  rejectionReason: string;
+  approvedAt: string | null;
+  settledAt: string | null;
+  settledById: string | null;
+  settledByName: string;
+  approvals: KasbonApproval[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppSession {
   currentEmployeeId: string;
   activeBranchId: string;
@@ -351,6 +401,7 @@ export interface AppDatabase {
   salesOrders: SalesOrder[];
   attendance: AttendanceRecord[];
   leaveRequests: LeaveRequest[];
+  kasbon: Kasbon[];
   settings: StoreSettings;
   activityLogs: ActivityLog[];
   session: AppSession;

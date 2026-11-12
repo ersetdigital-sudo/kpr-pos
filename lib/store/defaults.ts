@@ -61,6 +61,7 @@ export function createEmptyDatabase(): AppDatabase {
     salesOrders: [],
     attendance: [],
     leaveRequests: [],
+    kasbon: [],
     activityLogs: [],
     settings: EMPTY_SETTINGS,
     session: {
