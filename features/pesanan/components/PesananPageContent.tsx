@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/Toast";
 import { LeaderboardTable } from "@/features/pesanan/components/LeaderboardTable";
-import { NewOrderForm } from "@/features/pesanan/components/NewOrderForm";
+import { NewOrderDialog } from "@/features/pesanan/components/NewOrderDialog";
 import { OrderDetailModal } from "@/features/pesanan/components/OrderDetailModal";
-import { OrderTable } from "@/features/pesanan/components/OrderTable";
+import { OrderList } from "@/features/pesanan/components/OrderList";
 import { SalesStatsCards } from "@/features/pesanan/components/SalesStatsCards";
 import {
   buildLeaderboard,
@@ -219,6 +221,7 @@ function PesananBody({
   const monthRange = getMonthRange(today);
   const isSales = employee.role === ROLES.SALES;
   const periodLabel = formatMonthYear(today);
+  const [newOrderOpen, setNewOrderOpen] = useState(false);
 
   const bonusEntries = collectBonusEntries(database, monthRange);
   const leaderboard = buildLeaderboard(bonusEntries, employee.id);
@@ -265,32 +268,40 @@ function PesananBody({
             : "Semua pesanan sales beserta bonus yang berjalan"
         }
         actions={
-          <Chip tone={awaitingPayment > 0 ? "warning" : "success"} dot>
-            {awaitingPayment > 0
-              ? `${awaitingPayment} pesanan menunggu bayar`
-              : "Semua pesanan lunas"}
-          </Chip>
+          <>
+            <Chip tone={awaitingPayment > 0 ? "warning" : "success"} dot>
+              {awaitingPayment > 0
+                ? `${awaitingPayment} pesanan menunggu bayar`
+                : "Semua pesanan lunas"}
+            </Chip>
+            {canCreate ? (
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => setNewOrderOpen(true)}
+              >
+                <Icon name="plus" size={16} strokeWidth={2} />
+                Pesanan baru
+              </Button>
+            ) : null}
+          </>
         }
       />
 
       <div className="flex flex-col gap-5 p-4 sm:p-5 lg:px-7 lg:py-6">
         <SalesStatsCards stats={stats} />
 
-        <div className="flex flex-wrap items-stretch gap-4">
-          {canCreate ? (
-            <NewOrderForm
-              branchId={employee.branchId}
-              branchName={
-                database.branches.find(
-                  (branch) => branch.id === employee.branchId,
-                )?.name ?? "Cabang"
-              }
-              productOptions={productOptions}
-              salesOptions={salesOptions}
-              defaultSalesId={defaultSalesId}
-              canChooseSales={!isSales}
-            />
-          ) : null}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
+          <OrderList
+            rows={orderRows}
+            canManage={canManage}
+            canDelete={canDelete}
+            showSales={!isSales}
+            title={isSales ? "Pesanan Saya" : "Semua Pesanan Sales"}
+            onStatusChange={onStatusChange}
+            onDelete={onDelete}
+            onViewDetail={onViewDetail}
+          />
 
           <LeaderboardTable
             entries={leaderboard}
@@ -298,18 +309,24 @@ function PesananBody({
             bonusRuleLabel={describeBonusRule(database.settings.salesBonus)}
           />
         </div>
-
-        <OrderTable
-          rows={orderRows}
-          canManage={canManage}
-          canDelete={canDelete}
-          showSales={!isSales}
-          title={isSales ? "Pesanan Saya" : "Semua Pesanan Sales"}
-          onStatusChange={onStatusChange}
-          onDelete={onDelete}
-          onViewDetail={onViewDetail}
-        />
       </div>
+
+      {canCreate ? (
+        <NewOrderDialog
+          open={newOrderOpen}
+          onClose={() => setNewOrderOpen(false)}
+          branchId={employee.branchId}
+          branchName={
+            database.branches.find(
+              (branch) => branch.id === employee.branchId,
+            )?.name ?? "Cabang"
+          }
+          productOptions={productOptions}
+          salesOptions={salesOptions}
+          defaultSalesId={defaultSalesId}
+          canChooseSales={!isSales}
+        />
+      ) : null}
     </>
   );
 }

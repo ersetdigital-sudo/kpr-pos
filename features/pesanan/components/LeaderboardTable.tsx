@@ -1,45 +1,7 @@
 import { Card, CardHeader } from "@/components/ui/Card";
-import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { cn } from "@/lib/cn";
 import { formatNumber, formatRupiah } from "@/lib/format";
 import type { LeaderboardEntry } from "@/features/pesanan/types";
-
-const columns: readonly DataTableColumn<LeaderboardEntry>[] = [
-  {
-    id: "rank",
-    header: "#",
-    cell: (entry) => (
-      <span className="font-bold text-ink">{entry.rank}</span>
-    ),
-  },
-  {
-    id: "sales",
-    header: "Sales",
-    cell: (entry) => (
-      <span className="font-semibold text-ink">
-        {entry.salesName}
-        {entry.isCurrentUser ? " (kamu)" : ""}
-      </span>
-    ),
-  },
-  {
-    id: "orders",
-    header: "Transaksi",
-    cell: (entry) => formatNumber(entry.orderCount),
-  },
-  {
-    id: "sold",
-    header: "Terjual",
-    cell: (entry) => `${formatNumber(entry.soldCount)} pcs`,
-  },
-  {
-    id: "bonus",
-    header: "Bonus",
-    align: "right",
-    cell: (entry) => (
-      <span className="font-bold text-ink">{formatRupiah(entry.bonus)}</span>
-    ),
-  },
-];
 
 interface LeaderboardTableProps {
   entries: readonly LeaderboardEntry[];
@@ -47,13 +9,14 @@ interface LeaderboardTableProps {
   bonusRuleLabel: string;
 }
 
+/** Papan peringkat kompak; tetap terbaca di kolom samping maupun di mobile. */
 export function LeaderboardTable({
   entries,
   periodLabel,
   bonusRuleLabel,
 }: LeaderboardTableProps) {
   return (
-    <Card className="flex min-w-0 flex-[1_1_380px] flex-col p-5">
+    <Card className="flex min-w-0 flex-col p-5">
       <CardHeader
         title={`Papan Peringkat Sales · ${periodLabel}`}
         action={
@@ -69,16 +32,37 @@ export function LeaderboardTable({
         </div>
       ) : (
         <div className="mt-3 flex-1 overflow-y-auto" style={{ maxHeight: 420 }}>
-          <DataTable
-            ariaLabel={`Papan peringkat sales ${periodLabel}`}
-            columns={columns}
-            rows={entries}
-            rowKey={(entry) => entry.salesEmployeeId}
-            minWidth="100%"
-            rowClassName={(entry) =>
-              entry.isCurrentUser ? "bg-brand-soft" : undefined
-            }
-          />
+          <ol
+            aria-label={`Papan peringkat sales ${periodLabel}`}
+            className="flex flex-col gap-1"
+          >
+            {entries.map((entry) => (
+              <li
+                key={entry.salesEmployeeId}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-control px-2.5 py-2",
+                  entry.isCurrentUser && "bg-brand-soft",
+                )}
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-line-subtle text-meta font-bold text-ink-muted">
+                  {entry.rank}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-label font-semibold text-ink">
+                    {entry.salesName}
+                    {entry.isCurrentUser ? " (kamu)" : ""}
+                  </div>
+                  <div className="truncate text-meta text-ink-muted">
+                    {formatNumber(entry.orderCount)} transaksi ·{" "}
+                    {formatNumber(entry.soldCount)} pcs
+                  </div>
+                </div>
+                <span className="shrink-0 text-label font-bold text-ink">
+                  {formatRupiah(entry.bonus)}
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
     </Card>

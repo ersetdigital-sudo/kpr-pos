@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -25,6 +24,8 @@ interface NewOrderFormProps {
   salesOptions: readonly SalesEmployeeOption[];
   defaultSalesId: string;
   canChooseSales: boolean;
+  /** Dipanggil setelah pesanan tersimpan, mis. untuk menutup dialog. */
+  onSaved?: () => void;
 }
 
 function createRow(productId: string): NewOrderRow {
@@ -71,6 +72,7 @@ export function NewOrderForm({
   salesOptions,
   defaultSalesId,
   canChooseSales,
+  onSaved,
 }: NewOrderFormProps) {
   const { showToast } = useToast();
   const [customerName, setCustomerName] = useState("");
@@ -143,6 +145,7 @@ export function NewOrderForm({
       setRows(
         productOptions[0] ? [createRow(productOptions[0].id)] : [],
       );
+      onSaved?.();
     } catch (caught) {
       showToast(
         caught instanceof Error ? caught.message : "Pesanan gagal disimpan",
@@ -154,16 +157,11 @@ export function NewOrderForm({
   }
 
   return (
-    <Card className="flex min-w-0 flex-[1_1_380px] flex-col gap-3.5 p-5">
-      <div>
-        <h2 className="m-0 text-card-title font-bold text-ink">
-          Input Pesanan Baru
-        </h2>
-        <p className="mt-0.5 mb-0 text-label text-ink-muted">
-          Cabang {branchName} · atas nama{" "}
-          {activeSales?.name ?? "sales belum dipilih"}
-        </p>
-      </div>
+    <div className="flex flex-col gap-3.5">
+      <p className="m-0 text-label text-ink-muted">
+        Cabang {branchName} · atas nama{" "}
+        {activeSales?.name ?? "sales belum dipilih"}
+      </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
         <Field label="Nama pelanggan" labelSize="sm">
@@ -388,6 +386,6 @@ export function NewOrderForm({
       <p className="m-0 text-meta text-ink-muted">
         Pesanan berstatus menunggu bayar; stok berkurang saat ditandai lunas.
       </p>
-    </Card>
+    </div>
   );
 }
