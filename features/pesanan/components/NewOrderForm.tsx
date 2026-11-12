@@ -12,7 +12,10 @@ import { useToast } from "@/components/ui/Toast";
 import { createSalesOrder } from "@/features/pesanan/data/pesanan-repository";
 import { SalesChargeFields } from "@/features/sales/components/SalesChargeFields";
 import { formatPercent, formatRupiah } from "@/lib/format";
-import { calculateSalesCharges } from "@/lib/store/charges";
+import {
+  calculateSalesCharges,
+  DEFAULT_TAX_ENABLED,
+} from "@/lib/store/charges";
 import type {
   DiscountType,
   PriceType,
@@ -92,7 +95,7 @@ export function NewOrderForm({
   const [rows, setRows] = useState<NewOrderRow[]>(() =>
     productOptions[0] ? [createRow(productOptions[0].id)] : [],
   );
-  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [taxEnabled, setTaxEnabled] = useState(DEFAULT_TAX_ENABLED);
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod | "">("");
   const [shippingCost, setShippingCost] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -185,7 +188,7 @@ export function NewOrderForm({
       setRows(
         productOptions[0] ? [createRow(productOptions[0].id)] : [],
       );
-      setTaxEnabled(false);
+      setTaxEnabled(DEFAULT_TAX_ENABLED);
       setShippingMethod("");
       setShippingCost(0);
       onSaved?.();

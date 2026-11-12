@@ -23,6 +23,9 @@ export interface SalesChargeTotals {
   total: number;
 }
 
+/** PPN harus dipilih sadar; form Kasir & Pesanan selalu mulai tanpa PPN. */
+export const DEFAULT_TAX_ENABLED = false;
+
 export const SHIPPING_METHOD_LABELS: Record<ShippingMethod, string> = {
   pickup: "Ambil di toko",
   paid: "Ongkir dibayar pelanggan",

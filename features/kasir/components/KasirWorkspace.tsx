@@ -17,7 +17,10 @@ import {
   calculateCartTotals,
   filterProducts,
 } from "@/features/kasir/data/kasir-calculations";
-import { calculateSalesCharges } from "@/lib/store/charges";
+import {
+  calculateSalesCharges,
+  DEFAULT_TAX_ENABLED,
+} from "@/lib/store/charges";
 import {
   buildReceiptView,
   createTransaction,
@@ -70,7 +73,7 @@ export function KasirWorkspace() {
   const handledOrderRef = useRef<string | null>(null);
   const [method, setMethod] = useState<PaymentMethod>("Cash");
   const [cashReceived, setCashReceived] = useState(0);
-  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [taxEnabled, setTaxEnabled] = useState(DEFAULT_TAX_ENABLED);
   const [taxRate, setTaxRate] = useState(0);
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod | "">("");
   const [shippingCost, setShippingCost] = useState(0);
@@ -250,7 +253,7 @@ export function KasirWorkspace() {
     setSalesEmployeeId("");
     setSalesOrderId(null);
     setCashReceived(0);
-    setTaxEnabled(false);
+    setTaxEnabled(DEFAULT_TAX_ENABLED);
     setTaxRate(0);
     setShippingMethod("");
     setShippingCost(0);
@@ -332,7 +335,7 @@ export function KasirWorkspace() {
       setSalesOrderId(null);
       setSalesEmployeeId(draft.salesEmployeeId ?? "");
       // Draft tidak menyimpan PPN/ongkir; jangan bawa nilai keranjang sebelumnya.
-      setTaxEnabled(false);
+      setTaxEnabled(DEFAULT_TAX_ENABLED);
       setTaxRate(0);
       setShippingMethod("");
       setShippingCost(0);
