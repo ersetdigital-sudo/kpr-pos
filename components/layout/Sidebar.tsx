@@ -50,8 +50,8 @@ export function Sidebar({
       <aside
         aria-label="Menu utama"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-line bg-surface transition-[transform,width] duration-200 lg:z-40 lg:translate-x-0",
-          collapsed ? "lg:w-20" : "lg:w-[260px]",
+          "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-line bg-surface transition-[transform,width] duration-300 ease-out lg:z-40 lg:translate-x-0",
+          collapsed ? "lg:w-[76px]" : "lg:w-[260px]",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -59,9 +59,23 @@ export function Sidebar({
           type="button"
           onClick={onClose}
           aria-label="Tutup menu navigasi"
-          className="absolute top-2.5 right-2.5 flex h-8 w-8 cursor-pointer items-center justify-center rounded-control border-0 bg-transparent text-ink-muted lg:hidden"
+          className="absolute top-3 right-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-muted shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:hidden"
         >
           <Icon name="close" size={18} strokeWidth={2} />
+        </button>
+
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          aria-label={collapsed ? "Buka menu" : "Ciutkan menu"}
+          title={collapsed ? "Buka menu" : "Ciutkan menu"}
+          className="absolute top-6 -right-4 z-10 hidden h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-line bg-surface text-ink-muted shadow-float transition-colors after:absolute after:-inset-1.5 after:content-[''] hover:bg-brand-soft hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand lg:flex"
+        >
+          <Icon
+            name={collapsed ? "panelLeftOpen" : "panelLeftClose"}
+            size={16}
+            strokeWidth={1.8}
+          />
         </button>
 
         <nav
@@ -72,10 +86,10 @@ export function Sidebar({
         >
           <div
             className={cn(
-              "mb-3 flex border-b border-line pt-1 pb-4",
+              "mb-3 flex items-center border-b border-line pt-1 pb-4",
               collapsed
-                ? "items-center gap-2.5 px-2 pr-9 lg:flex-col lg:gap-2 lg:px-0 lg:pr-0"
-                : "items-center gap-2.5 px-2 pr-9 lg:pr-2",
+                ? "gap-2.5 px-2 pr-11 lg:justify-center lg:gap-0 lg:px-0 lg:pr-0"
+                : "gap-2.5 px-2 pr-11 lg:pr-3",
             )}
           >
             <Image
@@ -85,11 +99,14 @@ export function Sidebar({
               height={42}
               priority
               unoptimized
-              className="h-[42px] w-10 shrink-0 object-contain"
+              className={cn(
+                "h-[42px] w-10 shrink-0 object-contain transition-[width,height] duration-300",
+                collapsed && "lg:h-9 lg:w-9",
+              )}
             />
             <div
               className={cn(
-                "min-w-0",
+                "min-w-0 transition-opacity duration-200",
                 collapsed && "lg:hidden",
               )}
             >
@@ -100,22 +117,6 @@ export function Sidebar({
                 POS Management System
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onToggleCollapsed}
-              aria-label={collapsed ? "Perluas menu" : "Ciutkan menu"}
-              title={collapsed ? "Perluas menu" : "Ciutkan menu"}
-              className={cn(
-                "hidden h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-control border-0 bg-transparent text-ink-muted hover:bg-canvas lg:flex",
-                collapsed ? "lg:mx-auto" : "ml-auto",
-              )}
-            >
-              <Icon
-                name={collapsed ? "arrowRight" : "arrowLeft"}
-                size={18}
-                strokeWidth={2}
-              />
-            </button>
           </div>
 
           <div className="flex flex-col gap-4">
@@ -134,7 +135,7 @@ export function Sidebar({
                   {section.items.map((item) => {
                     const active = isItemActive(item, pathname);
                     const itemClassName = cn(
-                      "flex min-h-11 items-center gap-3 rounded-control px-3 py-2.5 text-amount transition-colors",
+                      "flex min-h-11 items-center gap-3 rounded-control-lg px-3 py-2.5 text-amount transition-colors",
                       collapsed && "lg:justify-center lg:px-0",
                       active
                         ? "bg-ink font-semibold text-white"
@@ -164,7 +165,11 @@ export function Sidebar({
                     ) : (
                       <span
                         key={item.label}
-                        title="Segera hadir"
+                        title={
+                          collapsed
+                            ? `${item.label} · Segera hadir`
+                            : "Segera hadir"
+                        }
                         className={cn(itemClassName, "cursor-default")}
                       >
                         {content}
@@ -189,7 +194,7 @@ export function Sidebar({
               title="Keluar"
               aria-label="Keluar"
               className={cn(
-                "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-control px-3 py-2.5 font-sans text-amount font-medium text-ink-soft transition-colors hover:bg-canvas",
+                "flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-control-lg px-3 py-2.5 font-sans text-amount font-medium text-ink-soft transition-colors hover:bg-canvas",
                 collapsed && "lg:justify-center lg:px-0",
               )}
             >

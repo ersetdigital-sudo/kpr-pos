@@ -1,16 +1,17 @@
-import { Card, CardHeader } from "@/components/ui/Card";
-import { formatMillionsShort, formatRupiahCompact } from "@/lib/format";
+import { CardHeader } from "@/components/ui/Card";
+import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import type { WeeklySale } from "@/features/dashboard/types";
+import { formatMillionsShort, formatRupiahCompact } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 interface WeeklySalesCardProps {
   sales: readonly WeeklySale[];
+  total: number;
 }
 
-export function WeeklySalesCard({ sales }: WeeklySalesCardProps) {
-  const total = sales.reduce((sum, sale) => sum + sale.total, 0);
-
+export function WeeklySalesCard({ sales, total }: WeeklySalesCardProps) {
   return (
-    <Card className="min-w-0 p-5">
+    <DashboardCard className="flex min-w-0 flex-col">
       <CardHeader
         title="Penjualan 7 Hari Terakhir"
         action={
@@ -20,47 +21,56 @@ export function WeeklySalesCard({ sales }: WeeklySalesCardProps) {
         }
       />
 
-      <div className="mt-5 flex h-[220px] items-end gap-[14px] border-b border-line pb-1">
-        {sales.map((sale) => (
-          <div
-            key={sale.key}
-            className="flex flex-1 flex-col items-center gap-1.5"
-          >
-            <span
-              className={
-                sale.isCurrentDay
-                  ? "text-overline font-bold text-ink"
-                  : "text-overline text-ink-muted"
-              }
-            >
-              {formatMillionsShort(sale.total)}
-            </span>
-            <div
-              className={
-                sale.isCurrentDay
-                  ? "w-full max-w-11 rounded-t-badge bg-brand"
-                  : "w-full max-w-11 rounded-t-badge bg-brand-chart"
-              }
-              style={{ height: sale.barHeight }}
-            />
-          </div>
-        ))}
-      </div>
+      <div className="mt-6 grid grid-cols-7 items-end gap-1.5 sm:gap-2">
+        {sales.map((sale) => {
+          const hasValue = sale.total > 0;
 
-      <div className="mt-2 flex gap-[14px] text-meta text-ink-muted">
-        {sales.map((sale) => (
-          <span
-            key={sale.key}
-            className={
-              sale.isCurrentDay
-                ? "flex-1 text-center font-bold text-ink"
-                : "flex-1 text-center"
-            }
-          >
-            {sale.day}
-          </span>
-        ))}
+          return (
+            <div key={sale.key} className="flex min-w-0 flex-col items-center">
+              <div className="flex h-[204px] w-full flex-col items-center justify-end">
+                <span
+                  className={cn(
+                    "mb-1 min-h-4 text-[9px] leading-4 whitespace-nowrap sm:text-overline",
+                    sale.isCurrentDay
+                      ? "font-bold text-ink"
+                      : "text-ink-muted",
+                    !hasValue && "invisible",
+                  )}
+                >
+                  {formatMillionsShort(sale.total)}
+                </span>
+
+                {hasValue ? (
+                  <div
+                    aria-hidden="true"
+                    className={cn(
+                      "w-full max-w-9 rounded-t-[7px]",
+                      sale.isCurrentDay ? "bg-brand" : "bg-brand-chart",
+                    )}
+                    style={{ height: sale.barHeight }}
+                  />
+                ) : (
+                  <div
+                    aria-hidden="true"
+                    className="h-0.5 w-full max-w-9 rounded-full bg-line-strong"
+                  />
+                )}
+              </div>
+
+              <span
+                className={cn(
+                  "mt-2 w-full text-center text-meta",
+                  sale.isCurrentDay
+                    ? "font-bold text-ink"
+                    : "text-ink-muted",
+                )}
+              >
+                {sale.day}
+              </span>
+            </div>
+          );
+        })}
       </div>
-    </Card>
+    </DashboardCard>
   );
 }

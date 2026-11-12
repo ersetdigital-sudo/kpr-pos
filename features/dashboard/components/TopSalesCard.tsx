@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { CardHeader } from "@/components/ui/Card";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { canAccessPath } from "@/config/navigation";
 import { usePermissions } from "@/features/session/data/session-repository";
-import { ProgressBar } from "@/components/ui/ProgressBar";
-import { formatRupiah } from "@/lib/format";
 import type { TopSalesEntry } from "@/features/dashboard/types";
+import { formatNumber, formatRupiah } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 interface TopSalesCardProps {
   entries: readonly TopSalesEntry[];
@@ -17,7 +19,7 @@ export function TopSalesCard({ entries }: TopSalesCardProps) {
   const canViewOrders = canAccessPath("/pesanan", permissions);
 
   return (
-    <Card className="min-w-0 p-5">
+    <DashboardCard className="flex min-w-0 flex-col">
       <CardHeader
         title="Top Sales Bulan Ini"
         action={
@@ -35,22 +37,43 @@ export function TopSalesCard({ entries }: TopSalesCardProps) {
         </p>
       ) : null}
 
-      <div className="mt-[18px] flex flex-col gap-4">
+      <div className="mt-3 flex flex-col">
         {entries.map((entry) => (
-          <div key={entry.rank}>
-            <div className="flex justify-between text-body">
-              <span className="font-semibold text-ink">
-                {entry.rank}. {entry.name}
-              </span>
-              <span className="text-ink-muted">{entry.soldCount} pcs</span>
-            </div>
-            <ProgressBar value={entry.progress} className="mt-1.5" />
-            <div className="mt-1 text-meta text-ink-muted">
-              Estimasi bonus {formatRupiah(entry.bonus)}
+          <div
+            key={entry.rank}
+            className="flex gap-3 border-b border-line-faint py-3 first:pt-1 last:border-b-0 last:pb-0"
+          >
+            <span
+              className={cn(
+                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-meta font-bold",
+                entry.rank === 1
+                  ? "bg-brand-tint text-brand-strong"
+                  : "bg-canvas text-ink-soft",
+              )}
+            >
+              {entry.rank}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate text-body font-semibold text-ink">
+                  {entry.name}
+                </span>
+                <span className="shrink-0 text-meta text-ink-muted">
+                  {formatNumber(entry.soldCount)} pcs
+                </span>
+              </div>
+              <ProgressBar value={entry.progress} className="mt-2" />
+              <p className="mt-1.5 mb-0 text-meta text-ink-muted">
+                Estimasi bonus{" "}
+                <span className="font-semibold text-ink-soft">
+                  {formatRupiah(entry.bonus)}
+                </span>
+              </p>
             </div>
           </div>
         ))}
       </div>
-    </Card>
+    </DashboardCard>
   );
 }

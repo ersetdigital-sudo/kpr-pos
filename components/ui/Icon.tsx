@@ -84,6 +84,25 @@ const ICON_PATHS = {
   upload: <path d="M12 20V9M7 13l5-5 5 5M4 4h16" />,
   arrowLeft: <path d="M15 5l-7 7 7 7" />,
   arrowRight: <path d="M9 5l7 7-7 7" />,
+  panelLeftClose: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9 4v16M16.5 9.5 14 12l2.5 2.5" />
+    </>
+  ),
+  panelLeftOpen: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9 4v16M13.5 9.5 16 12l-2.5 2.5" />
+    </>
+  ),
+  trendUp: <path d="M3 17l6-6 4 4 7-7M14 8h6v6" />,
+  trendDown: <path d="M3 7l6 6 4-4 7 7M14 16h6v-6" />,
+  bank: (
+    <>
+      <path d="M3 9l9-5 9 5M4 9h16M5 9v9M9.5 9v9M14.5 9v9M19 9v9M3 20h18" />
+    </>
+  ),
   logout: (
     <>
       <path d="M10 4H5v16h5" />

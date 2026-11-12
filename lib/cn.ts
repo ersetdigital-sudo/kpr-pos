@@ -22,6 +22,7 @@ const mergeClasses = extendTailwindMerge({
         "control-lg",
         "card",
         "panel",
+        "dashboard",
         "pill",
       ],
     },

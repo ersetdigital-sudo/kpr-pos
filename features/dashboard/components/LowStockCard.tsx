@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { CardHeader } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { canAccessPath } from "@/config/navigation";
 import { usePermissions } from "@/features/session/data/session-repository";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { LowStockProduct } from "@/features/dashboard/types";
+import { formatNumber } from "@/lib/format";
 
 interface LowStockCardProps {
   products: readonly LowStockProduct[];
@@ -16,7 +18,7 @@ export function LowStockCard({ products }: LowStockCardProps) {
   const canViewProducts = canAccessPath("/produk", permissions);
 
   return (
-    <Card className="min-w-0 p-5">
+    <DashboardCard className="flex min-w-0 flex-col">
       <CardHeader
         title="Stok Menipis"
         action={
@@ -34,33 +36,34 @@ export function LowStockCard({ products }: LowStockCardProps) {
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-col">
+      <div className="mt-2 flex flex-col">
         {products.map((product) => {
           const outOfStock = product.remaining === 0;
 
           return (
             <div
               key={product.id}
-              className="flex items-center justify-between border-b border-line-faint py-2.5 last:border-b-0"
+              className="flex items-center justify-between gap-3 border-b border-line-faint py-3 first:pt-1 last:border-b-0 last:pb-0"
             >
-              <div>
-                <div className="text-body font-semibold text-ink">
+              <div className="min-w-0">
+                <div className="truncate text-body font-semibold text-ink">
                   {product.name}
                 </div>
-                <div className="text-meta text-ink-muted">
-                  {product.branch}
+                <div className="mt-0.5 text-meta text-ink-muted">
+                  {product.branch} · Sisa {formatNumber(product.remaining)}
                 </div>
               </div>
               <StatusBadge
                 tone={outOfStock ? "danger" : "brand"}
                 strong
+                className="shrink-0"
               >
-                {outOfStock ? "Habis" : `Sisa ${product.remaining}`}
+                {outOfStock ? "Habis" : "Menipis"}
               </StatusBadge>
             </div>
           );
         })}
       </div>
-    </Card>
+    </DashboardCard>
   );
 }

@@ -89,8 +89,8 @@ export function AppShell({ children }: AppShellProps) {
           />
           <div
             className={cn(
-              "flex min-w-0 flex-1 flex-col transition-[margin] duration-200",
-              sidebarCollapsed ? "lg:ml-20" : "lg:ml-[260px]",
+              "flex min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-out",
+              sidebarCollapsed ? "lg:ml-[76px]" : "lg:ml-[260px]",
             )}
           >
             {allowed ? children : <AccessDenied />}
