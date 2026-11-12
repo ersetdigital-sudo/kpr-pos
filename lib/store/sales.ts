@@ -66,6 +66,11 @@ export interface SalesSourceData {
  * Menggabungkan transaksi kasir yang tidak direfund dengan pesanan sales Lunas.
  * Transaksi kasir tetap satu baris walau punya salesEmployeeId, jadi tidak ada
  * perhitungan ganda.
+ *
+ * Pesanan Lunas yang sudah punya `transactionId` (dibayar lewat Kasir) tidak
+ * dihitung lagi: nominalnya sudah terwakili transaksi kasir tersebut. Transaksi
+ * yang direfund tetap tidak dihitung, jadi pesanan yang transaksinya direfund
+ * juga tidak muncul dua kali di mana pun.
  */
 export function collectSalesFrom(source: SalesSourceData): SalesRecord[] {
   const transactions: SalesRecord[] = source.transactions
@@ -87,7 +92,7 @@ export function collectSalesFrom(source: SalesSourceData): SalesRecord[] {
     }));
 
   const salesOrders: SalesRecord[] = source.salesOrders
-    .filter((order) => order.status === "Lunas")
+    .filter((order) => order.status === "Lunas" && !order.transactionId)
     .map((order) => ({
       id: order.id,
       number: order.orderNumber,
