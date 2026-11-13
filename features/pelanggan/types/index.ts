@@ -4,6 +4,10 @@ export interface CustomerInput {
   id?: string;
   name: string;
   phone: string;
+  /** Alamat untuk kop dokumen cetak. */
+  address?: string;
+  /** NPWP untuk kop dokumen cetak. */
+  npwp?: string;
   /** Penanda boleh tempo; hanya role berwenang yang bisa mengubah. */
   allowTempo: boolean;
   branchId?: string;

@@ -45,6 +45,13 @@ interface BranchRow {
   address: string;
   phone: string;
   is_active: boolean;
+  document_business_name: string;
+  document_business_address: string;
+  document_business_phone: string;
+  document_npwp: string;
+  document_bank_name: string;
+  document_bank_account_number: string;
+  document_bank_account_holder: string;
 }
 
 const PAYMENT_METHODS: readonly PaymentMethod[] = ["Cash", "QRIS", "Transfer"];
@@ -84,7 +91,9 @@ export async function readSettingsBranchSnapshot(): Promise<SettingsBranchSnapsh
         .order("min_quantity", { ascending: false }),
       admin
         .from("branches")
-        .select("id,name,address,phone,is_active")
+        .select(
+          "id,name,address,phone,is_active,document_business_name,document_business_address,document_business_phone,document_npwp,document_bank_name,document_bank_account_number,document_bank_account_holder",
+        )
         .order("name"),
     ]);
 
@@ -107,6 +116,15 @@ export async function readSettingsBranchSnapshot(): Promise<SettingsBranchSnapsh
     address: row.address,
     phone: row.phone,
     isActive: row.is_active,
+    documentProfile: {
+      businessName: row.document_business_name,
+      businessAddress: row.document_business_address,
+      businessPhone: row.document_business_phone,
+      npwp: row.document_npwp,
+      bankName: row.document_bank_name,
+      bankAccountNumber: row.document_bank_account_number,
+      bankAccountHolder: row.document_bank_account_holder,
+    },
   }));
 
   if (!settingsRow) {

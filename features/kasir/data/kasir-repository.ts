@@ -137,6 +137,11 @@ export function getTransactionHistory(
   const employeeById = new Map(
     database.employees.map((employee) => [employee.id, employee]),
   );
+  const orderIdByTransactionId = new Map(
+    database.salesOrders.flatMap((order) =>
+      order.transactionId ? [[order.transactionId, order.id] as const] : [],
+    ),
+  );
 
   return database.transactions
     .filter((transaction) => transaction.branchId === branchId)
@@ -160,6 +165,7 @@ export function getTransactionHistory(
       refundedAt: transaction.refund?.at ?? null,
       refundedByName: transaction.refund?.byName ?? null,
       refundReason: transaction.refund?.reason ?? null,
+      linkedOrderId: orderIdByTransactionId.get(transaction.id) ?? null,
     }));
 }
 

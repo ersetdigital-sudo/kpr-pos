@@ -132,6 +132,8 @@ export interface TransactionHistoryRow {
   refundedAt: string | null;
   refundedByName: string | null;
   refundReason: string | null;
+  /** Pesanan sales yang melunasi transaksi ini, bila ada. */
+  linkedOrderId: string | null;
 }
 
 export interface RefundTransactionInput {

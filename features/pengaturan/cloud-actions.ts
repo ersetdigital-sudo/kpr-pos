@@ -10,6 +10,7 @@ import type {
 import type { PaymentMethod } from "@/types";
 import type {
   BankAccountFormInput,
+  BranchDocumentProfileFormInput,
   BusinessFormInput,
 } from "@/features/pengaturan/types";
 
@@ -99,6 +100,22 @@ export async function updateAttendanceSettingsAction(
     p_start: workStartTime,
     p_end: workEndTime,
   });
+}
+
+export async function updateBranchDocumentProfileAction(
+  branchId: string,
+  profile: BranchDocumentProfileFormInput,
+): Promise<CloudActionResult> {
+  const session = await getAuthorizedSession("canManageSettings");
+  if (!session) return fail("Anda tidak punya akses mengubah pengaturan.");
+
+  const result = await callServiceRpc("fn_update_branch_document_profile", {
+    p_branch_id: branchId,
+    p_payload: profile,
+    p_actor_id: session.employee.id,
+  });
+
+  return result.ok ? { ok: true } : fail(result.error);
 }
 
 export async function updateSalesBonusAction(

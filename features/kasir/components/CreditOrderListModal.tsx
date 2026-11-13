@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { isOverdueTempoSalesOrder } from "@/lib/store/sales";
 import { formatDateShort, formatDateTimeShort, formatRupiah } from "@/lib/format";
+import { DocumentPrintButtons } from "@/features/documents/components/DocumentPrintButtons";
 import type { SalesOrder } from "@/lib/store/types";
 
 interface CreditOrderListModalProps {
@@ -13,6 +14,7 @@ interface CreditOrderListModalProps {
   canSettleCod: boolean;
   canSettleTempo: boolean;
   canCancel: boolean;
+  canPrint: boolean;
   onClose: () => void;
   onSettle: (order: SalesOrder) => void;
   onCancel: (order: SalesOrder) => void;
@@ -25,6 +27,7 @@ export function CreditOrderListModal({
   canSettleCod,
   canSettleTempo,
   canCancel,
+  canPrint,
   onClose,
   onSettle,
   onCancel,
@@ -89,6 +92,17 @@ export function CreditOrderListModal({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <DocumentPrintButtons
+                    canPrint={canPrint}
+                    invoiceSource={{
+                      sourceType: "sales_order",
+                      sourceId: order.id,
+                    }}
+                    deliveryNoteSource={{
+                      sourceType: "sales_order",
+                      sourceId: order.id,
+                    }}
+                  />
                   {canSettle ? (
                     <Button
                       variant="primary"

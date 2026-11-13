@@ -18,6 +18,7 @@ const ACTION_TONES: Record<ActivityAction, BadgeTone> = {
   Membatalkan: "danger",
   Refund: "danger",
   Membuka: "neutral",
+  Mencetak: "info",
 };
 
 const columns: readonly DataTableColumn<ReportLogRow>[] = [

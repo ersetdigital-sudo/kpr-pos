@@ -3,6 +3,7 @@
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { AttendanceSettingsCard } from "@/features/pengaturan/components/AttendanceSettingsCard";
+import { BranchDocumentSettingsCard } from "@/features/pengaturan/components/BranchDocumentSettingsCard";
 import { BusinessProfileCard } from "@/features/pengaturan/components/BusinessProfileCard";
 import { PaymentSettingsCard } from "@/features/pengaturan/components/PaymentSettingsCard";
 import { ReceiptSettingsCard } from "@/features/pengaturan/components/ReceiptSettingsCard";
@@ -67,6 +68,10 @@ function SettingsBody({ database }: { database: AppDatabase }) {
 
       <div className="grid items-start gap-[18px] p-4 sm:p-5 lg:px-7 lg:py-5 xl:grid-cols-2">
         <BusinessProfileCard business={database.settings.business} />
+        <BranchDocumentSettingsCard
+          branches={database.branches}
+          activeBranchId={database.session.activeBranchId}
+        />
         <PaymentSettingsCard payment={database.settings.payment} />
         <TaxSettingsCard rate={database.settings.taxRate} />
         <SalesBonusCard settings={database.settings.salesBonus} />

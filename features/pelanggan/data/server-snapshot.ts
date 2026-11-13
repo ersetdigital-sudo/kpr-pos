@@ -7,18 +7,23 @@ interface CustomerRow {
   id: string;
   name: string;
   phone: string | null;
+  address: string | null;
+  npwp: string | null;
   allow_tempo: boolean;
   is_active: boolean;
   branch_id: string | null;
 }
 
-export const CUSTOMER_COLUMNS = "id,name,phone,allow_tempo,is_active,branch_id";
+export const CUSTOMER_COLUMNS =
+  "id,name,phone,address,npwp,allow_tempo,is_active,branch_id";
 
 export function mapCustomerRow(row: CustomerRow): Customer {
   return {
     id: row.id,
     name: row.name,
     phone: row.phone ?? "",
+    address: row.address ?? "",
+    npwp: row.npwp ?? "",
     allowTempo: row.allow_tempo,
     isActive: row.is_active,
     branchId: row.branch_id,

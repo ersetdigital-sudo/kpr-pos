@@ -858,6 +858,7 @@ export function KasirWorkspace() {
           permissions.canSettleCod ||
           permissions.canSettleTempo
         }
+        canPrint={permissions.canPrintDocuments}
         onClose={() => setCreditListOpen(false)}
         onSettle={(order) => {
           setCreditListOpen(false);
@@ -874,6 +875,7 @@ export function KasirWorkspace() {
         transactions={historyRows ?? data.transactions}
         canRefund={permissions.canCancelTransaction}
         canDelete={permissions.canDeleteTransaction}
+        canPrint={permissions.canPrintDocuments}
         onClose={() => setHistoryOpen(false)}
         onRequestRefund={setRefundTarget}
         onRequestDelete={setDeleteTarget}

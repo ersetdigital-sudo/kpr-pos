@@ -16,9 +16,20 @@ export type ActivityAction =
   | "Membayar"
   | "Membatalkan"
   | "Refund"
-  | "Membuka";
+  | "Membuka"
+  | "Mencetak";
 
 export type ReceiptPaperSize = 58 | 80;
+
+export interface BranchDocumentProfile {
+  businessName: string;
+  businessAddress: string;
+  businessPhone: string;
+  npwp: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
+}
 
 export interface Branch {
   id: string;
@@ -26,6 +37,8 @@ export interface Branch {
   address: string;
   phone: string;
   isActive: boolean;
+  /** Kop khusus dokumen cetak; kosong berarti bagian tersebut disembunyikan. */
+  documentProfile?: BranchDocumentProfile;
 }
 
 export interface Employee {
@@ -228,6 +241,10 @@ export interface Customer {
   id: string;
   name: string;
   phone: string;
+  /** Alamat untuk dokumen cetak; kosong berarti tidak ditampilkan. */
+  address?: string;
+  /** NPWP untuk dokumen cetak; kosong berarti tidak ditampilkan. */
+  npwp?: string;
   allowTempo: boolean;
   isActive: boolean;
   branchId: string | null;

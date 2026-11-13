@@ -27,6 +27,8 @@ export function PelangganPageContent() {
     id?: string;
     name: string;
     phone: string;
+    address: string;
+    npwp: string;
     allowTempo: boolean;
   }) {
     if (saving) return;

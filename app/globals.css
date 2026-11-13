@@ -95,6 +95,43 @@
   display: none;
 }
 
+/* Dokumen cetak: ukuran kertas nyata, pratinjau di layar tetap terbaca. */
+.document-paper {
+  box-sizing: border-box;
+  margin: 0 auto;
+  color: #000000;
+  background: #ffffff;
+}
+
+.document-paper--a4 {
+  width: 210mm;
+  /* Kurang 1px agar paksaan page-break tidak menghasilkan halaman kosong. */
+  min-height: calc(297mm - 1px);
+  padding: 12mm 14mm;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.document-paper--dot {
+  width: 9.5in;
+  min-height: calc(11in - 1px);
+  padding: 8mm 9mm;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10px;
+  line-height: 1.25;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@media screen {
+  .document-paper {
+    box-shadow:
+      0 0 0 1px rgb(15 23 42 / 0.08),
+      0 18px 40px -28px rgb(15 23 42 / 0.35);
+  }
+}
+
 /* Cetak hanya area struk; sisa aplikasi disembunyikan lewat portal cetak. */
 @media print {
   @page {
@@ -111,7 +148,8 @@
 
   body > #receipt-print-root,
   body > #report-print-root,
-  body > #kasbon-print-root {
+  body > #kasbon-print-root,
+  body > #document-print-root {
     display: block !important;
   }
 
@@ -124,5 +162,25 @@
   #kasbon-print-root .report-paper {
     width: 210mm;
     margin: 0 auto;
+  }
+
+  #document-print-root .document-paper {
+    margin: 0;
+    box-shadow: none;
+  }
+
+  #document-print-root .document-paper--a4 {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #document-print-root .document-page {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  #document-print-root .document-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 }

@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { BadgeTone } from "@/components/ui/badge-tone";
 import { formatDateTimeShort, formatRupiah } from "@/lib/format";
+import { DocumentPrintButtons } from "@/features/documents/components/DocumentPrintButtons";
 import type { TransactionHistoryRow } from "@/features/kasir/types";
 import type { PaymentMethod } from "@/types";
 
@@ -32,6 +33,7 @@ interface TransactionHistoryModalProps {
   canRefund: boolean;
   /** Hapus permanen (khusus role berizin, mis. Owner). */
   canDelete: boolean;
+  canPrint: boolean;
   onClose: () => void;
   onRequestRefund: (row: TransactionHistoryRow) => void;
   onRequestDelete: (row: TransactionHistoryRow) => void;
@@ -43,6 +45,7 @@ export function TransactionHistoryModal({
   transactions,
   canRefund,
   canDelete,
+  canPrint,
   onClose,
   onRequestRefund,
   onRequestDelete,
@@ -130,7 +133,20 @@ export function TransactionHistoryModal({
       header: "Aksi",
       align: "right",
       cell: (row) => (
-        <div className="flex justify-end gap-1.5">
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <DocumentPrintButtons
+            canPrint={canPrint}
+            className="flex flex-wrap items-center gap-1.5"
+            invoiceSource={{ sourceType: "transaction", sourceId: row.id }}
+            deliveryNoteSource={
+              row.linkedOrderId
+                ? {
+                    sourceType: "sales_order",
+                    sourceId: row.linkedOrderId,
+                  }
+                : undefined
+            }
+          />
           <Button
             variant="outline"
             size="sm"
@@ -217,7 +233,7 @@ export function TransactionHistoryModal({
           columns={columns}
           rows={rows}
           rowKey={(row) => row.id}
-          minWidth={760}
+          minWidth={980}
         />
       )}
     </Modal>

@@ -11,6 +11,7 @@ import type {
 import { formatDateShort } from "@/lib/format";
 import type {
   BankAccountFormInput,
+  BranchDocumentProfileFormInput,
   BusinessFormInput,
 } from "@/features/pengaturan/types";
 import {
@@ -19,6 +20,7 @@ import {
   togglePaymentMethodAction,
   updateAttendanceSettingsAction,
   updateBankAccountAction,
+  updateBranchDocumentProfileAction,
   updateBusinessProfileAction,
   updateReceiptSettingsAction,
   updateSalesBonusAction,
@@ -72,6 +74,42 @@ export async function updateBusinessProfile(
   recordActivity({
     action: "Mengubah",
     detail: "Pengaturan profil usaha diperbarui",
+  });
+}
+
+export async function updateBranchDocumentProfile(
+  branchId: string,
+  profile: BranchDocumentProfileFormInput,
+): Promise<void> {
+  const bankFields = [
+    profile.bankName,
+    profile.bankAccountNumber,
+    profile.bankAccountHolder,
+  ].map((value) => value.trim());
+
+  if (bankFields.some(Boolean) && bankFields.some((value) => !value)) {
+    throw new Error(
+      "Lengkapi nama bank, nomor rekening, dan atas nama sekaligus",
+    );
+  }
+
+  const branch = getDatabase().branches.find((item) => item.id === branchId);
+  const result = await trackCloudWrite(() =>
+    updateBranchDocumentProfileAction(branchId, {
+      businessName: profile.businessName.trim(),
+      businessAddress: profile.businessAddress.trim(),
+      businessPhone: profile.businessPhone.trim(),
+      npwp: profile.npwp.trim(),
+      bankName: profile.bankName.trim(),
+      bankAccountNumber: profile.bankAccountNumber.trim(),
+      bankAccountHolder: profile.bankAccountHolder.trim(),
+    }),
+  );
+  assertOk(result);
+  await refreshAfterWrite();
+  recordActivity({
+    action: "Mengubah",
+    detail: `Kop dokumen cabang ${branch?.name ?? branchId} diperbarui`,
   });
 }
 

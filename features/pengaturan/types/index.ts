@@ -1,4 +1,8 @@
-import type { Branch, StoreSettings } from "@/lib/store/types";
+import type {
+  Branch,
+  BranchDocumentProfile,
+  StoreSettings,
+} from "@/lib/store/types";
 
 export interface BusinessFormInput {
   name: string;
@@ -12,6 +16,8 @@ export interface BankAccountFormInput {
   accountNumber: string;
   accountHolder: string;
 }
+
+export type BranchDocumentProfileFormInput = BranchDocumentProfile;
 
 export interface SettingsBranchSnapshot {
   settings: StoreSettings | null;

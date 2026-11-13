@@ -12,6 +12,8 @@ interface CustomerJson {
   id: string;
   name: string;
   phone: string;
+  address: string | null;
+  npwp: string | null;
   allowTempo: boolean;
   isActive: boolean;
   branchId: string | null;
@@ -28,6 +30,8 @@ function mapCustomerJson(row: CustomerJson): Customer {
     id: row.id,
     name: row.name,
     phone: row.phone ?? "",
+    address: row.address ?? "",
+    npwp: row.npwp ?? "",
     allowTempo: Boolean(row.allowTempo),
     isActive: row.isActive !== false,
     branchId: row.branchId ?? null,
@@ -64,6 +68,8 @@ export async function saveCustomerAction(
       id: input.id ?? "",
       name,
       phone: input.phone.trim(),
+      address: input.address?.trim() ?? "",
+      npwp: input.npwp?.trim() ?? "",
       allowTempo: input.allowTempo,
       branchId: input.branchId ?? session.branch.id,
       actorId: session.employee.id,

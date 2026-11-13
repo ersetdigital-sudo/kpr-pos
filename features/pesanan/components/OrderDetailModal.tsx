@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DocumentPrintButtons } from "@/features/documents/components/DocumentPrintButtons";
 import {
   formatDateShort,
   formatDateTimeLong,
@@ -19,6 +20,7 @@ interface OrderDetailModalProps {
   /** Nomor invoice kasir yang melunasi pesanan, bila ada. */
   transactionNumber?: string | null;
   canProcess: boolean;
+  canPrint: boolean;
   onProcess: () => void;
   onClose: () => void;
 }
@@ -29,6 +31,7 @@ export function OrderDetailModal({
   branchName,
   transactionNumber,
   canProcess,
+  canPrint,
   onProcess,
   onClose,
 }: OrderDetailModalProps) {
@@ -61,6 +64,15 @@ export function OrderDetailModal({
       size="lg"
       footer={
         <>
+          <DocumentPrintButtons
+            canPrint={canPrint}
+            invoiceSource={{ sourceType: "sales_order", sourceId: order.id }}
+            deliveryNoteSource={{
+              sourceType: "sales_order",
+              sourceId: order.id,
+            }}
+            className="mr-auto flex flex-wrap items-center gap-1.5"
+          />
           <Button variant="outline" onClick={onClose}>
             Tutup
           </Button>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { Textarea } from "@/components/ui/Textarea";
 import type { CustomerRow } from "@/features/pelanggan/types";
 
 interface CustomerFormModalProps {
@@ -16,6 +17,8 @@ interface CustomerFormModalProps {
     id?: string;
     name: string;
     phone: string;
+    address: string;
+    npwp: string;
     allowTempo: boolean;
   }) => void;
 }
@@ -32,10 +35,12 @@ export function CustomerFormModal({
   // langsung dari props tanpa effect penyelaras state.
   const [name, setName] = useState(customer?.name ?? "");
   const [phone, setPhone] = useState(customer?.phone ?? "");
+  const [address, setAddress] = useState(customer?.address ?? "");
+  const [npwp, setNpwp] = useState(customer?.npwp ?? "");
   const [allowTempo, setAllowTempo] = useState(customer?.allowTempo ?? false);
 
   function handleSubmit() {
-    onSubmit({ id: customer?.id, name, phone, allowTempo });
+    onSubmit({ id: customer?.id, name, phone, address, npwp, allowTempo });
   }
 
   return (
@@ -76,6 +81,23 @@ export function CustomerFormModal({
             onChange={(event) => setPhone(event.target.value)}
             placeholder="08xxxxxxxxxx"
             inputMode="tel"
+          />
+        </Field>
+
+        <Field label="Alamat (opsional)" labelSize="sm">
+          <Textarea
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
+            placeholder="Alamat pelanggan untuk invoice dan surat jalan"
+            rows={2}
+          />
+        </Field>
+
+        <Field label="NPWP (opsional)" labelSize="sm">
+          <Input
+            value={npwp}
+            onChange={(event) => setNpwp(event.target.value)}
+            placeholder="00.000.000.0-000.000"
           />
         </Field>
 

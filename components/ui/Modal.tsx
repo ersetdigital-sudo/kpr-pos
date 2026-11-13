@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
 
-type ModalSize = "sm" | "md" | "lg";
+type ModalSize = "sm" | "md" | "lg" | "xl";
 
 interface ModalProps {
   open: boolean;
@@ -21,6 +21,7 @@ const SIZE_CLASSES: Record<ModalSize, string> = {
   sm: "sm:max-w-sm",
   md: "sm:max-w-lg",
   lg: "sm:max-w-2xl",
+  xl: "sm:max-w-5xl",
 };
 
 export function Modal({

@@ -272,6 +272,7 @@ export function PesananPageContent() {
             : null
         }
         canProcess={permissions.canUseCashier}
+        canPrint={permissions.canPrintDocuments}
         onProcess={() => {
           if (!detailOrder) return;
           router.push(`/kasir?order=${detailOrder.id}`);
