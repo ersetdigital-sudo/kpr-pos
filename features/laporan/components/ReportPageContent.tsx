@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { exportActivityLogsAction } from "@/features/activity/cloud-actions";
+import { exportActivityLogExcel } from "@/features/laporan/data/activity-log-excel";
+import { recordActivity } from "@/lib/store/activity";
 import {
   DateRangePicker,
   type DateRangeValue,
@@ -33,7 +36,11 @@ import {
   resolveDateRange,
   toDateInputValue,
 } from "@/lib/date-range";
-import type { AppDatabase, Branch } from "@/lib/store/types";
+import type {
+  ActivityAction,
+  AppDatabase,
+  Branch,
+} from "@/lib/store/types";
 
 /**
  * Tanggal sengaja kosong di state awal: `new Date()` tidak boleh dibaca saat
@@ -49,6 +56,9 @@ export function LaporanPageContent() {
   const [branchId, setBranchId] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
   const [userFilter, setUserFilter] = useState<string>("all");
+  const [actionFilter, setActionFilter] = useState<ActivityAction | "all">(
+    "all",
+  );
 
   const branchScope = permissions.canViewAllBranches ? branchId : branch.id;
   const database = useLaporanData(range, branchScope);
@@ -100,6 +110,8 @@ export function LaporanPageContent() {
       }}
       userFilter={effectiveUserFilter}
       onUserChange={setUserFilter}
+      actionFilter={actionFilter}
+      onActionChange={setActionFilter}
       usersForRole={usersForRole}
       onNotify={showToast}
     />
@@ -120,6 +132,8 @@ interface LaporanBodyProps {
   onRoleChange: (role: Role | "all") => void;
   userFilter: string;
   onUserChange: (userId: string) => void;
+  actionFilter: ActivityAction | "all";
+  onActionChange: (action: ActivityAction | "all") => void;
   usersForRole: ReturnType<typeof buildLogUsers>;
   onNotify: (message: string, tone?: "success" | "error" | "info") => void;
 }
@@ -138,9 +152,12 @@ function LaporanBody({
   onRoleChange,
   userFilter,
   onUserChange,
+  actionFilter,
+  onActionChange,
   usersForRole,
   onNotify,
 }: LaporanBodyProps) {
+  const [exportingLog, setExportingLog] = useState(false);
   const branchScope = canViewAllBranches ? branchId : branch.id;
   // Aman dibaca di sini karena body baru dirender setelah store ter-hydrate.
   const todayInput = toDateInputValue(new Date());
@@ -156,6 +173,70 @@ function LaporanBody({
       ),
     [database, range, branchScope, roleFilter, userFilter],
   );
+
+  const visibleLogs = useMemo(
+    () =>
+      actionFilter === "all"
+        ? data.activityLog
+        : data.activityLog.filter((log) => log.action === actionFilter),
+    [data.activityLog, actionFilter],
+  );
+
+  async function handleExportLog() {
+    if (exportingLog) return;
+    setExportingLog(true);
+
+    try {
+      const result = await exportActivityLogsAction({
+        start: data.range.start.toISOString(),
+        end: data.range.end.toISOString(),
+        branchId: branchScope === "all" ? undefined : branchScope,
+        role: roleFilter === "all" ? undefined : roleFilter,
+        userId: userFilter === "all" ? undefined : userFilter,
+        action: actionFilter === "all" ? undefined : actionFilter,
+      });
+
+      if (!result.ok) throw new Error(result.error);
+
+      const userLabel =
+        userFilter === "all"
+          ? "Semua user"
+          : (usersForRole.find((user) => user.id === userFilter)?.name ??
+            userFilter);
+      const filtersLabel = [
+        roleFilter === "all" ? "Semua role" : roleFilter,
+        userLabel,
+        actionFilter === "all" ? "Semua aksi" : actionFilter,
+      ].join(" · ");
+
+      await exportActivityLogExcel(result.data, {
+        periodLabel: data.header.subtitle,
+        filtersLabel,
+        branchNameById: new Map(
+          database.branches.map((branch) => [branch.id, branch.name]),
+        ),
+      });
+      recordActivity({
+        action: "Membuka",
+        detail: `Export log aktivitas ${data.header.subtitle} · ${result.data.length} log`,
+      });
+      onNotify(
+        result.data.length > 0
+          ? `${result.data.length} log aktivitas berhasil diekspor`
+          : "Tidak ada log pada filter ini, file kosong dibuat",
+        "success",
+      );
+    } catch (caught) {
+      onNotify(
+        caught instanceof Error
+          ? caught.message
+          : "Export log aktivitas gagal, coba lagi",
+        "error",
+      );
+    } finally {
+      setExportingLog(false);
+    }
+  }
 
   async function handleExportExcel() {
     try {
@@ -234,13 +315,17 @@ function LaporanBody({
         />
 
         <ActivityLogTable
-          logs={data.activityLog}
+          logs={visibleLogs}
           roles={data.roles}
           users={usersForRole}
           roleFilter={roleFilter}
           userFilter={userFilter}
+          actionFilter={actionFilter}
+          exporting={exportingLog}
           onRoleChange={onRoleChange}
           onUserChange={onUserChange}
+          onActionChange={onActionChange}
+          onExport={handleExportLog}
         />
       </div>
 

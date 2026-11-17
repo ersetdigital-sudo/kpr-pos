@@ -149,7 +149,9 @@
   body > #receipt-print-root,
   body > #report-print-root,
   body > #kasbon-print-root,
-  body > #document-print-root {
+  body > #document-print-root,
+  body > #product-list-print-root,
+  body > #cash-book-print-root {
     display: block !important;
   }
 
@@ -159,7 +161,9 @@
   }
 
   #report-print-root .report-paper,
-  #kasbon-print-root .report-paper {
+  #kasbon-print-root .report-paper,
+  #product-list-print-root .report-paper,
+  #cash-book-print-root .report-paper {
     width: 210mm;
     margin: 0 auto;
   }

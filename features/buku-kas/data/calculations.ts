@@ -244,6 +244,26 @@ function buildMonthlyRecap(
     });
 }
 
+export interface CashBookLedgerRow {
+  row: CashBookRow;
+  saldo: number;
+}
+
+/**
+ * Saldo berjalan untuk ekspor/cetak. Memakai urutan dan nominal baris yang
+ * sama dengan tabel layar, jadi saldo terakhir selalu sama dengan saldo akhir.
+ */
+export function buildCashBookLedger(
+  view: CashBookView,
+): CashBookLedgerRow[] {
+  let saldo = view.summary.saldoAwal;
+
+  return view.rows.map((row) => {
+    saldo += row.type === "masuk" ? row.amount : -row.amount;
+    return { row, saldo };
+  });
+}
+
 /**
  * Menggabungkan entri manual dan rekap penjualan otomatis menjadi satu tabel
  * dengan saldo berjalan dari saldo awal periode.

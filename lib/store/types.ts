@@ -1,3 +1,4 @@
+import type { ActivityActionName } from "@/constants/activity";
 import type { Role } from "@/constants/roles";
 import type { PaymentMethod } from "@/types";
 
@@ -9,15 +10,7 @@ export type ShippingMethod = "pickup" | "paid" | "free";
 /** Harga ecer (retail) atau grosir per item. */
 export type PriceType = "retail" | "wholesale";
 
-export type ActivityAction =
-  | "Membuat"
-  | "Mengubah"
-  | "Menghapus"
-  | "Membayar"
-  | "Membatalkan"
-  | "Refund"
-  | "Membuka"
-  | "Mencetak";
+export type ActivityAction = ActivityActionName;
 
 export type ReceiptPaperSize = 58 | 80;
 

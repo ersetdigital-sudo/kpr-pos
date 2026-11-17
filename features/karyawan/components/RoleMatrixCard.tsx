@@ -15,6 +15,7 @@ import {
   fetchRolePermissionsAction,
   saveRolePermissionsAction,
 } from "@/features/karyawan/actions";
+import { recordActivity } from "@/lib/store/activity";
 
 interface RoleMatrixCardProps {
   canEdit: boolean;
@@ -60,6 +61,10 @@ export function RoleMatrixCard({ canEdit }: RoleMatrixCardProps) {
     try {
       const result = await saveRolePermissionsAction(matrix);
       if (!result.ok) throw new Error(result.error);
+      recordActivity({
+        action: "Mengubah",
+        detail: "Hak akses role diperbarui",
+      });
       showToast("Hak akses role disimpan", "success");
       router.refresh();
     } catch (caught) {

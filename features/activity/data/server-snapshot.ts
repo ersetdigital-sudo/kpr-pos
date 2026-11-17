@@ -33,6 +33,9 @@ interface ActivityQuery {
   start?: string;
   end?: string;
   branchId?: string;
+  role?: Role;
+  userId?: string;
+  action?: ActivityAction;
   limit?: number;
 }
 
@@ -57,6 +60,9 @@ export async function readActivityLogs(
   if (query.start) request = request.gte("at", query.start);
   if (query.end) request = request.lte("at", query.end);
   if (query.branchId) request = request.eq("branch_id", query.branchId);
+  if (query.role) request = request.eq("role", query.role);
+  if (query.userId) request = request.eq("user_id", query.userId);
+  if (query.action) request = request.eq("action", query.action);
 
   const { data, error } = await request;
 

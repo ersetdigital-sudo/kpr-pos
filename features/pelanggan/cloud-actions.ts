@@ -1,11 +1,18 @@
 "use server";
 
-import { getAuthSession } from "@/lib/auth/session";
+import {
+  getAuthSession,
+  getAuthorizedSession,
+} from "@/lib/auth/session";
 import { callServiceRpc } from "@/lib/cloud/server";
 import type { Customer } from "@/lib/store/types";
 import type {
   CustomerActionResult,
+  CustomerActiveResult,
+  CustomerDeleteResult,
   CustomerInput,
+  CustomerManagementResult,
+  CustomerMergeResult,
 } from "@/features/pelanggan/types";
 
 interface CustomerJson {
@@ -20,6 +27,8 @@ interface CustomerJson {
 }
 
 const NO_ACCESS = "Anda tidak punya akses data pelanggan.";
+const NO_MANAGE_ACCESS =
+  "Anda tidak berwenang mengelola data pelanggan.";
 
 function fail(message: string): CustomerActionResult {
   return { ok: false, error: message };
@@ -81,4 +90,74 @@ export async function saveCustomerAction(
   }
 
   return { ok: true, data: mapCustomerJson(result.data) };
+}
+
+export async function deleteCustomerAction(
+  customerId: string,
+): Promise<CustomerManagementResult<CustomerDeleteResult>> {
+  const session = await getAuthorizedSession("canManageCustomerData");
+  if (!session) return { ok: false, error: NO_MANAGE_ACCESS };
+
+  const result = await callServiceRpc<CustomerDeleteResult>(
+    "fn_delete_customer",
+    {
+      p_id: customerId,
+      p_actor_id: session.employee.id,
+    },
+  );
+
+  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.data) {
+    return { ok: false, error: "Pelanggan gagal dihapus" };
+  }
+
+  return { ok: true, data: result.data };
+}
+
+export async function mergeCustomersAction(
+  sourceId: string,
+  targetId: string,
+): Promise<CustomerManagementResult<CustomerMergeResult>> {
+  const session = await getAuthorizedSession("canManageCustomerData");
+  if (!session) return { ok: false, error: NO_MANAGE_ACCESS };
+
+  const result = await callServiceRpc<CustomerMergeResult>(
+    "fn_merge_customers",
+    {
+      p_source_id: sourceId,
+      p_target_id: targetId,
+      p_actor_id: session.employee.id,
+    },
+  );
+
+  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.data) {
+    return { ok: false, error: "Pelanggan gagal digabungkan" };
+  }
+
+  return { ok: true, data: result.data };
+}
+
+export async function setCustomerActiveAction(
+  customerId: string,
+  isActive: boolean,
+): Promise<CustomerManagementResult<CustomerActiveResult>> {
+  const session = await getAuthorizedSession("canManageCustomerData");
+  if (!session) return { ok: false, error: NO_MANAGE_ACCESS };
+
+  const result = await callServiceRpc<CustomerActiveResult>(
+    "fn_set_customer_active",
+    {
+      p_id: customerId,
+      p_is_active: isActive,
+      p_actor_id: session.employee.id,
+    },
+  );
+
+  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.data) {
+    return { ok: false, error: "Status pelanggan gagal diubah" };
+  }
+
+  return { ok: true, data: result.data };
 }

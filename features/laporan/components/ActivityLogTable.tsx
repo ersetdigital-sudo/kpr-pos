@@ -1,10 +1,13 @@
 "use client";
 
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { Icon } from "@/components/ui/Icon";
 import { Select } from "@/components/ui/Select";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { BadgeTone } from "@/components/ui/badge-tone";
+import { ACTIVITY_ACTIONS } from "@/constants/activity";
 import type { Role } from "@/constants/roles";
 import { formatDateTimeShort } from "@/lib/format";
 import type { ActivityAction } from "@/lib/store/types";
@@ -14,6 +17,7 @@ const ACTION_TONES: Record<ActivityAction, BadgeTone> = {
   Membuat: "success",
   Mengubah: "warning",
   Menghapus: "danger",
+  Menggabungkan: "warning",
   Membayar: "success",
   Membatalkan: "danger",
   Refund: "danger",
@@ -67,8 +71,12 @@ interface ActivityLogTableProps {
   users: readonly ReportLogUser[];
   roleFilter: Role | "all";
   userFilter: string | "all";
+  actionFilter: ActivityAction | "all";
+  exporting: boolean;
   onRoleChange: (role: Role | "all") => void;
   onUserChange: (userId: string | "all") => void;
+  onActionChange: (action: ActivityAction | "all") => void;
+  onExport: () => void;
 }
 
 export function ActivityLogTable({
@@ -77,8 +85,12 @@ export function ActivityLogTable({
   users,
   roleFilter,
   userFilter,
+  actionFilter,
+  exporting,
   onRoleChange,
   onUserChange,
+  onActionChange,
+  onExport,
 }: ActivityLogTableProps) {
   return (
     <Card className="p-5">
@@ -93,6 +105,22 @@ export function ActivityLogTable({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Select
+            aria-label="Filter jenis aksi"
+            value={actionFilter}
+            onChange={(event) =>
+              onActionChange(event.target.value as ActivityAction | "all")
+            }
+            className="h-10 w-auto px-2.5"
+          >
+            <option value="all">Semua aksi</option>
+            {ACTIVITY_ACTIONS.map((action) => (
+              <option key={action} value={action}>
+                {action}
+              </option>
+            ))}
+          </Select>
+
           <Select
             aria-label="Filter role"
             value={roleFilter}
@@ -122,6 +150,17 @@ export function ActivityLogTable({
               </option>
             ))}
           </Select>
+
+          <Button
+            variant="outline"
+            size="md"
+            onClick={onExport}
+            disabled={exporting}
+            className="h-10"
+          >
+            <Icon name="download" size={16} />
+            {exporting ? "Menyiapkan…" : "Ekspor log"}
+          </Button>
         </div>
       </div>
 

@@ -65,10 +65,11 @@ export function getScopedStock(
   };
 }
 
-export function buildProductRows(
+/** Semua produk yang lolos filter aktif, tanpa pagination. */
+export function filterProductRows(
   database: AppDatabase,
   filters: ProductFilters,
-): { rows: ProductRow[]; pagination: ProductPagination } {
+): ProductRow[] {
   const categoryById = new Map(
     database.categories.map((category) => [category.id, category]),
   );
@@ -135,6 +136,14 @@ export function buildProductRows(
     return true;
   });
 
+  return filtered;
+}
+
+export function buildProductRows(
+  database: AppDatabase,
+  filters: ProductFilters,
+): { rows: ProductRow[]; pagination: ProductPagination } {
+  const filtered = filterProductRows(database, filters);
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
   const page = Math.min(Math.max(1, filters.page), totalPages);

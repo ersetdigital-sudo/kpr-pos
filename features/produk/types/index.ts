@@ -45,6 +45,13 @@ export interface ProductFilters {
   pageSize: number;
 }
 
+/** Label lembar opname: cabang, filter aktif, dan tanggal cetak. */
+export interface ProductListSheetMeta {
+  branchLabel: string;
+  filterLabel: string;
+  dateLabel: string;
+}
+
 export interface ProductStats {
   totalStockValue: number;
   lowStockCount: number;

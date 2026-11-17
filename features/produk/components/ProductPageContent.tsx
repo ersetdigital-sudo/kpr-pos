@@ -8,6 +8,7 @@ import { CategoryPanel } from "@/features/produk/components/CategoryPanel";
 import { ImportProductsModal } from "@/features/produk/components/ImportProductsModal";
 import { OpnamePanel } from "@/features/produk/components/OpnamePanel";
 import { ProductFormDrawer } from "@/features/produk/components/ProductFormDrawer";
+import { ProductListPrintSheet } from "@/features/produk/components/ProductListPrintSheet";
 import { ProductPageActions } from "@/features/produk/components/ProductPageActions";
 import { ProductStockStats } from "@/features/produk/components/ProductStockStats";
 import { ProductTable } from "@/features/produk/components/ProductTable";
@@ -21,11 +22,15 @@ import {
   buildCategoryUsage,
   buildProductRows,
   calculateProductStats,
+  filterProductRows,
   hasSalesHistory,
   isProductVisibleInScope,
 } from "@/features/produk/data/produk-calculations";
+import { exportProductListExcel } from "@/features/produk/data/produk-opname-excel";
 import {
   deleteProduct,
+  logProductListExport,
+  logProductListPrint,
   setProductActive,
   setProductBranchVisibility,
   useProdukData,
@@ -35,7 +40,7 @@ import {
   useSession,
 } from "@/features/session/data/session-repository";
 import { toDateInputValue } from "@/lib/date-range";
-import { formatNumber } from "@/lib/format";
+import { formatDateLong, formatNumber } from "@/lib/format";
 import type { AppDatabase, Branch } from "@/lib/store/types";
 import type {
   ProductFilters,
@@ -47,7 +52,7 @@ const PAGE_SIZE = 8;
 
 export function ProductPageContent() {
   const database = useProdukData();
-  const { branch, branches } = useSession();
+  const { branch, branches, employee } = useSession();
   const permissions = usePermissions();
   const { showToast } = useToast();
 
@@ -196,6 +201,8 @@ export function ProductPageContent() {
       onDelete={setDeleteTarget}
       onReactivate={handleReactivate}
       onImport={() => setImportOpen(true)}
+      employeeName={employee.name}
+      onNotify={showToast}
       formOpen={formOpen}
       editing={editing}
       onCloseForm={() => setFormOpen(false)}
@@ -235,6 +242,8 @@ interface ProductPageBodyProps {
   onDelete: (product: ProductRow) => void;
   onReactivate: (product: ProductRow) => void;
   onImport: () => void;
+  employeeName: string;
+  onNotify: (message: string, tone?: "success" | "error" | "info") => void;
   formOpen: boolean;
   editing: ProductRow | null;
   onCloseForm: () => void;
@@ -266,6 +275,8 @@ function ProductPageBody({
   onDelete,
   onReactivate,
   onImport,
+  employeeName,
+  onNotify,
   formOpen,
   editing,
   onCloseForm,
@@ -286,6 +297,13 @@ function ProductPageBody({
     () => buildProductRows(database, filters),
     [database, filters],
   );
+
+  const allRows = useMemo(
+    () => filterProductRows(database, filters),
+    [database, filters],
+  );
+
+  const [exporting, setExporting] = useState(false);
 
   const stats = useMemo(
     () => calculateProductStats(database, branchScope, today),
@@ -345,11 +363,54 @@ function ProductPageBody({
       record.fromBranchId === branchId || record.toBranchId === branchId,
   );
 
-  const subtitle = `${stats.totalProducts} produk · ${database.categories.length} kategori · ${
+  const branchLabel =
     branchScope === "all"
       ? "Semua cabang"
-      : branches.find((branch) => branch.id === branchScope)?.name ?? branchName
-  }`;
+      : branches.find((branch) => branch.id === branchScope)?.name ?? branchName;
+
+  const activeCategory = database.categories.find(
+    (category) => category.id === filters.categoryId,
+  );
+  const filterLabel =
+    [
+      filters.search.trim() ? `Cari "${filters.search.trim()}"` : null,
+      activeCategory ? `Kategori ${activeCategory.name}` : null,
+      filters.status !== "all" ? `Status ${filters.status}` : null,
+      filters.visibility === "visible"
+        ? "Produk tampil"
+        : "Produk disembunyikan",
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Semua produk";
+
+  const sheetMeta = {
+    branchLabel,
+    filterLabel,
+    dateLabel: formatDateLong(todayInput),
+  };
+
+  async function handleExportList() {
+    if (exporting) return;
+    setExporting(true);
+
+    try {
+      await exportProductListExcel(allRows, sheetMeta);
+      logProductListExport(allRows.length, branchLabel);
+      onNotify("File Excel daftar produk berhasil dibuat", "success");
+    } catch {
+      onNotify("Export daftar produk gagal, coba lagi", "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handlePrintList() {
+    logProductListPrint(allRows.length, branchLabel);
+    onNotify("Menyiapkan versi cetak daftar produk", "info");
+    window.print();
+  }
+
+  const subtitle = `${stats.totalProducts} produk · ${database.categories.length} kategori · ${branchLabel}`;
 
   return (
     <>
@@ -359,6 +420,9 @@ function ProductPageBody({
         actions={
           <ProductPageActions
             canManage={canManageProducts}
+            exporting={exporting}
+            onExport={handleExportList}
+            onPrint={handlePrintList}
             onImport={onImport}
             onCreate={onCreate}
           />
@@ -468,6 +532,12 @@ function ProductPageBody({
         confirmLabel="Ya, hapus"
         onClose={onCancelDelete}
         onConfirm={onConfirmDelete}
+      />
+
+      <ProductListPrintSheet
+        rows={allRows}
+        meta={sheetMeta}
+        printedBy={employeeName}
       />
     </>
   );

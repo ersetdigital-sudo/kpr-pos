@@ -125,6 +125,28 @@ export async function deleteCashBookEntry(
   });
 }
 
+export function logCashBookExport(
+  periodLabel: string,
+  branchLabel: string,
+  rowCount: number,
+): void {
+  recordActivity({
+    action: "Membuka",
+    detail: `Export Excel rekap buku kas ${periodLabel} · ${branchLabel} · ${rowCount} baris`,
+  });
+}
+
+export function logCashBookPrint(
+  periodLabel: string,
+  branchLabel: string,
+  rowCount: number,
+): void {
+  recordActivity({
+    action: "Membuka",
+    detail: `Cetak rekap buku kas ${periodLabel} · ${branchLabel} · ${rowCount} baris`,
+  });
+}
+
 export async function saveCashBookCategory(
   input: CashBookCategoryInput,
 ): Promise<void> {

@@ -249,6 +249,26 @@ export async function transferStock(input: TransferInput): Promise<void> {
   });
 }
 
+export function logProductListExport(
+  count: number,
+  branchLabel: string,
+): void {
+  recordActivity({
+    action: "Membuka",
+    detail: `Export Excel daftar produk ${branchLabel} · ${formatNumber(count)} produk`,
+  });
+}
+
+export function logProductListPrint(
+  count: number,
+  branchLabel: string,
+): void {
+  recordActivity({
+    action: "Membuka",
+    detail: `Cetak daftar produk ${branchLabel} · ${formatNumber(count)} produk`,
+  });
+}
+
 export async function importProducts(
   rows: readonly ImportProductPayload[],
 ): Promise<number> {

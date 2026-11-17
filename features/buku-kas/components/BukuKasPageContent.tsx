@@ -6,15 +6,20 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { Icon } from "@/components/ui/Icon";
 import { CashBookCategoryModal } from "@/features/buku-kas/components/CashBookCategoryModal";
 import { CashBookEntryDrawer } from "@/features/buku-kas/components/CashBookEntryDrawer";
 import { CashBookFilters } from "@/features/buku-kas/components/CashBookFilters";
+import { CashBookPrintSheet } from "@/features/buku-kas/components/CashBookPrintSheet";
 import { CashBookSummaryCards } from "@/features/buku-kas/components/CashBookSummaryCards";
 import { CashBookTable } from "@/features/buku-kas/components/CashBookTable";
 import { CashBookYearlyRecap } from "@/features/buku-kas/components/CashBookYearlyRecap";
 import { buildCashBookView } from "@/features/buku-kas/data/calculations";
+import { exportCashBookExcel } from "@/features/buku-kas/data/cash-book-excel";
 import {
   deleteCashBookEntry,
+  logCashBookExport,
+  logCashBookPrint,
   useCashBookData,
 } from "@/features/buku-kas/data/repository";
 import {
@@ -46,9 +51,10 @@ const CLOSED_DRAWER: EntryDrawerState = {
 
 export function BukuKasPageContent() {
   const database = useHydratedDatabase();
-  const { branch, branches, isOwner } = useSession();
+  const { branch, branches, employee, isOwner } = useSession();
   const permissions = usePermissions();
   const { showToast } = useToast();
+  const [exporting, setExporting] = useState(false);
 
   const [period, setPeriod] = useState<CashBookPeriod>("harian");
   const [dateInput, setDateInput] = useState("");
@@ -108,6 +114,41 @@ export function BukuKasPageContent() {
     scope === "all"
       ? "Semua cabang"
       : (branches.find((item) => item.id === scope)?.name ?? branch.name);
+  const periodFileKey =
+    period === "harian"
+      ? activeDate
+      : period === "bulanan"
+        ? activeMonth
+        : activeYear;
+  const fileLabel = `${periodFileKey}${scope === "all" ? "-semua-cabang" : ""}`;
+
+  async function handleExportRecap() {
+    if (!view || exporting) return;
+
+    setExporting(true);
+
+    try {
+      await exportCashBookExcel(view, {
+        branchLabel,
+        periodLabel: view.periodLabel,
+        fileLabel,
+      });
+      logCashBookExport(view.periodLabel, branchLabel, view.rows.length);
+      showToast("File Excel rekap buku kas berhasil dibuat", "success");
+    } catch {
+      showToast("Export rekap buku kas gagal, coba lagi", "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handlePrintRecap() {
+    if (!view) return;
+
+    logCashBookPrint(view.periodLabel, branchLabel, view.rows.length);
+    showToast("Menyiapkan versi cetak rekap buku kas", "info");
+    window.print();
+  }
 
   function openEntry(type: CashBookType, entry: CashBookEntry | null = null) {
     setDrawer({ open: true, type, entry });
@@ -154,6 +195,24 @@ export function BukuKasPageContent() {
         subtitle={`${view?.periodLabel ?? "—"} · ${branchLabel}`}
         actions={
           <>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handleExportRecap}
+              disabled={!view || exporting}
+            >
+              <Icon name="download" size={16} />
+              {exporting ? "Menyiapkan…" : "Ekspor Excel"}
+            </Button>
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handlePrintRecap}
+              disabled={!view}
+            >
+              <Icon name="print" size={16} />
+              Cetak
+            </Button>
             <Button
               variant="outline"
               size="md"
@@ -261,6 +320,15 @@ export function BukuKasPageContent() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
+
+      {view ? (
+        <CashBookPrintSheet
+          view={view}
+          business={database.settings.business}
+          branchLabel={branchLabel}
+          printedBy={employee.name}
+        />
+      ) : null}
     </>
   );
 }
