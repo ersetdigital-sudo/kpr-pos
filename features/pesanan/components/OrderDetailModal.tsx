@@ -11,6 +11,7 @@ import {
   formatRupiah,
 } from "@/lib/format";
 import { isOverdueTempoSalesOrder } from "@/lib/store/sales";
+import { getItemUnitName } from "@/lib/units";
 import type { SalesOrder } from "@/lib/store/types";
 
 interface OrderDetailModalProps {
@@ -178,9 +179,12 @@ export function OrderDetailModal({
                     </td>
                     <td className="px-2 py-2 text-right text-ink">
                       {formatRupiah(item.unitPrice)}
+                      <span className="text-meta text-ink-muted">
+                        /{getItemUnitName(item)}
+                      </span>
                     </td>
-                    <td className="px-2 py-2 text-right text-ink">
-                      {item.quantity}
+                    <td className="px-2 py-2 text-right text-ink whitespace-nowrap">
+                      {item.quantity} {getItemUnitName(item)}
                     </td>
                     <td className="px-2 py-2 text-right text-ink-soft">
                       {itemDiscount > 0 ? (
@@ -189,7 +193,7 @@ export function OrderDetailModal({
                           <div className="text-meta text-ink-muted">
                             {item.discountType === "percent"
                               ? `${item.discountValue ?? 0}%`
-                              : `${formatRupiah(item.discountValue ?? 0)}/pcs`}
+                              : `${formatRupiah(item.discountValue ?? 0)}/${getItemUnitName(item)}`}
                           </div>
                         </div>
                       ) : (

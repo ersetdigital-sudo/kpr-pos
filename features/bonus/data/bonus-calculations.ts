@@ -1,6 +1,7 @@
 import { isWithinRange } from "@/lib/date-range";
 import type { DateRange } from "@/lib/date-range";
 import { formatMonthYear } from "@/lib/format";
+import { getItemBaseQuantity } from "@/lib/units";
 import {
   isCountedSalesOrder,
 } from "@/lib/store/sales";
@@ -97,7 +98,7 @@ export function collectBonusTransactions(
       customerName: "-",
       branchName: branchById.get(transaction.branchId)?.name ?? "-",
       quantity: transaction.items.reduce(
-        (total, item) => total + item.quantity,
+        (total, item) => total + getItemBaseQuantity(item),
         0,
       ),
       nominal: transaction.total,

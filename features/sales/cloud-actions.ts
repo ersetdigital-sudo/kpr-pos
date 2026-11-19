@@ -52,6 +52,10 @@ interface TransactionJson {
   items: {
     productId: string | null;
     productName: string;
+    unitId: string | null;
+    unitName: string | null;
+    unitContent: number | null;
+    baseQuantity: number | null;
     unitPrice: number;
     unitCost: number | null;
     quantity: number;
@@ -98,6 +102,10 @@ interface SalesOrderJson {
   items: {
     productId: string | null;
     productName: string;
+    unitId: string | null;
+    unitName: string | null;
+    unitContent: number | null;
+    baseQuantity: number | null;
     unitPrice: number;
     unitCost: number | null;
     quantity: number;
@@ -118,7 +126,13 @@ interface CartDraftJson {
   discountValue: number;
   createdAt: string;
   updatedAt: string;
-  items: { productId: string; quantity: number }[];
+  items: {
+    productId: string;
+    unitId: string | null;
+    unitName: string | null;
+    unitContent: number | null;
+    quantity: number;
+  }[];
 }
 
 function fail(message: string): { ok: false; error: string } {
@@ -142,6 +156,10 @@ function mapTransactionJson(row: TransactionJson): Transaction {
     items: row.items.map((item) => ({
       productId: item.productId ?? "",
       productName: item.productName,
+      unitId: item.unitId ?? undefined,
+      unitName: item.unitName ?? undefined,
+      unitContent: item.unitContent ?? 1,
+      baseQuantity: item.baseQuantity ?? item.quantity,
       unitPrice: item.unitPrice,
       unitCost: item.unitCost ?? undefined,
       quantity: item.quantity,
@@ -181,6 +199,10 @@ function mapSalesOrderJson(row: SalesOrderJson): SalesOrder {
     items: row.items.map((item) => ({
       productId: item.productId ?? "",
       productName: item.productName,
+      unitId: item.unitId ?? undefined,
+      unitName: item.unitName ?? undefined,
+      unitContent: item.unitContent ?? 1,
+      baseQuantity: item.baseQuantity ?? item.quantity,
       unitPrice: item.unitPrice,
       unitCost: item.unitCost ?? undefined,
       quantity: item.quantity,
@@ -217,7 +239,13 @@ function mapDraftJson(row: CartDraftJson): CartDraft {
     branchId: row.branchId,
     cashierId: row.cashierId,
     salesEmployeeId: row.salesEmployeeId,
-    items: row.items,
+    items: row.items.map((item) => ({
+      productId: item.productId,
+      unitId: item.unitId ?? undefined,
+      unitName: item.unitName ?? undefined,
+      unitContent: item.unitContent ?? 1,
+      quantity: item.quantity,
+    })),
     discountType: row.discountType,
     discountValue: row.discountValue,
     createdAt: row.createdAt,

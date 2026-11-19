@@ -18,6 +18,10 @@ import type { SalesSnapshot } from "@/lib/cloud/sales-types";
 interface TransactionItemRow {
   product_id: string | null;
   product_name: string;
+  unit_id: string | null;
+  unit_name: string | null;
+  unit_content: number | null;
+  base_quantity: number | null;
   unit_price: number;
   unit_cost: number | null;
   quantity: number;
@@ -60,6 +64,10 @@ export interface TransactionRow {
 interface SalesOrderItemRow {
   product_id: string | null;
   product_name: string;
+  unit_id: string | null;
+  unit_name: string | null;
+  unit_content: number | null;
+  base_quantity: number | null;
   unit_price: number;
   unit_cost: number | null;
   quantity: number;
@@ -99,6 +107,9 @@ export interface SalesOrderRow {
 
 interface CartDraftItemRow {
   product_id: string;
+  unit_id: string | null;
+  unit_name: string | null;
+  unit_content: number | null;
   quantity: number;
 }
 
@@ -116,13 +127,13 @@ interface CartDraftRow {
 }
 
 export const TRANSACTION_COLUMNS =
-  "id,invoice_number,branch_id,cashier_id,sales_employee_id,subtotal,discount_type,discount_value,discount_amount,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,payment_method,cash_received,change_amount,bank_account_id,refunded_at,refunded_by_id,refunded_by_name,refund_reason,refund_amount,created_at,transaction_items(product_id,product_name,unit_price,unit_cost,quantity,line_total,price_type,discount_type,discount_value,discount_amount)";
+  "id,invoice_number,branch_id,cashier_id,sales_employee_id,subtotal,discount_type,discount_value,discount_amount,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,payment_method,cash_received,change_amount,bank_account_id,refunded_at,refunded_by_id,refunded_by_name,refund_reason,refund_amount,created_at,transaction_items(product_id,product_name,unit_id,unit_name,unit_content,base_quantity,unit_price,unit_cost,quantity,line_total,price_type,discount_type,discount_value,discount_amount)";
 
 export const SALES_ORDER_COLUMNS =
-  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,status,customer_id,payment_scheme,tempo_days,due_date,processed_at,paid_at,settled_by_name,transaction_id,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_price,unit_cost,quantity,price_type,discount_type,discount_value,discount_amount)";
+  "id,order_number,customer_name,customer_phone,branch_id,sales_employee_id,total,tax_enabled,tax_rate,tax_amount,shipping_method,shipping_cost,status,customer_id,payment_scheme,tempo_days,due_date,processed_at,paid_at,settled_by_name,transaction_id,stock_applied,note,created_at,sales_order_items(product_id,product_name,unit_id,unit_name,unit_content,base_quantity,unit_price,unit_cost,quantity,price_type,discount_type,discount_value,discount_amount)";
 
 export const CART_DRAFT_COLUMNS =
-  "id,label,branch_id,cashier_id,sales_employee_id,discount_type,discount_value,created_at,updated_at,cart_draft_items(product_id,quantity)";
+  "id,label,branch_id,cashier_id,sales_employee_id,discount_type,discount_value,created_at,updated_at,cart_draft_items(product_id,unit_id,unit_name,unit_content,quantity)";
 
 export interface RangeQuery {
   /** ISO timestamp batas bawah (inklusif). */
@@ -136,6 +147,10 @@ function mapTransactionItem(row: TransactionItemRow): TransactionItem {
   return {
     productId: row.product_id ?? "",
     productName: row.product_name,
+    unitId: row.unit_id ?? undefined,
+    unitName: row.unit_name ?? undefined,
+    unitContent: row.unit_content ?? 1,
+    baseQuantity: row.base_quantity ?? row.quantity,
     unitPrice: row.unit_price,
     unitCost: row.unit_cost ?? undefined,
     quantity: row.quantity,
@@ -197,6 +212,10 @@ export function mapSalesOrderRow(row: SalesOrderRow): SalesOrder {
     items: (row.sales_order_items ?? []).map((item) => ({
       productId: item.product_id ?? "",
       productName: item.product_name,
+      unitId: item.unit_id ?? undefined,
+      unitName: item.unit_name ?? undefined,
+      unitContent: item.unit_content ?? 1,
+      baseQuantity: item.base_quantity ?? item.quantity,
       unitPrice: item.unit_price,
       unitCost: item.unit_cost ?? undefined,
       quantity: item.quantity,
@@ -235,6 +254,9 @@ export function mapCartDraftRow(row: CartDraftRow): CartDraft {
     salesEmployeeId: row.sales_employee_id,
     items: (row.cart_draft_items ?? []).map((item) => ({
       productId: item.product_id,
+      unitId: item.unit_id ?? undefined,
+      unitName: item.unit_name ?? undefined,
+      unitContent: item.unit_content ?? 1,
       quantity: item.quantity,
     })),
     discountType: row.discount_type,

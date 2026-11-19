@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { formatDateTimeLong, formatPercent, formatRupiah } from "@/lib/format";
+import { getItemUnitName } from "@/lib/units";
 import { shippingChargeLabel } from "@/lib/store/charges";
 import type { ReceiptViewData } from "@/features/kasir/types";
 
@@ -83,15 +84,16 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
       <div className="my-2 border-t border-dashed border-ink/30" />
 
       <div className="flex flex-col gap-2">
-        {transaction.items.map((item) => (
+        {transaction.items.map((item, index) => (
           <div
-            key={item.productId}
+            key={`${item.productId}-${index}`}
             className="flex justify-between gap-2 text-[10px]"
           >
             <div className="min-w-0 flex-1">
               <div className="font-semibold">{item.productName}</div>
               <div>
-                {item.quantity} × {formatRupiah(item.unitPrice)}
+                {item.quantity} {getItemUnitName(item)} ×{" "}
+                {formatRupiah(item.unitPrice)}
                 {item.priceType === "wholesale" ? " (grosir)" : ""}
               </div>
               {item.discountAmount ? (
@@ -99,7 +101,7 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
                   Diskon{" "}
                   {item.discountType === "percent"
                     ? `${item.discountValue ?? 0}%`
-                    : `${formatRupiah(item.discountValue ?? 0)}/pcs`}
+                    : `${formatRupiah(item.discountValue ?? 0)}/${getItemUnitName(item)}`}
                   {" · -"}
                   {formatRupiah(item.discountAmount)}
                 </div>

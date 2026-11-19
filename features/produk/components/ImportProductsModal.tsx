@@ -203,7 +203,8 @@ export function ImportProductsModal({
 
         <div className="rounded-control bg-canvas px-3.5 py-3 text-meta text-ink-muted">
           Kolom: Nama Produk, SKU, Kategori, Harga Modal, Harga Jual, Stok
-          Awal, Stok Minimum. Kategori harus sudah ada; SKU harus unik.
+          Awal, Stok Minimum; kolom Panjang (m) dan Berat (kg) opsional.
+          Kategori harus sudah ada; SKU harus unik.
         </div>
 
         {error ? (

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { formatDateTimeShort, formatRupiah } from "@/lib/format";
+import { getItemUnitName } from "@/lib/units";
 import type { Employee, SalesOrder } from "@/lib/store/types";
 
 interface SalesOrderPickerModalProps {
@@ -87,7 +88,8 @@ export function SalesOrderPickerModal({
                     className="flex flex-wrap items-center justify-between gap-2 text-label"
                   >
                     <span className="text-ink">
-                      {item.quantity} × {item.productName}
+                      {item.quantity} {getItemUnitName(item)} ×{" "}
+                      {item.productName}
                       <span className="text-ink-muted">
                         {" "}
                         ({item.priceType === "wholesale" ? "grosir" : "ecer"})

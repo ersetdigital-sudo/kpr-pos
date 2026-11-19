@@ -17,6 +17,8 @@ export interface SalesSnapshot {
 
 export interface OrderItemPayload {
   productId: string;
+  /** Kosong berarti satuan dasar. */
+  unitId?: string;
   quantity: number;
   priceType: PriceType;
   discountType: DiscountType;
@@ -67,7 +69,7 @@ export interface SaveDraftPayload {
   label: string;
   discountType: DiscountType;
   discountValue: number;
-  items: { productId: string; quantity: number }[];
+  items: { productId: string; unitId?: string; quantity: number }[];
 }
 
 export type SalesDataResult<T> =

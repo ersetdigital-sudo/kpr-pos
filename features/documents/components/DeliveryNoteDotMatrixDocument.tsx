@@ -1,4 +1,5 @@
 import { DocumentLetterhead } from "@/features/documents/components/DocumentLetterhead";
+import { formatDecimal } from "@/lib/units";
 import {
   formatDocumentDate,
   paginateDeliveryNote,
@@ -38,6 +39,14 @@ export function DeliveryNoteDotMatrixDocument({
   data,
 }: DeliveryNoteDotMatrixDocumentProps) {
   const pages = paginateDeliveryNote(data.items, "dot_matrix");
+  const hasLength = data.items.some(
+    (item) => item.totalLengthM !== undefined,
+  );
+  const hasWeight = data.items.some(
+    (item) => item.totalWeightKg !== undefined,
+  );
+  const nameWidth =
+    hasLength && hasWeight ? "19%" : hasLength || hasWeight ? "28%" : "37%";
 
   return (
     <>
@@ -104,9 +113,11 @@ export function DeliveryNoteDotMatrixDocument({
             <colgroup>
               <col className="w-[6%]" />
               <col className="w-[15%]" />
-              <col className="w-[37%]" />
+              <col style={{ width: nameWidth }} />
               <col className="w-[8%]" />
               <col className="w-[10%]" />
+              {hasLength ? <col className="w-[9%]" /> : null}
+              {hasWeight ? <col className="w-[9%]" /> : null}
               <col className="w-[12%]" />
               <col className="w-[12%]" />
             </colgroup>
@@ -127,6 +138,16 @@ export function DeliveryNoteDotMatrixDocument({
                 <th className="border border-black px-1 py-[2px] text-left">
                   Satuan
                 </th>
+                {hasLength ? (
+                  <th className="border border-black px-1 py-[2px] text-right">
+                    Panjang (m)
+                  </th>
+                ) : null}
+                {hasWeight ? (
+                  <th className="border border-black px-1 py-[2px] text-right">
+                    Berat (kg)
+                  </th>
+                ) : null}
                 <th className="border border-black px-1 py-[2px] text-center">
                   Cek QC
                   <br />
@@ -157,6 +178,20 @@ export function DeliveryNoteDotMatrixDocument({
                   <td className="border border-black px-1 py-[2px]">
                     {item.unit}
                   </td>
+                  {hasLength ? (
+                    <td className="border border-black px-1 py-[2px] text-right">
+                      {item.totalLengthM !== undefined
+                        ? formatDecimal(item.totalLengthM)
+                        : "-"}
+                    </td>
+                  ) : null}
+                  {hasWeight ? (
+                    <td className="border border-black px-1 py-[2px] text-right">
+                      {item.totalWeightKg !== undefined
+                        ? formatDecimal(item.totalWeightKg)
+                        : "-"}
+                    </td>
+                  ) : null}
                   <td className="border border-black px-1 py-[2px] text-center">
                     [ ]
                   </td>
@@ -174,7 +209,14 @@ export function DeliveryNoteDotMatrixDocument({
                 <div>
                   <div className="text-[9px] font-bold">
                     Total kirim: {data.totalItems} item / {data.totalQuantity} unit
+                    dasar
                   </div>
+                  {hasLength || hasWeight ? (
+                    <div className="mt-0.5 text-[8px]">
+                      Panjang total {formatDecimal(data.totalLengthM)} m · Berat
+                      total {formatDecimal(data.totalWeightKg)} kg
+                    </div>
+                  ) : null}
                   {data.note ? (
                     <div className="mt-0.5 text-[8px] leading-tight">
                       Catatan: {data.note}

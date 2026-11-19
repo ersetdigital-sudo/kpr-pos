@@ -2,6 +2,7 @@ import type { RolePermissions } from "@/config/permissions";
 import type {
   DiscountType,
   PriceType,
+  ProductUnit,
   SalesBonusSettings,
   SalesOrderStatus,
   SalesPaymentScheme,
@@ -69,6 +70,8 @@ export interface OrderProductOption {
   price: number;
   wholesalePrice: number;
   stock: number;
+  baseUnit: string;
+  units: ProductUnit[];
 }
 
 export interface SalesEmployeeOption {
@@ -80,6 +83,7 @@ export interface SalesEmployeeOption {
 export interface NewOrderRow {
   key: string;
   productId: string;
+  unitId: string;
   quantity: number;
   priceType: PriceType;
   discountType: DiscountType;
@@ -94,6 +98,7 @@ export interface CreateOrderInput {
   salesEmployeeId: string;
   items: {
     productId: string;
+    unitId?: string;
     quantity: number;
     priceType: PriceType;
     discountType: DiscountType;

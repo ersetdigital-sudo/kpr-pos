@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { createSalesOrder } from "@/features/pesanan/data/pesanan-repository";
 import { SalesChargeFields } from "@/features/sales/components/SalesChargeFields";
 import { formatPercent, formatRupiah } from "@/lib/format";
+import { buildSellingUnits, formatMixedStock } from "@/lib/units";
 import {
   calculateSalesCharges,
   DEFAULT_TAX_ENABLED,
@@ -44,6 +45,7 @@ function createRow(productId: string): NewOrderRow {
   return {
     key: `row-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     productId,
+    unitId: "",
     quantity: 1,
     priceType: "retail",
     discountType: "nominal",
@@ -57,10 +59,12 @@ function getRowPricing(
 ): { unitPrice: number; gross: number; discount: number; total: number } {
   if (!product) return { unitPrice: 0, gross: 0, discount: 0, total: 0 };
 
+  const units = buildSellingUnits(product);
+  const unit = units.find((item) => item.id === row.unitId) ?? units[0];
   const unitPrice =
-    row.priceType === "wholesale" && product.wholesalePrice > 0
-      ? product.wholesalePrice
-      : product.price;
+    row.priceType === "wholesale" && unit.wholesalePrice > 0
+      ? unit.wholesalePrice
+      : unit.price;
   const gross = unitPrice * row.quantity;
   const discount =
     row.discountType === "percent"
@@ -105,7 +109,16 @@ export function NewOrderForm({
     : defaultSalesId;
   const activeSales = salesOptions.find((sales) => sales.id === activeSalesId);
 
-  const totalQuantity = rows.reduce((sum, row) => sum + row.quantity, 0);
+  const totalQuantity = rows.reduce((sum, row) => {
+    const product = productOptions.find(
+      (option) => option.id === row.productId,
+    );
+    if (!product) return sum;
+
+    const units = buildSellingUnits(product);
+    const unit = units.find((item) => item.id === row.unitId) ?? units[0];
+    return sum + row.quantity * unit.content;
+  }, 0);
   const subtotalAmount = rows.reduce((sum, row) => {
     const product = productOptions.find(
       (option) => option.id === row.productId,
@@ -170,6 +183,7 @@ export function NewOrderForm({
         salesEmployeeId: activeSalesId,
         items: rows.map((row) => ({
           productId: row.productId,
+          unitId: row.unitId || undefined,
           quantity: row.quantity,
           priceType: row.priceType,
           discountType: row.discountType,
@@ -267,24 +281,56 @@ export function NewOrderForm({
               (option) => option.id === row.productId,
             );
             const pricing = getRowPricing(row, product);
+            const units = product ? buildSellingUnits(product) : [];
+            const activeUnit =
+              units.find((unit) => unit.id === row.unitId) ?? units[0];
 
             return (
               <div key={row.key} className="flex flex-col gap-1">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Select
                     aria-label={`Produk ${index + 1}`}
                     value={row.productId}
                     onChange={(event) =>
-                      updateRow(row.key, { productId: event.target.value })
+                      updateRow(row.key, {
+                        productId: event.target.value,
+                        unitId: "",
+                        priceType: "retail",
+                        discountValue: 0,
+                      })
                     }
-                    className="min-w-0 flex-1"
+                    className="min-w-0 flex-[1_1_200px]"
                   >
                     {productOptions.map((option) => (
                       <option key={option.id} value={option.id}>
-                        {option.name} · {formatRupiah(option.price)}
+                        {option.name} · {formatRupiah(option.price)} · stok{" "}
+                        {formatMixedStock(option.stock, option)}
                       </option>
                     ))}
                   </Select>
+                  {product && units.length > 1 ? (
+                    <Select
+                      aria-label={`Satuan produk ${index + 1}`}
+                      value={row.unitId}
+                      onChange={(event) =>
+                        updateRow(row.key, {
+                          unitId: event.target.value,
+                          priceType: "retail",
+                          discountValue: 0,
+                        })
+                      }
+                      className="w-[132px]"
+                    >
+                      {units.map((unit) => (
+                        <option key={unit.id || "base"} value={unit.id}>
+                          {unit.name}
+                          {unit.isBase
+                            ? ""
+                            : ` (${unit.content} ${product.baseUnit})`}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : null}
                   <Input
                     aria-label={`Jumlah produk ${index + 1}`}
                     type="number"
@@ -329,7 +375,7 @@ export function NewOrderForm({
                     <option value="retail">Ecer</option>
                     <option
                       value="wholesale"
-                      disabled={!product || product.wholesalePrice <= 0}
+                      disabled={!activeUnit || activeUnit.wholesalePrice <= 0}
                     >
                       Grosir
                     </option>
@@ -346,7 +392,9 @@ export function NewOrderForm({
                     }
                     className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
                   >
-                    <option value="nominal">Rp/pcs</option>
+                    <option value="nominal">
+                      Rp/{activeUnit?.name ?? "satuan"}
+                    </option>
                     <option value="percent">%</option>
                   </select>
 
@@ -373,7 +421,8 @@ export function NewOrderForm({
                   />
 
                   <span className="ml-auto text-right text-meta text-ink-muted">
-                    {row.quantity} × {formatRupiah(pricing.unitPrice)}
+                    {row.quantity} {activeUnit?.name ?? "satuan"} ×{" "}
+                    {formatRupiah(pricing.unitPrice)}
                     {pricing.discount > 0
                       ? ` · diskon ${formatRupiah(pricing.discount)}`
                       : ""}{" "}
@@ -465,7 +514,7 @@ export function NewOrderForm({
           ) : null}
           <div className="flex items-baseline justify-between border-t border-dashed border-line-strong pt-2">
             <span className="text-body text-ink-muted">
-              Total bayar · {totalQuantity} pcs
+              Total bayar · {totalQuantity} unit dasar
             </span>
             <span className="text-page-title font-extrabold text-ink">
               {formatRupiah(charges.total)}

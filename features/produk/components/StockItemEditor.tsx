@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { buildSellingUnits, formatMixedStock } from "@/lib/units";
 import type {
   StockProductOption,
   StockRowInput,
@@ -33,6 +34,7 @@ export function StockItemEditor({
       {
         key: `row-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         productId: options[0]?.id ?? "",
+        unitId: "",
         quantity: 1,
       },
     ]);
@@ -48,6 +50,17 @@ export function StockItemEditor({
 
       {rows.map((row) => {
         const selected = options.find((option) => option.id === row.productId);
+        const unitOptions = selected
+          ? buildSellingUnits({
+              baseUnit: selected.baseUnit,
+              price: 0,
+              units: selected.units,
+            })
+          : [];
+        const activeUnit = unitOptions.find((unit) => unit.id === row.unitId);
+        const baseQuantity = activeUnit
+          ? row.quantity * activeUnit.content
+          : row.quantity;
 
         return (
           <div key={row.key} className="flex flex-wrap items-start gap-2">
@@ -55,17 +68,45 @@ export function StockItemEditor({
               aria-label="Pilih produk"
               value={row.productId}
               onChange={(event) =>
-                updateRow(row.key, { productId: event.target.value })
+                updateRow(row.key, {
+                  productId: event.target.value,
+                  unitId: "",
+                  quantity: 1,
+                })
               }
               className="min-w-0 flex-[1_1_220px]"
             >
               {options.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.name}
-                  {showAvailableStock ? ` · sisa ${option.stock}` : ""}
+                  {showAvailableStock
+                    ? ` · sisa ${formatMixedStock(option.stock, option)}`
+                    : ""}
                 </option>
               ))}
             </Select>
+            {selected && unitOptions.length > 1 ? (
+              <Select
+                aria-label={`Satuan ${selected.name}`}
+                value={row.unitId}
+                onChange={(event) =>
+                  updateRow(row.key, {
+                    unitId: event.target.value,
+                    quantity: 1,
+                  })
+                }
+                className="w-[132px]"
+              >
+                {unitOptions.map((unit) => (
+                  <option key={unit.id || "base"} value={unit.id}>
+                    {unit.name}
+                    {unit.isBase
+                      ? ""
+                      : ` (${unit.content} ${selected.baseUnit})`}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
             <Input
               aria-label="Jumlah"
               type="number"
@@ -82,7 +123,10 @@ export function StockItemEditor({
             />
             {showAvailableStock && selected ? (
               <span className="flex h-[42px] items-center text-meta text-ink-muted">
-                Sisa {selected.stock} pcs
+                Sisa {formatMixedStock(selected.stock, selected)}
+                {activeUnit && !activeUnit.isBase
+                  ? ` · ${baseQuantity} ${selected.baseUnit}`
+                  : ""}
               </span>
             ) : null}
             <Button

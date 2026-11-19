@@ -7,7 +7,7 @@ import type {
 } from "@/features/produk/types";
 import { validateSku } from "@/features/produk/data/produk-calculations";
 
-const TEMPLATE_HEADERS = [
+const REQUIRED_HEADERS = [
   "Nama Produk",
   "SKU",
   "Kategori",
@@ -16,6 +16,10 @@ const TEMPLATE_HEADERS = [
   "Stok Awal",
   "Stok Minimum",
 ] as const;
+
+const OPTIONAL_HEADERS = ["Panjang (m)", "Berat (kg)"] as const;
+
+const TEMPLATE_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS] as const;
 
 type TemplateHeader = (typeof TEMPLATE_HEADERS)[number];
 
@@ -27,6 +31,8 @@ const HEADER_ALIASES: Record<TemplateHeader, string[]> = {
   "Harga Jual": ["harga jual", "harga"],
   "Stok Awal": ["stok awal", "stok"],
   "Stok Minimum": ["stok minimum", "batas stok", "min stok"],
+  "Panjang (m)": ["panjang (m)", "panjang", "length"],
+  "Berat (kg)": ["berat (kg)", "berat", "weight"],
 };
 
 function normalizeHeader(value: string): string {
@@ -58,6 +64,20 @@ function parseNumber(value: unknown): number {
   return digits ? Number(digits) : Number.NaN;
 }
 
+/** Desimal opsional; kosong berarti null, koma diterima sebagai titik. */
+function parseOptionalDecimal(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : Number.NaN;
+  }
+
+  const text = String(value ?? "").trim().replace(",", ".");
+  if (!text) return null;
+
+  const normalized = text.replace(/[^\d.-]/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
 function isRowEmpty(row: Record<string, unknown>): boolean {
   return Object.values(row).every((value) => String(value ?? "").trim() === "");
 }
@@ -75,6 +95,8 @@ export async function downloadProductTemplate(
     { wch: 14 },
     { wch: 14 },
     { wch: 12 },
+    { wch: 14 },
+    { wch: 14 },
     { wch: 14 },
   ];
 
@@ -113,7 +135,7 @@ export async function parseProductFile(
 
   const firstRow = rawRows[0] ?? {};
   const headers = Object.keys(firstRow).map(normalizeHeader);
-  const missing = TEMPLATE_HEADERS.filter((header) =>
+  const missing = REQUIRED_HEADERS.filter((header) =>
     HEADER_ALIASES[header].every((alias) => !headers.includes(alias)),
   );
 
@@ -140,6 +162,12 @@ export async function parseProductFile(
       const stock = parseNumber(readCell(row, HEADER_ALIASES["Stok Awal"]));
       const minStock = parseNumber(
         readCell(row, HEADER_ALIASES["Stok Minimum"]),
+      );
+      const lengthM = parseOptionalDecimal(
+        readCell(row, HEADER_ALIASES["Panjang (m)"]),
+      );
+      const weightKg = parseOptionalDecimal(
+        readCell(row, HEADER_ALIASES["Berat (kg)"]),
       );
       const errors: string[] = [];
 
@@ -168,6 +196,12 @@ export async function parseProductFile(
       if (!Number.isFinite(minStock) || minStock < 0) {
         errors.push("Stok minimum tidak valid");
       }
+      if (lengthM !== null && (!Number.isFinite(lengthM) || lengthM <= 0)) {
+        errors.push("Panjang harus berupa angka lebih dari 0");
+      }
+      if (weightKg !== null && (!Number.isFinite(weightKg) || weightKg <= 0)) {
+        errors.push("Berat harus berupa angka lebih dari 0");
+      }
 
       return {
         rowNumber,
@@ -179,6 +213,9 @@ export async function parseProductFile(
         price: Number.isFinite(price) ? price : 0,
         stock: Number.isFinite(stock) ? stock : 0,
         minStock: Number.isFinite(minStock) ? minStock : 0,
+        lengthM: lengthM !== null && Number.isFinite(lengthM) ? lengthM : null,
+        weightKg:
+          weightKg !== null && Number.isFinite(weightKg) ? weightKg : null,
         errors,
       };
     })
@@ -194,5 +231,7 @@ export function toImportPayload(row: ImportProductRow): ImportProductPayload {
     price: row.price,
     stock: row.stock,
     minStock: row.minStock,
+    lengthM: row.lengthM,
+    weightKg: row.weightKg,
   };
 }

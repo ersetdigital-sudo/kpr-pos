@@ -107,7 +107,7 @@ export async function createProductAction(
     return fail("Cabang tidak sesuai akses Anda.");
   }
 
-  return callRpc("fn_create_product", {
+  return callRpc("fn_create_product_with_units", {
     p_name: input.name,
     p_sku: input.sku,
     p_category_id: input.categoryId,
@@ -117,6 +117,18 @@ export async function createProductAction(
     p_min_stock: input.minStock,
     p_wholesale_price: input.wholesalePrice,
     p_branch_id: branchId,
+    p_base_unit: input.baseUnit,
+    p_length_m: input.lengthM,
+    p_weight_kg: input.weightKg,
+    p_units:
+      input.units === null
+        ? null
+        : input.units.map((unit) => ({
+            name: unit.name,
+            content: unit.content,
+            price: unit.price,
+            wholesale_price: unit.wholesalePrice,
+          })),
   });
 }
 
@@ -148,7 +160,7 @@ export async function updateProductAction(
 
   const previousImage = await readProductImageUrl(productId);
 
-  const result = await callRpc("fn_update_product", {
+  const result = await callRpc("fn_update_product_with_units", {
     p_id: productId,
     p_name: input.name,
     p_sku: input.sku,
@@ -158,6 +170,18 @@ export async function updateProductAction(
     p_image_url: input.imageUrl ?? "",
     p_min_stock: input.minStock,
     p_wholesale_price: input.wholesalePrice,
+    p_base_unit: input.baseUnit,
+    p_length_m: input.lengthM,
+    p_weight_kg: input.weightKg,
+    p_units:
+      input.units === null
+        ? null
+        : input.units.map((unit) => ({
+            name: unit.name,
+            content: unit.content,
+            price: unit.price,
+            wholesale_price: unit.wholesalePrice,
+          })),
   });
 
   if (result.ok && previousImage && previousImage !== (input.imageUrl ?? "")) {
@@ -208,6 +232,7 @@ export async function addStockInAction(
     p_user_id: session.employee.id,
     p_items: input.items.map((item) => ({
       product_id: item.productId,
+      unit_id: item.unitId ?? "",
       quantity: item.quantity,
     })),
   });
@@ -246,6 +271,7 @@ export async function transferStockAction(
     p_user_id: session.employee.id,
     p_items: input.items.map((item) => ({
       product_id: item.productId,
+      unit_id: item.unitId ?? "",
       quantity: item.quantity,
     })),
   });
@@ -270,6 +296,8 @@ export async function importProductsAction(
       price: row.price,
       stock: row.stock,
       min_stock: row.minStock,
+      length_m: row.lengthM,
+      weight_kg: row.weightKg,
     })),
   });
 }

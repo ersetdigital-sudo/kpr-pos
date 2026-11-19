@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { formatDateTimeLong } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 import type {
   ProductListSheetMeta,
   ProductRow,
@@ -91,8 +92,8 @@ export function ProductListPrintSheet({
                 <td className="border border-black px-1.5 py-[6px]">
                   {row.categoryName}
                 </td>
-                <td className="border border-black px-1.5 py-[6px] text-right">
-                  {row.stock}
+                <td className="border border-black px-1.5 py-[6px] text-right whitespace-nowrap">
+                  {formatMixedStock(row.stock, row)}
                 </td>
                 <td className="border border-black px-1.5 py-[18px]" />
                 <td className="border border-black px-1.5 py-[18px]" />

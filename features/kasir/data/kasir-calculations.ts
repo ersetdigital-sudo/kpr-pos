@@ -1,23 +1,17 @@
 import { getNextDailyDocumentNumber } from "@/lib/document-number";
+import { resolveUnitPrice } from "@/lib/units";
 import type {
   DiscountType,
-  StockLevel,
   Transaction,
-  TransactionItem,
 } from "@/lib/store/types";
 import type {
-  CartItemInput,
   CartLine,
   CartTotals,
   KasirProduct,
 } from "@/features/kasir/types";
 
 export function getLineUnitPrice(line: CartLine): number {
-  if (line.priceType === "wholesale" && line.product.wholesalePrice > 0) {
-    return line.product.wholesalePrice;
-  }
-
-  return line.product.price;
+  return resolveUnitPrice(line.unit, line.priceType);
 }
 
 export function calculateLineGross(line: CartLine): number {
@@ -45,7 +39,7 @@ export function calculateDiscountAmount(
   return Math.min(subtotal, Math.round(safeValue));
 }
 
-/** Diskon nominal dihitung per pcs; persen dihitung dari total baris. */
+/** Diskon nominal dihitung per satuan jual; persen dari total baris. */
 export function calculateItemDiscount(
   gross: number,
   type: DiscountType,
@@ -130,38 +124,4 @@ export function getNextInvoiceNumber(
     "INV",
     date,
   );
-}
-
-/** Mengembalikan stok cabang saat transaksi direfund. */
-export function restoreStockLevels(
-  stocks: readonly StockLevel[],
-  branchId: string,
-  items: readonly TransactionItem[],
-): StockLevel[] {
-  return stocks.map((stock) => {
-    if (stock.branchId !== branchId) return stock;
-
-    const item = items.find((entry) => entry.productId === stock.productId);
-    if (!item) return stock;
-
-    return { ...stock, quantity: stock.quantity + item.quantity };
-  });
-}
-
-export function reduceStockLevels(
-  stocks: readonly StockLevel[],
-  branchId: string,
-  items: readonly CartItemInput[],
-): StockLevel[] {
-  return stocks.map((stock) => {
-    if (stock.branchId !== branchId) return stock;
-
-    const item = items.find((entry) => entry.productId === stock.productId);
-    if (!item) return stock;
-
-    return {
-      ...stock,
-      quantity: Math.max(0, stock.quantity - item.quantity),
-    };
-  });
 }

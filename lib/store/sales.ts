@@ -15,9 +15,13 @@ export type SalesSource = "Kasir" | "Pesanan Sales";
 interface SalesItem {
   productId: string;
   productName: string;
+  unitName?: string;
   unitPrice: number;
   unitCost?: number;
+  /** Qty dalam satuan jual (dipakai untuk nominal baris). */
   quantity: number;
+  /** Qty dalam satuan dasar (dipakai laporan/bonus). */
+  baseQuantity?: number;
   discountAmount?: number;
 }
 
@@ -76,9 +80,11 @@ function mapItems(items: readonly SalesItem[]): SalesItem[] {
   return items.map((item) => ({
     productId: item.productId,
     productName: item.productName,
+    unitName: item.unitName,
     unitPrice: item.unitPrice,
     unitCost: item.unitCost,
     quantity: item.quantity,
+    baseQuantity: item.baseQuantity ?? item.quantity,
     discountAmount: item.discountAmount,
   }));
 }

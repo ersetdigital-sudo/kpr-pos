@@ -50,6 +50,17 @@ export interface Category {
   isActive: boolean;
 }
 
+export interface ProductUnit {
+  id: string;
+  name: string;
+  /** Isi dalam satuan dasar; minimal 2. */
+  content: number;
+  /** Harga jual per satuan ini. */
+  price: number;
+  /** 0 berarti memakai harga ecer satuan ini. */
+  wholesalePrice: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -59,6 +70,16 @@ export interface Product {
   price: number;
   /** 0 berarti produk tidak punya harga grosir khusus. */
   wholesalePrice?: number;
+  /** Harga modal per satuan dasar. */
+  baseUnit: string;
+  /** Panjang per satuan dasar dalam meter. */
+  lengthM?: number;
+  /** Berat per satuan dasar dalam kg. */
+  weightKg?: number;
+  /** Satuan jual tambahan; kosong berarti hanya satuan dasar. */
+  units: ProductUnit[];
+  /** False bila query satuan gagal; form edit harus mempertahankan satuan. */
+  unitsLoaded?: boolean;
   /** URL siap pakai untuk ditampilkan. */
   imageUrl?: string;
   /** Nilai mentah image_url di database (key R2 atau URL lama). */
@@ -142,10 +163,17 @@ export interface StoreSettings {
 export interface TransactionItem {
   productId: string;
   productName: string;
-  unitPrice: number;
-  /** Harga modal saat transaksi; transaksi lama bisa belum punya nilai ini. */
-  unitCost?: number;
+  /** Snapshot satuan jual; kosong berarti satuan dasar isi 1. */
+  unitId?: string;
+  unitName?: string;
+  unitContent?: number;
+  /** Qty dalam satuan jual (sama dengan qty lama untuk data lama). */
   quantity: number;
+  /** Qty dalam satuan dasar; data lama sama dengan quantity. */
+  baseQuantity?: number;
+  unitPrice: number;
+  /** Harga modal per satuan jual saat transaksi. */
+  unitCost?: number;
   lineTotal: number;
   /** Kosong pada transaksi lama yang dibuat sebelum diskon per item. */
   priceType?: PriceType;
@@ -202,6 +230,10 @@ export interface Transaction {
 
 export interface CartDraftItem {
   productId: string;
+  unitId?: string;
+  unitName?: string;
+  unitContent?: number;
+  /** Qty dalam satuan jual. */
   quantity: number;
 }
 
@@ -246,10 +278,17 @@ export interface Customer {
 export interface SalesOrderItem {
   productId: string;
   productName: string;
-  unitPrice: number;
-  /** Harga modal saat pesanan dibuat; pesanan lama bisa belum punya nilai ini. */
-  unitCost?: number;
+  /** Snapshot satuan jual; kosong berarti satuan dasar isi 1. */
+  unitId?: string;
+  unitName?: string;
+  unitContent?: number;
+  /** Qty dalam satuan jual. */
   quantity: number;
+  /** Qty dalam satuan dasar; data lama sama dengan quantity. */
+  baseQuantity?: number;
+  unitPrice: number;
+  /** Harga modal per satuan jual saat pesanan dibuat. */
+  unitCost?: number;
   priceType?: PriceType;
   discountType?: DiscountType;
   discountValue?: number;

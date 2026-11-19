@@ -92,6 +92,11 @@ export function filterProductRows(
       costPrice: product.costPrice,
       price: product.price,
       wholesalePrice: product.wholesalePrice ?? 0,
+      baseUnit: product.baseUnit,
+      lengthM: product.lengthM,
+      weightKg: product.weightKg,
+      units: product.units,
+      unitsLoaded: product.unitsLoaded,
       imageUrl: product.imageUrl,
       imageKey: product.imageKey,
       stock: stock.quantity,
@@ -361,6 +366,35 @@ export function hasSalesHistory(
   );
 
   return inTransactions || inOrders;
+}
+
+/** Satuan dasar tidak boleh diganti setelah punya stok/riwayat. */
+export function hasStockOrSalesHistory(
+  database: AppDatabase,
+  productId: string,
+): boolean {
+  if (hasSalesHistory(database, productId)) return true;
+
+  if (
+    database.stocks.some(
+      (stock) => stock.productId === productId && stock.quantity !== 0,
+    )
+  ) {
+    return true;
+  }
+
+  const hasStockRecord =
+    database.stockIns.some((record) =>
+      record.items.some((item) => item.productId === productId),
+    ) ||
+    database.stockOpnames.some((record) =>
+      record.items.some((item) => item.productId === productId),
+    ) ||
+    database.stockTransfers.some((record) =>
+      record.items.some((item) => item.productId === productId),
+    );
+
+  return hasStockRecord;
 }
 
 export function validateSku(

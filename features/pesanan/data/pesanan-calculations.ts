@@ -4,6 +4,7 @@ import type { DateRange } from "@/lib/date-range";
 import { isWithinRange } from "@/lib/date-range";
 import { getNextDailyDocumentNumber } from "@/lib/document-number";
 import { formatPercent, formatRupiah } from "@/lib/format";
+import { formatMixedStock, getItemBaseQuantity } from "@/lib/units";
 import {
   isCountedSalesOrder,
   isOverdueTempoSalesOrder,
@@ -26,8 +27,12 @@ import type {
   SalesStats,
 } from "@/features/pesanan/types";
 
+/** Qty pesanan dalam satuan dasar; dipakai bonus/laporan. */
 export function getOrderQuantity(order: SalesOrder): number {
-  return order.items.reduce((total, item) => total + item.quantity, 0);
+  return order.items.reduce(
+    (total, item) => total + getItemBaseQuantity(item),
+    0,
+  );
 }
 
 /** Bonus dihitung dari total pcs dalam periode, sesuai tipe aturan di pengaturan. */
@@ -119,7 +124,7 @@ export function collectBonusEntries(
 
     entry.orderCount += 1;
     entry.quantity += transaction.items.reduce(
-      (total, item) => total + item.quantity,
+      (total, item) => total + getItemBaseQuantity(item),
       0,
     );
     entry.nominal += transaction.total;
@@ -271,6 +276,8 @@ export function buildProductOptions(
           price: product.price,
           wholesalePrice: product.wholesalePrice ?? 0,
           stock: level.quantity,
+          baseUnit: product.baseUnit,
+          units: product.units,
         },
       ];
     });
@@ -311,9 +318,17 @@ export function getStockShortage(
         level.branchId === order.branchId &&
         level.productId === item.productId,
     );
+    const baseQuantity = getItemBaseQuantity(item);
 
-    if (!stock || stock.quantity < item.quantity) {
-      return `Stok ${item.productName} tersisa ${stock?.quantity ?? 0} pcs`;
+    if (!stock || stock.quantity < baseQuantity) {
+      const product = database.products.find(
+        (candidate) => candidate.id === item.productId,
+      );
+      return `Stok ${item.productName} tersisa ${
+        product
+          ? formatMixedStock(stock?.quantity ?? 0, product)
+          : `${stock?.quantity ?? 0} unit dasar`
+      }`;
     }
   }
 
@@ -332,7 +347,10 @@ export function applyOrderStock(
     );
     if (!item) return level;
 
-    return { ...level, quantity: level.quantity - item.quantity };
+    return {
+      ...level,
+      quantity: level.quantity - getItemBaseQuantity(item),
+    };
   });
 }
 
@@ -348,7 +366,10 @@ export function restoreOrderStock(
     );
     if (!item) return level;
 
-    return { ...level, quantity: level.quantity + item.quantity };
+    return {
+      ...level,
+      quantity: level.quantity + getItemBaseQuantity(item),
+    };
   });
 }
 

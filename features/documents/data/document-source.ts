@@ -76,6 +76,8 @@ function buildLines(
   items: readonly {
     productId: string;
     productName: string;
+    unitName?: string;
+    baseQuantity?: number;
     unitPrice: number;
     quantity: number;
     discountAmount?: number;
@@ -87,15 +89,26 @@ function buildLines(
   );
 
   return items.map((item) => {
+    const product = productById.get(item.productId);
     const gross = item.unitPrice * item.quantity;
     const discount = item.discountAmount ?? 0;
+    const baseQuantity = item.baseQuantity ?? item.quantity;
+    const lengthM = product?.lengthM;
+    const weightKg = product?.weightKg;
 
     return {
-      code: productById.get(item.productId)?.sku ?? "-",
+      code: product?.sku ?? "-",
       name: item.productName,
       quantity: item.quantity,
-      unit: DEFAULT_UNIT,
+      baseQuantity,
+      unit: item.unitName || product?.baseUnit || DEFAULT_UNIT,
       unitPrice: item.unitPrice,
+      lengthM,
+      weightKg,
+      totalLengthM:
+        lengthM !== undefined ? baseQuantity * lengthM : undefined,
+      totalWeightKg:
+        weightKg !== undefined ? baseQuantity * weightKg : undefined,
       gross,
       discount,
       amount: item.lineTotal ?? gross - discount,
@@ -350,7 +363,15 @@ export function buildDeliveryNoteView(
     note: record.note,
     totalItems: source.items.length,
     totalQuantity: source.items.reduce(
-      (total, item) => total + item.quantity,
+      (total, item) => total + item.baseQuantity,
+      0,
+    ),
+    totalLengthM: source.items.reduce(
+      (total, item) => total + (item.totalLengthM ?? 0),
+      0,
+    ),
+    totalWeightKg: source.items.reduce(
+      (total, item) => total + (item.totalWeightKg ?? 0),
       0,
     ),
   };

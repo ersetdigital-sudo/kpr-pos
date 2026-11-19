@@ -12,6 +12,7 @@ import {
 import { PaymentSection } from "@/features/kasir/components/PaymentSection";
 import { SalesChargeFields } from "@/features/sales/components/SalesChargeFields";
 import { formatRupiah } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 import type { SalesChargeTotals } from "@/lib/store/charges";
 import type {
   BankAccount,
@@ -36,11 +37,12 @@ interface CartPanelProps {
   onSalesChange: (employeeId: string) => void;
   canEditDiscount: boolean;
   onLineChange: (
-    productId: string,
+    lineKey: string,
     patch: Partial<
       Pick<CartLine, "priceType" | "discountType" | "discountValue">
     >,
   ) => void;
+  onUnitChange: (lineKey: string, unitId: string) => void;
   methods: readonly CashierPaymentMethod[];
   method: CashierPaymentMethod;
   onMethodChange: (method: CashierPaymentMethod) => void;
@@ -56,8 +58,8 @@ interface CartPanelProps {
   onSaveDraft: () => void;
   onCancel: () => void;
   onPay: () => void;
-  onQtyChange: (productId: string, delta: number) => void;
-  onRemoveItem: (productId: string) => void;
+  onQtyChange: (lineKey: string, delta: number) => void;
+  onRemoveItem: (lineKey: string) => void;
   taxEnabled: boolean;
   taxRate: number;
   onTaxEnabledChange: (enabled: boolean) => void;
@@ -81,6 +83,7 @@ export function CartPanel({
   onSalesChange,
   canEditDiscount,
   onLineChange,
+  onUnitChange,
   methods,
   method,
   onMethodChange,
@@ -157,9 +160,19 @@ export function CartPanel({
             </p>
           </div>
         ) : (
-          lines.map((line) => (
+          lines.map((line) => {
+            const baseInCart = lines
+              .filter((item) => item.product.id === line.product.id)
+              .reduce(
+                (total, item) => total + item.quantity * item.unit.content,
+                0,
+              );
+            const canIncrease =
+              baseInCart + line.unit.content <= line.product.stock;
+
+            return (
             <div
-              key={line.product.id}
+              key={line.key}
               className="border-b border-line-faint py-3"
             >
               <div className="flex items-center gap-3">
@@ -168,12 +181,16 @@ export function CartPanel({
                     {line.product.name}
                   </div>
                   <div className="text-meta text-ink-muted">
-                    {formatRupiah(getLineUnitPrice(line))}
+                    {formatRupiah(getLineUnitPrice(line))}/{line.unit.name}
                     {line.priceType === "wholesale" ? " · Grosir" : " · Ecer"}
+                    <span aria-hidden="true"> · </span>
+                    <span>
+                      Sisa {formatMixedStock(line.product.stock, line.product)}
+                    </span>
                     <span aria-hidden="true"> · </span>
                     <button
                       type="button"
-                      onClick={() => onRemoveItem(line.product.id)}
+                      onClick={() => onRemoveItem(line.key)}
                       className="cursor-pointer border-0 bg-transparent p-0 font-sans text-meta text-danger-ink underline"
                     >
                       Hapus
@@ -184,9 +201,9 @@ export function CartPanel({
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    aria-label={`Kurangi ${line.product.name}`}
+                    aria-label={`Kurangi ${line.product.name} ${line.unit.name}`}
                     disabled={line.quantity <= 1}
-                    onClick={() => onQtyChange(line.product.id, -1)}
+                    onClick={() => onQtyChange(line.key, -1)}
                     className="h-8 w-8 cursor-pointer rounded-control border border-line-strong bg-surface font-sans text-[16px] text-ink disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     -
@@ -196,9 +213,9 @@ export function CartPanel({
                   </span>
                   <button
                     type="button"
-                    aria-label={`Tambah ${line.product.name}`}
-                    disabled={line.quantity >= line.product.stock}
-                    onClick={() => onQtyChange(line.product.id, 1)}
+                    aria-label={`Tambah ${line.product.name} ${line.unit.name}`}
+                    disabled={!canIncrease}
+                    onClick={() => onQtyChange(line.key, 1)}
                     className="h-8 w-8 cursor-pointer rounded-control border border-line-strong bg-surface font-sans text-[16px] text-ink disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     +
@@ -211,11 +228,29 @@ export function CartPanel({
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {line.product.units.length > 0 ? (
+                  <select
+                    aria-label={`Satuan ${line.product.name}`}
+                    value={line.unit.id}
+                    onChange={(event) =>
+                      onUnitChange(line.key, event.target.value)
+                    }
+                    className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
+                  >
+                    <option value="">{line.product.baseUnit}</option>
+                    {line.product.units.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.name} ({unit.content} {line.product.baseUnit})
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+
                 <select
                   aria-label={`Jenis harga ${line.product.name}`}
                   value={line.priceType}
                   onChange={(event) =>
-                    onLineChange(line.product.id, {
+                    onLineChange(line.key, {
                       priceType: event.target.value as PriceType,
                     })
                   }
@@ -224,7 +259,7 @@ export function CartPanel({
                   <option value="retail">Ecer</option>
                   <option
                     value="wholesale"
-                    disabled={line.product.wholesalePrice <= 0}
+                    disabled={line.unit.wholesalePrice <= 0}
                   >
                     Grosir
                   </option>
@@ -236,14 +271,14 @@ export function CartPanel({
                       aria-label={`Tipe diskon ${line.product.name}`}
                       value={line.discountType}
                       onChange={(event) =>
-                        onLineChange(line.product.id, {
+                        onLineChange(line.key, {
                           discountType: event.target.value as DiscountType,
                           discountValue: 0,
                         })
                       }
                       className="h-8 cursor-pointer rounded-control border border-line-strong bg-surface px-1.5 font-sans text-meta text-ink"
                     >
-                      <option value="nominal">Rp/pcs</option>
+                      <option value="nominal">Rp/{line.unit.name}</option>
                       <option value="percent">%</option>
                     </select>
                     {line.discountType === "nominal" ? (
@@ -252,7 +287,7 @@ export function CartPanel({
                         prefix={false}
                         value={line.discountValue}
                         onValueChange={(value) =>
-                          onLineChange(line.product.id, {
+                          onLineChange(line.key, {
                             discountValue: value,
                           })
                         }
@@ -272,7 +307,7 @@ export function CartPanel({
                           const safeValue = Number.isFinite(next)
                             ? Math.max(0, next)
                             : 0;
-                          onLineChange(line.product.id, {
+                          onLineChange(line.key, {
                             discountValue: Math.min(100, safeValue),
                           });
                         }}
@@ -288,7 +323,8 @@ export function CartPanel({
                 ) : null}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

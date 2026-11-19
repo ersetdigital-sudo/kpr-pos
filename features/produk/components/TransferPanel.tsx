@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { StockItemEditor } from "@/features/produk/components/StockItemEditor";
 import { transferStock } from "@/features/produk/data/produk-repository";
 import { formatDateLong, formatNumber } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 import type {
   Branch,
   Employee,
@@ -52,6 +53,7 @@ export function TransferPanel({
 
   const branchNameById = (id: string) =>
     branches.find((branch) => branch.id === id)?.name ?? "-";
+  const productById = new Map(products.map((product) => [product.id, product]));
 
   async function handleSubmit() {
     if (saving) return;
@@ -60,6 +62,7 @@ export function TransferPanel({
       .filter((row) => row.productId && row.quantity > 0)
       .map((row) => ({
         productId: row.productId,
+        unitId: row.unitId,
         quantity: Math.round(row.quantity),
       }));
 
@@ -102,10 +105,17 @@ export function TransferPanel({
       header: "Produk",
       cell: (record) => (
         <div className="flex flex-col gap-0.5">
-          {record.items.map((item) => (
-            <span key={item.productId} className="text-ink">
+          {record.items.map((item, index) => (
+            <span key={`${item.productId}-${index}`} className="text-ink">
               {item.productName}{" "}
-              <span className="text-ink-muted">{item.quantity} pcs</span>
+              <span className="text-ink-muted">
+                {productById.has(item.productId)
+                  ? formatMixedStock(
+                      item.quantity,
+                      productById.get(item.productId)!,
+                    )
+                  : `${item.quantity} unit`}
+              </span>
             </span>
           ))}
         </div>
@@ -113,7 +123,7 @@ export function TransferPanel({
     },
     {
       id: "total",
-      header: "Total",
+      header: "Total dasar",
       align: "right",
       cellClassName: "font-bold text-ink",
       cell: (record) =>

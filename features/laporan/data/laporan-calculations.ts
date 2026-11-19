@@ -214,7 +214,7 @@ export function buildReportData(
         name: item.productName,
         quantity: 0,
       };
-      existing.quantity += item.quantity;
+      existing.quantity += item.baseQuantity ?? item.quantity;
       soldByProduct.set(item.productId, existing);
     });
   });

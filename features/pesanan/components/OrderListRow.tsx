@@ -189,7 +189,7 @@ export function OrderListRow(props: OrderListItemProps) {
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-ink-muted">
           <span className="font-semibold text-ink">
-            {formatNumber(order.quantity)} pcs
+            {formatNumber(order.quantity)} unit dasar
           </span>
           {showSales ? (
             <>
@@ -238,7 +238,7 @@ export function OrderCard(props: OrderListItemProps) {
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0 text-meta text-ink-muted">
           <div className="text-label font-semibold text-ink">
-            {formatNumber(order.quantity)} pcs
+            {formatNumber(order.quantity)} unit dasar
             {showSales && order.salesName ? ` · ${order.salesName}` : ""}
           </div>
           {showSales ? <div className="truncate">{order.branchName}</div> : null}

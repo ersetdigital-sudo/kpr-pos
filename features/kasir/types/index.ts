@@ -6,12 +6,14 @@ import type {
   DiscountType,
   Employee,
   PriceType,
+  ProductUnit,
   ReceiptPaperSize,
   SalesOrder,
   ShippingMethod,
   StoreSettings,
   Transaction,
 } from "@/lib/store/types";
+import type { SellingUnit } from "@/lib/units";
 import type { PaymentMethod } from "@/types";
 
 /** Metode di kasir: metode biasa + COD/Tempo untuk pesanan sales. */
@@ -32,6 +34,8 @@ export interface KasirProduct {
   wholesalePrice: number;
   costPrice: number;
   stock: number;
+  baseUnit: string;
+  units: ProductUnit[];
   categoryId: string;
   categoryName: string;
   imageUrl?: string;
@@ -43,7 +47,10 @@ export interface KasirCategory {
 }
 
 export interface CartLine {
+  /** Unik per kombinasi produk + satuan. */
+  key: string;
   product: KasirProduct;
+  unit: SellingUnit;
   quantity: number;
   priceType: PriceType;
   discountType: DiscountType;
@@ -52,6 +59,8 @@ export interface CartLine {
 
 export interface CartItemInput {
   productId: string;
+  /** Kosong berarti satuan dasar. */
+  unitId?: string;
   quantity: number;
   priceType?: PriceType;
   discountType?: DiscountType;

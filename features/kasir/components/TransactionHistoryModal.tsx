@@ -96,7 +96,7 @@ export function TransactionHistoryModal({
       header: "Item",
       align: "right",
       cellClassName: "whitespace-nowrap text-ink-soft",
-      cell: (row) => `${row.itemCount} pcs`,
+      cell: (row) => `${row.itemCount} unit dasar`,
     },
     {
       id: "method",

@@ -3,6 +3,7 @@
 import { ImageWithFallback } from "@/components/ui/ImageWithFallback";
 import { cn } from "@/lib/cn";
 import { formatRupiah } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 import type { KasirProduct } from "@/features/kasir/types";
 
 interface ProductCardProps {
@@ -39,7 +40,9 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
               : "text-ink-muted",
           )}
         >
-          {outOfStock ? "Stok habis" : `Stok ${product.stock}`}
+          {outOfStock
+            ? "Stok habis"
+            : `Stok ${formatMixedStock(product.stock, product)}`}
         </span>
       </div>
     </button>

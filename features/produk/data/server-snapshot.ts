@@ -28,8 +28,20 @@ interface ProductRow {
   cost_price: number;
   price: number;
   wholesale_price: number;
+  base_unit: string;
+  length_m: number | string | null;
+  weight_kg: number | string | null;
   image_url: string | null;
   is_active: boolean;
+}
+
+interface ProductUnitRow {
+  id: string;
+  product_id: string;
+  name: string;
+  content: number;
+  price: number;
+  wholesale_price: number;
 }
 
 interface StockRow {
@@ -105,22 +117,42 @@ export async function readProductStockSnapshot(
     canManageProducts || session.permissions.canViewProducts;
   const since = syncWindowStartDate();
 
-  const [categoryResult, productResult, stockResult] = await Promise.all([
-    admin.from("categories").select("id,name,is_active").order("name"),
-    admin
-      .from("products")
-      .select(
-        "id,name,sku,category_id,cost_price,price,wholesale_price,image_url,is_active",
-      )
-      .order("name"),
-    admin
-      .from("stock_levels")
-      .select("branch_id,product_id,quantity,min_stock,is_visible"),
-  ]);
+  const [categoryResult, productResult, stockResult, unitResult] =
+    await Promise.all([
+      admin.from("categories").select("id,name,is_active").order("name"),
+      admin
+        .from("products")
+        .select(
+          "id,name,sku,category_id,cost_price,price,wholesale_price,base_unit,length_m,weight_kg,image_url,is_active",
+        )
+        .order("name"),
+      admin
+        .from("stock_levels")
+        .select("branch_id,product_id,quantity,min_stock,is_visible"),
+      admin
+        .from("product_units")
+        .select("id,product_id,name,content,price,wholesale_price")
+        .order("content"),
+    ]);
 
   const error =
     categoryResult.error ?? productResult.error ?? stockResult.error;
   if (error) throw new Error(error.message);
+
+  // Satuan tambahan tidak boleh membuat Kasir/Produk mati; fallback ke dasar.
+  if (unitResult.error) {
+    console.error("Gagal memuat satuan produk:", unitResult.error.message);
+  }
+
+  const unitsByProduct = new Map<string, ProductUnitRow[]>();
+
+  if (!unitResult.error) {
+    ((unitResult.data ?? []) as ProductUnitRow[]).forEach((row) => {
+      const current = unitsByProduct.get(row.product_id) ?? [];
+      current.push(row);
+      unitsByProduct.set(row.product_id, current);
+    });
+  }
 
   const categories: Category[] = (
     (categoryResult.data ?? []) as CategoryRow[]
@@ -139,6 +171,23 @@ export async function readProductStockSnapshot(
       costPrice: row.cost_price,
       price: row.price,
       wholesalePrice: row.wholesale_price,
+      baseUnit: row.base_unit || "pcs",
+      lengthM:
+        row.length_m === null || row.length_m === undefined
+          ? undefined
+          : Number(row.length_m),
+      weightKg:
+        row.weight_kg === null || row.weight_kg === undefined
+          ? undefined
+          : Number(row.weight_kg),
+      units: (unitsByProduct.get(row.id) ?? []).map((unit) => ({
+        id: unit.id,
+        name: unit.name,
+        content: unit.content,
+        price: unit.price,
+        wholesalePrice: unit.wholesale_price,
+      })),
+      unitsLoaded: !unitResult.error,
       imageUrl: resolveProductImageUrl(row.image_url),
       imageKey: row.image_url ?? undefined,
       isActive: row.is_active,

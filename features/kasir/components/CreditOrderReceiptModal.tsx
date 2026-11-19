@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { getDatabase } from "@/lib/store/store";
 import { formatDateLong, formatDateTimeLong, formatPercent, formatRupiah } from "@/lib/format";
+import { getItemUnitName } from "@/lib/units";
 import type { SalesOrder } from "@/lib/store/types";
 
 interface CreditOrderReceiptModalProps {
@@ -117,7 +118,8 @@ export function CreditOrderReceiptModal({
             <div className="min-w-0 flex-1">
               <div className="font-semibold">{item.productName}</div>
               <div>
-                {item.quantity} × {formatRupiah(item.unitPrice)}
+                {item.quantity} {getItemUnitName(item)} ×{" "}
+                {formatRupiah(item.unitPrice)}
                 {item.discountAmount
                   ? ` · diskon ${formatRupiah(item.discountAmount)}`
                   : ""}

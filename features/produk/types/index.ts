@@ -2,6 +2,7 @@ import type {
   Branch,
   Category,
   Product,
+  ProductUnit,
   StockInRecord,
   StockLevel,
   StockOpnameRecord,
@@ -22,6 +23,11 @@ export interface ProductRow {
   costPrice: number;
   price: number;
   wholesalePrice: number;
+  baseUnit: string;
+  lengthM?: number;
+  weightKg?: number;
+  units: ProductUnit[];
+  unitsLoaded?: boolean;
   /** URL siap pakai untuk ditampilkan. */
   imageUrl?: string;
   /** Nilai mentah image_url di database (key R2 atau URL lama). */
@@ -75,6 +81,13 @@ export interface ProdukData {
   stockTransfers: StockTransferRecord[];
 }
 
+export interface ProductUnitInput {
+  name: string;
+  content: number;
+  price: number;
+  wholesalePrice: number;
+}
+
 export interface ProductFormInput {
   name: string;
   sku: string;
@@ -84,6 +97,11 @@ export interface ProductFormInput {
   wholesalePrice: number;
   imageUrl?: string;
   minStock: number;
+  baseUnit: string;
+  lengthM: number | null;
+  weightKg: number | null;
+  /** Null berarti pertahankan satuan yang sudah ada (data gagal dimuat). */
+  units: ProductUnitInput[] | null;
 }
 
 export interface CategoryUsage {
@@ -93,12 +111,15 @@ export interface CategoryUsage {
 
 export interface StockInFormItem {
   productId: string;
+  /** Kosong berarti satuan dasar. */
+  unitId?: string;
   quantity: number;
 }
 
 export interface StockRowInput {
   key: string;
   productId: string;
+  unitId: string;
   quantity: number;
 }
 
@@ -107,6 +128,8 @@ export interface StockProductOption {
   name: string;
   sku: string;
   stock: number;
+  baseUnit: string;
+  units: ProductUnit[];
 }
 
 export interface StockInInput {
@@ -118,8 +141,8 @@ export interface StockInInput {
 export interface OpnameInput {
   date: string;
   note: string;
-  /** productId -> stok fisik hasil hitung. */
-  physical: Record<string, number>;
+  /** productId -> stok fisik dalam satuan yang dipilih. */
+  physical: Record<string, { quantity: number; unitId: string }>;
 }
 
 export interface TransferInput {
@@ -139,6 +162,8 @@ export interface ImportProductRow {
   price: number;
   stock: number;
   minStock: number;
+  lengthM: number | null;
+  weightKg: number | null;
   errors: string[];
 }
 
@@ -150,6 +175,8 @@ export interface ImportProductPayload {
   price: number;
   stock: number;
   minStock: number;
+  lengthM: number | null;
+  weightKg: number | null;
 }
 
 export interface DeleteProductResult {

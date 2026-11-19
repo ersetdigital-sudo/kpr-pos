@@ -46,6 +46,12 @@ import { getTempoTenorOptions } from "@/features/pesanan/data/pesanan-calculatio
 import { usePermissions } from "@/features/session/data/session-repository";
 import { getDatabase } from "@/lib/store/store";
 import { formatRupiah } from "@/lib/format";
+import {
+  buildCartLineKey,
+  findSellingUnit,
+  formatMixedStock,
+  getItemBaseQuantity,
+} from "@/lib/units";
 import type {
   SalesOrder,
   ShippingMethod,
@@ -124,17 +130,25 @@ export function KasirWorkspace() {
 
   const lines: CartLine[] = items.flatMap((item) => {
     const product = productMap.get(item.productId);
-    return product
-      ? [
-          {
-            product,
-            quantity: item.quantity,
-            priceType: item.priceType ?? "retail",
-            discountType: item.discountType ?? "nominal",
-            discountValue: item.discountValue ?? 0,
-          },
-        ]
-      : [];
+    if (!product) return [];
+
+    const foundUnit = item.unitId
+      ? findSellingUnit(product, item.unitId)
+      : findSellingUnit(product, "");
+    const unit = foundUnit ?? findSellingUnit(product, "");
+    if (!unit) return [];
+
+    return [
+      {
+        key: buildCartLineKey(product.id, unit.id),
+        product,
+        unit,
+        quantity: item.quantity,
+        priceType: item.priceType ?? "retail",
+        discountType: item.discountType ?? "nominal",
+        discountValue: item.discountValue ?? 0,
+      },
+    ];
   });
 
   const canEditDiscount = permissions.canApplyDiscount;
@@ -216,28 +230,45 @@ export function KasirWorkspace() {
     transferReady &&
     (!isCreditMethod || creditReady);
 
+  function baseQuantityInCart(productId: string, ignoreKey?: string): number {
+    return items.reduce((total, item) => {
+      if (item.productId !== productId) return total;
+
+      const key = buildCartLineKey(item.productId, item.unitId ?? "");
+      if (ignoreKey && key === ignoreKey) return total;
+
+      const product = productMap.get(item.productId);
+      if (!product) return total;
+
+      const unit = item.unitId
+        ? findSellingUnit(product, item.unitId)
+        : findSellingUnit(product, "");
+      return total + item.quantity * (unit?.content ?? 1);
+    }, 0);
+  }
+
   function handleAddProduct(product: KasirProduct) {
     if (product.stock <= 0) {
       showToast(`Stok ${product.name} habis`, "error");
       return;
     }
 
-    const currentQuantity =
-      items.find((item) => item.productId === product.id)?.quantity ?? 0;
-
-    if (currentQuantity >= product.stock) {
-      showToast(`Stok ${product.name} hanya ${product.stock}`, "error");
+    if (baseQuantityInCart(product.id) + 1 > product.stock) {
+      showToast(
+        `Stok ${product.name} hanya ${formatMixedStock(product.stock, product)}`,
+        "error",
+      );
       return;
     }
 
     setItems((current) => {
       const existing = current.find(
-        (item) => item.productId === product.id,
+        (item) => item.productId === product.id && !item.unitId,
       );
 
       if (existing) {
         return current.map((item) =>
-          item.productId === product.id
+          item === existing
             ? { ...item, quantity: item.quantity + 1 }
             : item,
         );
@@ -247,6 +278,7 @@ export function KasirWorkspace() {
         ...current,
         {
           productId: product.id,
+          unitId: "",
           quantity: 1,
           priceType: "retail",
           discountType: "nominal",
@@ -257,12 +289,20 @@ export function KasirWorkspace() {
     showToast(`${product.name} ditambahkan`, "success");
   }
 
-  function handleQtyChange(productId: string, delta: number) {
-    const line = lines.find((item) => item.product.id === productId);
+  function handleQtyChange(lineKey: string, delta: number) {
+    const line = lines.find((item) => item.key === lineKey);
     if (!line) return;
 
-    if (delta > 0 && line.quantity >= line.product.stock) {
-      showToast(`Stok ${line.product.name} hanya ${line.product.stock}`, "error");
+    if (
+      delta > 0 &&
+      baseQuantityInCart(line.product.id, lineKey) +
+        (line.quantity + 1) * line.unit.content >
+        line.product.stock
+    ) {
+      showToast(
+        `Stok ${line.product.name} hanya ${formatMixedStock(line.product.stock, line.product)}`,
+        "error",
+      );
       return;
     }
 
@@ -270,17 +310,20 @@ export function KasirWorkspace() {
 
     setItems((current) =>
       current.map((item) =>
-        item.productId === productId
+        buildCartLineKey(item.productId, item.unitId ?? "") === lineKey
           ? { ...item, quantity: item.quantity + delta }
           : item,
       ),
     );
   }
 
-  function handleRemoveItem(productId: string) {
-    const line = lines.find((item) => item.product.id === productId);
+  function handleRemoveItem(lineKey: string) {
+    const line = lines.find((item) => item.key === lineKey);
     setItems((current) =>
-      current.filter((item) => item.productId !== productId),
+      current.filter(
+        (item) =>
+          buildCartLineKey(item.productId, item.unitId ?? "") !== lineKey,
+      ),
     );
     showToast(
       line ? `${line.product.name} dihapus` : "Produk dihapus",
@@ -289,14 +332,53 @@ export function KasirWorkspace() {
   }
 
   function handleLineChange(
-    productId: string,
+    lineKey: string,
     patch: Partial<
       Pick<CartLine, "priceType" | "discountType" | "discountValue">
     >,
   ) {
     setItems((current) =>
       current.map((item) =>
-        item.productId === productId ? { ...item, ...patch } : item,
+        buildCartLineKey(item.productId, item.unitId ?? "") === lineKey
+          ? { ...item, ...patch }
+          : item,
+      ),
+    );
+  }
+
+  function handleUnitChange(lineKey: string, unitId: string) {
+    const line = lines.find((item) => item.key === lineKey);
+    if (!line) return;
+
+    const unit = findSellingUnit(line.product, unitId);
+    if (!unit) return;
+
+    if (
+      baseQuantityInCart(line.product.id, lineKey) +
+        line.quantity * unit.content >
+      line.product.stock
+    ) {
+      showToast(
+        `Stok ${line.product.name} tidak cukup untuk ${line.quantity} ${unit.name}`,
+        "error",
+      );
+      return;
+    }
+
+    setItems((current) =>
+      current.map((item) =>
+        buildCartLineKey(item.productId, item.unitId ?? "") === lineKey
+          ? {
+              ...item,
+              unitId: unit.id,
+              priceType:
+                item.priceType === "wholesale" && unit.wholesalePrice <= 0
+                  ? "retail"
+                  : item.priceType,
+              discountType: "nominal",
+              discountValue: 0,
+            }
+          : item,
       ),
     );
   }
@@ -352,6 +434,9 @@ export function KasirWorkspace() {
 
     const draft = summary.draft;
     const restored: CartItemInput[] = [];
+    const remainingStock = new Map(
+      data.products.map((product) => [product.id, product.stock]),
+    );
     let adjusted = false;
 
     draft.items.forEach((item) => {
@@ -362,17 +447,42 @@ export function KasirWorkspace() {
         return;
       }
 
-      const quantity = Math.min(item.quantity, product.stock);
-      if (quantity < item.quantity) adjusted = true;
-      if (quantity > 0) {
-        restored.push({
-          productId: item.productId,
-          quantity,
-          priceType: "retail",
-          discountType: "nominal",
-          discountValue: 0,
-        });
+      const foundUnit = item.unitId
+        ? findSellingUnit(product, item.unitId)
+        : item.unitContent && item.unitContent > 1
+          ? undefined
+          : findSellingUnit(product, "");
+      const unit = foundUnit ?? findSellingUnit(product, "");
+      if (!unit) {
+        adjusted = true;
+        return;
       }
+
+      const baseQuantity =
+        foundUnit === undefined
+          ? item.quantity * (item.unitContent ?? 1)
+          : item.quantity * unit.content;
+      const available = remainingStock.get(product.id) ?? product.stock;
+      const maxQuantity = Math.floor(available / unit.content);
+      const requestedQuantity =
+        foundUnit === undefined ? baseQuantity : item.quantity;
+      const quantity = Math.min(requestedQuantity, maxQuantity);
+
+      if (quantity < requestedQuantity) adjusted = true;
+      if (quantity <= 0) return;
+
+      restored.push({
+        productId: item.productId,
+        unitId: unit.id,
+        quantity,
+        priceType: "retail",
+        discountType: "nominal",
+        discountValue: 0,
+      });
+      remainingStock.set(
+        product.id,
+        available - quantity * unit.content,
+      );
     });
 
     if (restored.length === 0) {
@@ -461,6 +571,7 @@ export function KasirWorkspace() {
     }
 
     const restored: CartItemInput[] = [];
+    const baseByProduct = new Map<string, number>();
 
     for (const item of order.items) {
       const product = productMap.get(item.productId);
@@ -470,18 +581,51 @@ export function KasirWorkspace() {
         return;
       }
 
-      if (item.quantity > product.stock) {
-        showToast(`Stok ${product.name} tersisa ${product.stock}`, "error");
+      if (!item.unitId && (item.unitContent ?? 1) > 1) {
+        showToast(
+          `Satuan ${item.unitName ?? "pesanan"} untuk ${product.name} sudah dihapus. Buat ulang pesanan atau batalkan.`,
+          "error",
+        );
         return;
       }
 
+      const unit = item.unitId
+        ? findSellingUnit(product, item.unitId)
+        : findSellingUnit(product, "");
+      if (!unit) {
+        showToast(
+          `Satuan ${item.unitName ?? "pesanan"} untuk ${product.name} sudah tidak tersedia`,
+          "error",
+        );
+        return;
+      }
+
+      baseByProduct.set(
+        product.id,
+        (baseByProduct.get(product.id) ?? 0) + getItemBaseQuantity(item),
+      );
+
       restored.push({
         productId: item.productId,
+        unitId: item.unitId ?? "",
         quantity: item.quantity,
         priceType: item.priceType ?? "retail",
         discountType: item.discountType ?? "nominal",
         discountValue: item.discountValue ?? 0,
       });
+    }
+
+    for (const [productId, baseQuantity] of baseByProduct) {
+      const product = productMap.get(productId);
+      if (!product) continue;
+
+      if (baseQuantity > product.stock) {
+        showToast(
+          `Stok ${product.name} tersisa ${formatMixedStock(product.stock, product)}`,
+          "error",
+        );
+        return;
+      }
     }
 
     if (restored.length === 0) {
@@ -780,6 +924,7 @@ export function KasirWorkspace() {
           onSalesChange={setSalesEmployeeId}
           canEditDiscount={canEditDiscount}
           onLineChange={handleLineChange}
+          onUnitChange={handleUnitChange}
           methods={availableMethods}
           method={activeMethod}
           onMethodChange={setMethod}

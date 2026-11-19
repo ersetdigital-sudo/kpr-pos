@@ -24,6 +24,7 @@ import {
   calculateProductStats,
   filterProductRows,
   hasSalesHistory,
+  hasStockOrSalesHistory,
   isProductVisibleInScope,
 } from "@/features/produk/data/produk-calculations";
 import { exportProductListExcel } from "@/features/produk/data/produk-opname-excel";
@@ -40,7 +41,8 @@ import {
   useSession,
 } from "@/features/session/data/session-repository";
 import { toDateInputValue } from "@/lib/date-range";
-import { formatDateLong, formatNumber } from "@/lib/format";
+import { formatDateLong } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 import type { AppDatabase, Branch } from "@/lib/store/types";
 import type {
   ProductFilters,
@@ -128,7 +130,7 @@ export function ProductPageContent() {
 
     if (product.isVisible && product.stock > 0) {
       showToast(
-        `Stok ${product.name} di ${scopeName} masih ${formatNumber(product.stock)} pcs. Kosongkan stok dulu sebelum disembunyikan.`,
+        `Stok ${product.name} di ${scopeName} masih ${formatMixedStock(product.stock, product)}. Kosongkan stok dulu sebelum disembunyikan.`,
         "error",
       );
       return;
@@ -345,6 +347,8 @@ function ProductPageBody({
         name: product.name,
         sku: product.sku,
         stock: stockByProduct.get(product.id) ?? 0,
+        baseUnit: product.baseUnit,
+        units: product.units,
       }));
   }, [database, branchId]);
 
@@ -515,6 +519,10 @@ function ProductPageBody({
         categories={database.categories}
         branchId={createBranchId}
         branchName={createBranchName}
+        baseUnitLocked={
+          editing ? hasStockOrSalesHistory(database, editing.id) : false
+        }
+        unitsLoaded={editing ? editing.unitsLoaded !== false : true}
         onClose={onCloseForm}
       />
 

@@ -6,9 +6,11 @@ import { Card } from "@/components/ui/Card";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { submitOpname } from "@/features/produk/data/produk-repository";
-import { formatDateLong, formatNumber } from "@/lib/format";
+import { formatDateLong } from "@/lib/format";
+import { buildSellingUnits, formatMixedStock } from "@/lib/units";
 import type { Employee, StockOpnameRecord } from "@/lib/store/types";
 import type { StockProductOption } from "@/features/produk/types";
 
@@ -19,6 +21,11 @@ interface OpnamePanelProps {
   branchName: string;
   today: string;
   canManage: boolean;
+}
+
+interface OpnameDraft {
+  quantity: string;
+  unitId: string;
 }
 
 export function OpnamePanel({
@@ -32,18 +39,55 @@ export function OpnamePanel({
   const { showToast } = useToast();
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
-  const [physical, setPhysical] = useState<Record<string, number>>({});
+  const [drafts, setDrafts] = useState<Record<string, OpnameDraft>>({});
   const [saving, setSaving] = useState(false);
+
+  const productById = new Map(products.map((product) => [product.id, product]));
+
+  function updateDraft(productId: string, patch: Partial<OpnameDraft>) {
+    setDrafts((current) => ({
+      ...current,
+      [productId]: {
+        quantity: current[productId]?.quantity ?? "",
+        unitId: current[productId]?.unitId ?? "",
+        ...patch,
+      },
+    }));
+  }
 
   async function handleSubmit() {
     if (saving) return;
+
+    const physical: Record<string, { quantity: number; unitId: string }> = {};
+
+    for (const [productId, draft] of Object.entries(drafts)) {
+      const text = draft.quantity.trim();
+      if (!text) continue;
+
+      const quantity = Number(text);
+      if (!Number.isFinite(quantity) || quantity < 0) {
+        showToast("Stok fisik tidak boleh negatif", "error");
+        return;
+      }
+
+      physical[productId] = {
+        quantity: Math.round(quantity),
+        unitId: draft.unitId,
+      };
+    }
+
+    if (Object.keys(physical).length === 0) {
+      showToast("Isi minimal satu stok fisik", "error");
+      return;
+    }
+
     setSaving(true);
 
     try {
       await submitOpname({ date, note, physical });
       showToast("Stok opname disimpan dan stok disesuaikan", "success");
       setNote("");
-      setPhysical({});
+      setDrafts({});
     } catch (caught) {
       showToast(
         caught instanceof Error ? caught.message : "Opname gagal disimpan",
@@ -72,40 +116,104 @@ export function OpnamePanel({
       id: "system",
       header: "Stok Sistem",
       align: "right",
-      cellClassName: "font-semibold text-ink-soft",
-      cell: (product) => formatNumber(product.stock),
+      cellClassName: "font-semibold text-ink-soft whitespace-nowrap",
+      cell: (product) => formatMixedStock(product.stock, product),
     },
     {
       id: "physical",
       header: "Stok Fisik",
       align: "right",
-      cell: (product) => (
-        <Input
-          aria-label={`Stok fisik ${product.name}`}
-          type="number"
-          min={0}
-          inputMode="numeric"
-          value={physical[product.id] ?? product.stock}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            setPhysical((current) => ({
-              ...current,
-              [product.id]: Number.isFinite(next)
-                ? Math.max(0, Math.round(next))
-                : 0,
-            }));
-          }}
-          className="ml-auto h-[34px] w-[84px] text-right text-label"
-        />
-      ),
+      cell: (product) => {
+        const unitOptions = buildSellingUnits({
+          baseUnit: product.baseUnit,
+          price: 0,
+          units: product.units,
+        });
+        const draft = drafts[product.id];
+        const unitId = draft?.unitId ?? "";
+        const activeUnit =
+          unitOptions.find((unit) => unit.id === unitId) ?? unitOptions[0];
+        const rawQuantity =
+          draft?.quantity !== undefined
+            ? draft.quantity
+            : unitId === ""
+              ? String(product.stock)
+              : "";
+
+        return (
+          <div className="flex min-w-[190px] flex-col items-end gap-1.5 sm:flex-row sm:justify-end">
+            {unitOptions.length > 1 ? (
+              <Select
+                aria-label={`Satuan stok fisik ${product.name}`}
+                value={unitId}
+                onChange={(event) =>
+                  updateDraft(product.id, {
+                    unitId: event.target.value,
+                    quantity:
+                      event.target.value === ""
+                        ? String(product.stock)
+                        : "",
+                  })
+                }
+                className="h-[34px] w-full px-1.5 text-label sm:w-[104px]"
+              >
+                {unitOptions.map((unit) => (
+                  <option key={unit.id || "base"} value={unit.id}>
+                    {unit.name}
+                    {unit.isBase ? "" : ` (${unit.content})`}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+            <Input
+              aria-label={`Stok fisik ${product.name}`}
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={rawQuantity}
+              placeholder="0"
+              onChange={(event) =>
+                updateDraft(product.id, { quantity: event.target.value })
+              }
+              className="ml-auto h-[34px] w-[92px] text-right text-label"
+            />
+            {activeUnit && !activeUnit.isBase ? (
+              <span className="text-meta text-ink-muted">
+                {activeUnit.content} {product.baseUnit}
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       id: "difference",
       header: "Selisih",
       align: "right",
       cell: (product) => {
+        const draft = drafts[product.id];
+        const text = draft?.quantity.trim() ?? "";
+
+        if (!text) {
+          return <span className="text-ink-muted">—</span>;
+        }
+
+        const unitOptions = buildSellingUnits({
+          baseUnit: product.baseUnit,
+          price: 0,
+          units: product.units,
+        });
+        const activeUnit =
+          unitOptions.find((unit) => unit.id === draft.unitId) ??
+          unitOptions[0];
+        const quantity = Number(text);
+
+        if (!Number.isFinite(quantity)) {
+          return <span className="text-ink-muted">—</span>;
+        }
+
         const difference =
-          (physical[product.id] ?? product.stock) - product.stock;
+          Math.round(quantity) * activeUnit.content - product.stock;
 
         return (
           <span
@@ -118,7 +226,7 @@ export function OpnamePanel({
             }
           >
             {difference > 0 ? "+" : ""}
-            {formatNumber(difference)}
+            {formatMixedStock(difference, product)}
           </span>
         );
       },
@@ -137,22 +245,38 @@ export function OpnamePanel({
       header: "Penyesuaian",
       cell: (record) => (
         <div className="flex flex-col gap-0.5">
-          {record.items.map((item) => (
-            <span key={item.productId} className="text-ink">
-              {item.productName}{" "}
-              <span
-                className={
-                  item.difference > 0 ? "text-success-ink" : "text-danger-ink"
-                }
-              >
-                {item.difference > 0 ? "+" : ""}
-                {item.difference}
-              </span>{" "}
-              <span className="text-meta text-ink-muted">
-                ({item.systemQuantity} → {item.physicalQuantity})
+          {record.items.map((item) => {
+            const product = productById.get(item.productId);
+
+            return (
+              <span key={item.productId} className="text-ink">
+                {item.productName}{" "}
+                <span
+                  className={
+                    item.difference > 0
+                      ? "text-success-ink"
+                      : "text-danger-ink"
+                  }
+                >
+                  {item.difference > 0 ? "+" : ""}
+                  {product
+                    ? formatMixedStock(item.difference, product)
+                    : `${item.difference} unit`}
+                </span>{" "}
+                <span className="text-meta text-ink-muted">
+                  (
+                  {product
+                    ? formatMixedStock(item.systemQuantity, product)
+                    : item.systemQuantity}{" "}
+                  →{" "}
+                  {product
+                    ? formatMixedStock(item.physicalQuantity, product)
+                    : item.physicalQuantity}
+                  )
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
       ),
     },
@@ -187,8 +311,8 @@ export function OpnamePanel({
               Stok Opname
             </h2>
             <p className="mt-0.5 mb-0 text-label text-ink-muted">
-              Masukkan hasil hitung fisik cabang {branchName}. Sistem mencatat
-              selisihnya.
+              Masukkan hasil hitung fisik cabang {branchName}. Pilih satuan bila
+              menghitung per kubik/rit; sistem mengonversi ke satuan dasar.
             </p>
           </div>
 
@@ -220,7 +344,7 @@ export function OpnamePanel({
                 columns={inputColumns}
                 rows={products}
                 rowKey={(product) => product.id}
-                minWidth={520}
+                minWidth={640}
                 density="roomy"
                 headerTone="soft"
               />

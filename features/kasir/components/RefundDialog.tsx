@@ -69,7 +69,8 @@ export function RefundDialog({
         </div>
 
         <p className="m-0 rounded-control border border-danger-line bg-danger-soft px-3 py-2 text-meta text-danger-ink">
-          {row.itemCount} pcs akan dikembalikan ke stok {branchName}. Tindakan
+          {row.itemCount} unit dasar akan dikembalikan ke stok {branchName}.
+          Tindakan
           ini tidak bisa dibatalkan.
         </p>
 

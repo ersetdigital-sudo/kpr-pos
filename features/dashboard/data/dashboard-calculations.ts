@@ -105,6 +105,8 @@ export function buildDashboardData(
         name: product.name,
         branch: branchById.get(level.branchId)?.name ?? "Cabang",
         remaining: level.quantity,
+        baseUnit: product.baseUnit,
+        units: product.units,
       });
     });
   });

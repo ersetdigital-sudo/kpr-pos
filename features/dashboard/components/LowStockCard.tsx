@@ -7,7 +7,7 @@ import { DashboardCard } from "@/features/dashboard/components/DashboardCard";
 import { canAccessPath } from "@/config/navigation";
 import { usePermissions } from "@/features/session/data/session-repository";
 import type { LowStockProduct } from "@/features/dashboard/types";
-import { formatNumber } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 
 interface LowStockCardProps {
   products: readonly LowStockProduct[];
@@ -50,7 +50,8 @@ export function LowStockCard({ products }: LowStockCardProps) {
                   {product.name}
                 </div>
                 <div className="mt-0.5 text-meta text-ink-muted">
-                  {product.branch} · Sisa {formatNumber(product.remaining)}
+                  {product.branch} · Sisa{" "}
+                  {formatMixedStock(product.remaining, product)}
                 </div>
               </div>
               <StatusBadge

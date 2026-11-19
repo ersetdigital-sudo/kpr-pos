@@ -1,4 +1,5 @@
 import { formatPercent, formatRupiah } from "@/lib/format";
+import { formatDecimal } from "@/lib/units";
 import { terbilangRupiah } from "@/lib/terbilang";
 import { DocumentLetterhead } from "@/features/documents/components/DocumentLetterhead";
 import { formatDocumentDate } from "@/features/documents/data/print-helpers";
@@ -41,6 +42,14 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
     data.shippingMethod === "free"
       ? "Gratis"
       : formatRupiah(data.shippingCost);
+  const hasLength = data.items.some(
+    (item) => item.totalLengthM !== undefined,
+  );
+  const hasWeight = data.items.some(
+    (item) => item.totalWeightKg !== undefined,
+  );
+  const nameWidth =
+    hasLength && hasWeight ? "21%" : hasLength || hasWeight ? "29%" : "37%";
 
   return (
     <article className="document-paper document-paper--a4 bg-white text-black">
@@ -104,9 +113,11 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
         <colgroup>
           <col className="w-[7%]" />
           <col className="w-[16%]" />
-          <col className="w-[37%]" />
+          <col style={{ width: nameWidth }} />
           <col className="w-[8%]" />
           <col className="w-[9%]" />
+          {hasLength ? <col className="w-[8%]" /> : null}
+          {hasWeight ? <col className="w-[8%]" /> : null}
           <col className="w-[10%]" />
           <col className="w-[13%]" />
         </colgroup>
@@ -117,6 +128,12 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
             <th className="px-1.5 py-1.5">Nama Barang</th>
             <th className="px-1.5 py-1.5 text-right">Qty</th>
             <th className="px-1.5 py-1.5">Satuan</th>
+            {hasLength ? (
+              <th className="px-1.5 py-1.5 text-right">Panjang (m)</th>
+            ) : null}
+            {hasWeight ? (
+              <th className="px-1.5 py-1.5 text-right">Berat (kg)</th>
+            ) : null}
             <th className="px-1.5 py-1.5 text-right">Harga</th>
             <th className="px-1.5 py-1.5 text-right">Jumlah</th>
           </tr>
@@ -131,6 +148,20 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
                 {item.quantity}
               </td>
               <td className="px-1.5 py-1.5">{item.unit}</td>
+              {hasLength ? (
+                <td className="px-1.5 py-1.5 text-right tabular-nums">
+                  {item.totalLengthM !== undefined
+                    ? formatDecimal(item.totalLengthM)
+                    : "-"}
+                </td>
+              ) : null}
+              {hasWeight ? (
+                <td className="px-1.5 py-1.5 text-right tabular-nums">
+                  {item.totalWeightKg !== undefined
+                    ? formatDecimal(item.totalWeightKg)
+                    : "-"}
+                </td>
+              ) : null}
               <td className="px-1.5 py-1.5 text-right tabular-nums">
                 {formatRupiah(item.unitPrice)}
               </td>

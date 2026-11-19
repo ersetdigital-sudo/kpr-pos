@@ -31,7 +31,7 @@ export function ProductStockStats({ stats }: ProductStockStatsProps) {
       />
       <StatCard
         label="Stok Masuk Minggu Ini"
-        value={`${formatNumber(stats.incomingThisWeek)} pcs`}
+        value={`${formatNumber(stats.incomingThisWeek)} unit dasar`}
         size="sm"
         labelWeight="normal"
       />

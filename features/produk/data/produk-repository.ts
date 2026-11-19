@@ -3,6 +3,7 @@
 import { recordActivity } from "@/lib/store/activity";
 import { getDatabase, useHydratedDatabase } from "@/lib/store/store";
 import { formatNumber, formatRupiah } from "@/lib/format";
+import { formatDecimal } from "@/lib/units";
 import { selectSession } from "@/features/session/data/session-repository";
 import { hasSalesHistory } from "@/features/produk/data/produk-calculations";
 import {
@@ -76,7 +77,7 @@ export async function createProduct(
   await refreshAfterWrite();
   recordActivity({
     action: "Membuat",
-    detail: `Produk ${input.name.trim()} (${input.sku.trim().toUpperCase()}) · ${formatRupiah(input.price)} · tampil di ${branch?.name ?? "cabang"}`,
+    detail: `Produk ${input.name.trim()} (${input.sku.trim().toUpperCase()}) · ${formatRupiah(input.price)}/${input.baseUnit} · tampil di ${branch?.name ?? "cabang"}${input.units && input.units.length > 0 ? ` · ${input.units.length} satuan jual` : ""}`,
   });
 }
 
@@ -109,9 +110,13 @@ export async function updateProduct(
   );
   assertOk(result);
   await refreshAfterWrite();
+  const dimensionNote =
+    input.lengthM || input.weightKg
+      ? ` · ${input.lengthM ? `${formatDecimal(input.lengthM)} m` : "-"} / ${input.weightKg ? `${formatDecimal(input.weightKg)} kg` : "-"}`
+      : "";
   recordActivity({
     action: "Mengubah",
-    detail: `Produk ${input.name.trim()} · harga ${formatRupiah(input.price)}`,
+    detail: `Produk ${input.name.trim()} · harga ${formatRupiah(input.price)}/${input.baseUnit}${input.units && input.units.length > 0 ? ` · ${input.units.length} satuan jual` : ""}${dimensionNote}`,
   });
 }
 
@@ -205,7 +210,6 @@ export async function deleteCategory(categoryId: string): Promise<void> {
 
 export async function addStockIn(input: StockInInput): Promise<void> {
   const { branch } = selectSession(getDatabase());
-  const total = input.items.reduce((sum, item) => sum + item.quantity, 0);
   const result = await trackCloudWrite(() =>
     addStockInAction(branch.id, input),
   );
@@ -213,7 +217,7 @@ export async function addStockIn(input: StockInInput): Promise<void> {
   await refreshAfterWrite();
   recordActivity({
     action: "Membuat",
-    detail: `Stok masuk ${formatNumber(total)} pcs · ${branch.name}`,
+    detail: `Stok masuk ${formatNumber(input.items.length)} baris · ${branch.name}`,
   });
 }
 
@@ -236,7 +240,6 @@ export async function transferStock(input: TransferInput): Promise<void> {
   const target = database.branches.find(
     (item) => item.id === input.toBranchId,
   );
-  const total = input.items.reduce((sum, item) => sum + item.quantity, 0);
 
   const result = await trackCloudWrite(() =>
     transferStockAction(branch.id, input),
@@ -245,7 +248,7 @@ export async function transferStock(input: TransferInput): Promise<void> {
   await refreshAfterWrite();
   recordActivity({
     action: "Membuat",
-    detail: `Transfer ${formatNumber(total)} pcs dari ${branch.name} ke ${target?.name ?? "cabang tujuan"}`,
+    detail: `Transfer ${formatNumber(input.items.length)} baris dari ${branch.name} ke ${target?.name ?? "cabang tujuan"}`,
   });
 }
 

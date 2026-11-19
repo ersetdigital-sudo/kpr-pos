@@ -14,6 +14,14 @@ import type {
   Transaction,
 } from "@/lib/store/types";
 import { formatDateTimeShort, formatRupiah } from "@/lib/format";
+import {
+  buildCartLineKey,
+  findSellingUnit,
+  formatMixedStock,
+  getItemBaseQuantity,
+  resolveUnitPrice,
+  toBaseQuantity,
+} from "@/lib/units";
 import { isTransactionRefunded } from "@/lib/store/transactions";
 import { calculateSalesCharges } from "@/lib/store/charges";
 import {
@@ -82,6 +90,8 @@ export function getProducts(
           wholesalePrice: product.wholesalePrice ?? 0,
           costPrice: product.costPrice,
           stock: stock.quantity,
+          baseUnit: product.baseUnit,
+          units: product.units,
           categoryId: product.categoryId,
           categoryName:
             categoryById.get(product.categoryId)?.name ?? "Tanpa kategori",
@@ -156,7 +166,7 @@ export function getTransactionHistory(
       createdAt: transaction.createdAt,
       cashierName: employeeById.get(transaction.cashierId)?.name ?? "Kasir",
       itemCount: transaction.items.reduce(
-        (total, item) => total + item.quantity,
+        (total, item) => total + getItemBaseQuantity(item),
         0,
       ),
       method: transaction.payment.method,
@@ -197,17 +207,34 @@ function getDraftTotal(
   );
   const lines: CartLine[] = draft.items.flatMap((item) => {
     const product = products.get(item.productId);
-    return product
-      ? [
-          {
-            product,
-            quantity: item.quantity,
-            priceType: "retail",
-            discountType: "nominal",
-            discountValue: 0,
-          },
-        ]
-      : [];
+    if (!product) return [];
+
+    // unitId kosong dengan unitContent > 1 berarti satuan lama sudah dihapus;
+    // fallback ke satuan dasar dengan qty yang sudah dikonversi.
+    const foundUnit = item.unitId
+      ? findSellingUnit(product, item.unitId)
+      : item.unitContent && item.unitContent > 1
+        ? undefined
+        : findSellingUnit(product, "");
+    const unit = foundUnit ?? findSellingUnit(product, "");
+    if (!unit) return [];
+
+    const quantity =
+      foundUnit === undefined
+        ? item.quantity * (item.unitContent ?? 1)
+        : item.quantity;
+
+    return [
+      {
+        key: buildCartLineKey(product.id, unit.id),
+        product,
+        unit,
+        quantity,
+        priceType: "retail",
+        discountType: "nominal",
+        discountValue: 0,
+      },
+    ];
   });
 
   return calculateCartTotals(lines).total;
@@ -341,28 +368,29 @@ export async function createTransaction(
     getProducts(database, branch.id).map((product) => [product.id, product]),
   );
 
-  const items = input.items.map((item) => {
+  const resolved = input.items.map((item) => {
     const product = productMap.get(item.productId);
 
     if (!product) {
       throw new Error("Ada produk yang sudah tidak tersedia");
     }
-
     if (item.quantity < 1) {
       throw new Error(`Qty ${product.name} tidak valid`);
     }
 
-    if (item.quantity > product.stock) {
-      throw new Error(`Stok ${product.name} tersisa ${product.stock}`);
+    const unit = item.unitId
+      ? findSellingUnit(product, item.unitId)
+      : findSellingUnit(product, "");
+
+    if (!unit) {
+      throw new Error(`Satuan produk ${product.name} sudah tidak tersedia`);
     }
 
+    const baseQuantity = toBaseQuantity(item.quantity, unit);
     const priceType = item.priceType ?? "retail";
     const discountType = item.discountType ?? "nominal";
     const discountValue = Math.max(0, item.discountValue ?? 0);
-    const unitPrice =
-      priceType === "wholesale" && product.wholesalePrice > 0
-        ? product.wholesalePrice
-        : product.price;
+    const unitPrice = resolveUnitPrice(unit, priceType);
     const gross = unitPrice * item.quantity;
     const discountAmount = calculateItemDiscount(
       gross,
@@ -372,7 +400,9 @@ export async function createTransaction(
     );
 
     return {
-      productId: product.id,
+      product,
+      unit,
+      baseQuantity,
       quantity: item.quantity,
       priceType,
       discountType,
@@ -382,6 +412,36 @@ export async function createTransaction(
       lineTotal: gross - discountAmount,
     };
   });
+
+  const baseByProduct = new Map<string, number>();
+  resolved.forEach((item) => {
+    baseByProduct.set(
+      item.product.id,
+      (baseByProduct.get(item.product.id) ?? 0) + item.baseQuantity,
+    );
+  });
+  baseByProduct.forEach((baseQuantity, productId) => {
+    const product = productMap.get(productId);
+    if (!product) return;
+
+    if (baseQuantity > product.stock) {
+      throw new Error(
+        `Stok ${product.name} tersisa ${formatMixedStock(product.stock, product)}`,
+      );
+    }
+  });
+
+  const items = resolved.map((item) => ({
+    productId: item.product.id,
+    unitId: item.unit.id,
+    quantity: item.quantity,
+    priceType: item.priceType,
+    discountType: item.discountType,
+    discountValue: item.discountValue,
+    unitPrice: item.unitPrice,
+    discountAmount: item.discountAmount,
+    lineTotal: item.lineTotal,
+  }));
 
   const subtotal = items.reduce(
     (total, item) => total + item.lineTotal + item.discountAmount,
@@ -438,6 +498,7 @@ export async function createTransaction(
       salesEmployeeId: salesEmployee?.id ?? null,
       items: items.map((item) => ({
         productId: item.productId,
+        unitId: item.unitId || undefined,
         quantity: item.quantity,
         priceType: item.priceType,
         discountType: item.discountType,
@@ -609,19 +670,37 @@ export async function saveDraft(input: SaveDraftInput): Promise<CartDraft> {
     getProducts(database, branch.id).map((product) => [product.id, product]),
   );
 
+  const baseByProduct = new Map<string, number>();
+
   input.items.forEach((item) => {
     const product = productMap.get(item.productId);
     if (!product) throw new Error("Ada produk yang sudah tidak tersedia");
-    if (item.quantity > product.stock) {
-      throw new Error(`Stok ${product.name} tersisa ${product.stock}`);
+
+    const unit = item.unitId
+      ? findSellingUnit(product, item.unitId)
+      : findSellingUnit(product, "");
+    if (!unit) {
+      throw new Error(`Satuan produk ${product.name} sudah tidak tersedia`);
+    }
+
+    baseByProduct.set(
+      product.id,
+      (baseByProduct.get(product.id) ?? 0) + toBaseQuantity(item.quantity, unit),
+    );
+  });
+
+  baseByProduct.forEach((baseQuantity, productId) => {
+    const product = productMap.get(productId);
+    if (!product) return;
+
+    if (baseQuantity > product.stock) {
+      throw new Error(
+        `Stok ${product.name} tersisa ${formatMixedStock(product.stock, product)}`,
+      );
     }
   });
 
-  const totalQuantity = input.items.reduce(
-    (total, item) => total + item.quantity,
-    0,
-  );
-  const label = `Draft ${formatDateTimeShort(new Date())} · ${totalQuantity} item`;
+  const label = `Draft ${formatDateTimeShort(new Date())} · ${input.items.length} baris`;
 
   const result = await trackCloudWrite(() =>
     saveDraftAction({

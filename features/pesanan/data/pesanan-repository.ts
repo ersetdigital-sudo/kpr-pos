@@ -69,23 +69,16 @@ export async function createSalesOrder(
     throw new Error("Nominal ongkir harus lebih dari 0");
   }
 
-  const merged = new Map<string, number>();
-  input.items.forEach((item) => {
-    if (item.quantity <= 0) return;
-    merged.set(
-      item.productId,
-      (merged.get(item.productId) ?? 0) + Math.round(item.quantity),
-    );
-  });
+  const validItems = input.items.filter((item) => item.quantity > 0);
+  if (validItems.length === 0) {
+    throw new Error("Jumlah produk harus lebih dari 0");
+  }
 
-  if (merged.size === 0) throw new Error("Jumlah produk harus lebih dari 0");
-
-  merged.forEach((quantity, productId) => {
+  validItems.forEach((item) => {
     const product = database.products.find(
-      (candidate) => candidate.id === productId && candidate.isActive,
+      (candidate) => candidate.id === item.productId && candidate.isActive,
     );
     if (!product) throw new Error("Ada produk yang tidak tersedia");
-    if (quantity <= 0) throw new Error("Jumlah produk harus lebih dari 0");
   });
 
   const result = await trackCloudWrite(() =>
@@ -99,6 +92,7 @@ export async function createSalesOrder(
         .filter((item) => item.quantity > 0)
         .map((item) => ({
           productId: item.productId,
+          unitId: item.unitId || undefined,
           quantity: item.quantity,
           priceType: item.priceType,
           discountType: item.discountType,
@@ -246,6 +240,6 @@ export async function updateSalesOrderStatus(
 
   recordActivity({
     action: nextStatus === "Dibatalkan" ? "Membatalkan" : "Mengubah",
-    detail: `Pesanan ${order.orderNumber} · ${order.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} pcs` : ""}${nextStatus === "Dibatalkan" && order.transactionId ? " · transaksi kasir direfund" : ""}`,
+    detail: `Pesanan ${order.orderNumber} · ${order.status} → ${nextStatus}${nextStatus === "Lunas" ? ` · stok -${totalQuantity} unit dasar` : ""}${nextStatus === "Dibatalkan" && order.transactionId ? " · transaksi kasir direfund" : ""}`,
   });
 }

@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { BadgeTone } from "@/components/ui/badge-tone";
 import type { Branch, Category } from "@/lib/store/types";
 import { formatNumber, formatRupiah } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 import type {
   ProductFilters,
   ProductPagination,
@@ -104,6 +105,11 @@ export function ProductTable({
                 Grosir {formatRupiah(product.wholesalePrice)}
               </div>
             ) : null}
+            {product.units.length > 0 ? (
+              <div className="text-meta font-normal text-ink-muted">
+                + {product.units.map((unit) => unit.name).join(" · ")}
+              </div>
+            ) : null}
           </div>
         ),
       },
@@ -114,9 +120,9 @@ export function ProductTable({
         cellClassName: "font-bold text-ink",
         cell: (product) => (
           <span>
-            {formatNumber(product.stock)}
+            {formatMixedStock(product.stock, product)}
             <span className="ml-1 text-meta font-normal text-ink-muted">
-              / min {formatNumber(product.minStock)}
+              / min {formatNumber(product.minStock)} {product.baseUnit}
             </span>
           </span>
         ),
@@ -183,7 +189,7 @@ export function ProductTable({
                 className="h-[32px] px-2.5 text-meta"
                 title={
                   product.isVisible && product.stock > 0
-                    ? `Kosongkan stok cabang ini dulu (masih ${formatNumber(product.stock)} pcs)`
+                    ? `Kosongkan stok cabang ini dulu (masih ${formatMixedStock(product.stock, product)})`
                     : product.isVisible
                       ? `Sembunyikan ${product.name} dari cabang ini`
                       : `Tampilkan ${product.name} di cabang ini`

@@ -44,9 +44,20 @@ export interface DocumentParty {
 export interface DocumentLine {
   code: string;
   name: string;
+  /** Qty dalam satuan jual. */
   quantity: number;
+  /** Qty dalam satuan dasar untuk panjang/berat. */
+  baseQuantity: number;
   unit: string;
   unitPrice: number;
+  /** Panjang per satuan dasar (meter), bila ada. */
+  lengthM?: number;
+  /** Berat per satuan dasar (kg), bila ada. */
+  weightKg?: number;
+  /** Total panjang baris = baseQuantity × lengthM. */
+  totalLengthM?: number;
+  /** Total berat baris = baseQuantity × weightKg. */
+  totalWeightKg?: number;
   /** Harga kotor sebelum diskon baris. */
   gross: number;
   discount: number;
@@ -126,6 +137,8 @@ export interface DeliveryNoteViewData {
   note: string;
   totalItems: number;
   totalQuantity: number;
+  totalLengthM: number;
+  totalWeightKg: number;
 }
 
 export interface EnsurePrintDocumentInput {

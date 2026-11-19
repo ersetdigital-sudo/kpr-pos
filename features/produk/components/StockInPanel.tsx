@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { StockItemEditor } from "@/features/produk/components/StockItemEditor";
 import { addStockIn } from "@/features/produk/data/produk-repository";
 import { formatDateLong } from "@/lib/format";
+import { formatMixedStock } from "@/lib/units";
 import type {
   StockInRecord,
   Employee,
@@ -48,6 +49,7 @@ export function StockInPanel({
       .filter((row) => row.productId && row.quantity > 0)
       .map((row) => ({
         productId: row.productId,
+        unitId: row.unitId,
         quantity: Math.round(row.quantity),
       }));
 
@@ -75,6 +77,7 @@ export function StockInPanel({
 
   const employeeName = (userId: string) =>
     employees.find((employee) => employee.id === userId)?.name ?? "Karyawan";
+  const productById = new Map(products.map((product) => [product.id, product]));
 
   const columns: readonly DataTableColumn<StockInRecord>[] = [
     {
@@ -88,10 +91,18 @@ export function StockInPanel({
       header: "Produk",
       cell: (record) => (
         <div className="flex flex-col gap-0.5">
-          {record.items.map((item) => (
-            <span key={item.productId} className="text-ink">
+          {record.items.map((item, index) => (
+            <span key={`${item.productId}-${index}`} className="text-ink">
               {item.productName}{" "}
-              <span className="text-ink-muted">+{item.quantity}</span>
+              <span className="text-ink-muted">
+                +
+                {productById.has(item.productId)
+                  ? formatMixedStock(
+                      item.quantity,
+                      productById.get(item.productId)!,
+                    )
+                  : `${item.quantity} unit`}
+              </span>
             </span>
           ))}
         </div>
@@ -99,7 +110,7 @@ export function StockInPanel({
     },
     {
       id: "total",
-      header: "Total",
+      header: "Total dasar",
       align: "right",
       cellClassName: "font-bold text-ink",
       cell: (record) =>

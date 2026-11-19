@@ -1,4 +1,5 @@
 import { DocumentLetterhead } from "@/features/documents/components/DocumentLetterhead";
+import { formatDecimal } from "@/lib/units";
 import {
   formatDocumentDate,
   paginateDeliveryNote,
@@ -19,6 +20,14 @@ const SIGNATURES = [
 
 export function DeliveryNoteA4Document({ data }: DeliveryNoteA4DocumentProps) {
   const pages = paginateDeliveryNote(data.items, "a4");
+  const hasLength = data.items.some(
+    (item) => item.totalLengthM !== undefined,
+  );
+  const hasWeight = data.items.some(
+    (item) => item.totalWeightKg !== undefined,
+  );
+  const nameWidth =
+    hasLength && hasWeight ? "18%" : hasLength || hasWeight ? "27%" : "36%";
 
   return (
     <>
@@ -105,9 +114,11 @@ export function DeliveryNoteA4Document({ data }: DeliveryNoteA4DocumentProps) {
             <colgroup>
               <col className="w-[6%]" />
               <col className="w-[16%]" />
-              <col className="w-[36%]" />
+              <col style={{ width: nameWidth }} />
               <col className="w-[8%]" />
               <col className="w-[10%]" />
+              {hasLength ? <col className="w-[9%]" /> : null}
+              {hasWeight ? <col className="w-[9%]" /> : null}
               <col className="w-[12%]" />
               <col className="w-[12%]" />
             </colgroup>
@@ -118,6 +129,12 @@ export function DeliveryNoteA4Document({ data }: DeliveryNoteA4DocumentProps) {
                 <th className="px-1 py-1.5 text-left">Nama Barang</th>
                 <th className="px-1 py-1.5 text-right">Qty</th>
                 <th className="px-1 py-1.5 text-left">Satuan</th>
+                {hasLength ? (
+                  <th className="px-1 py-1.5 text-right">Panjang (m)</th>
+                ) : null}
+                {hasWeight ? (
+                  <th className="px-1 py-1.5 text-right">Berat (kg)</th>
+                ) : null}
                 <th className="px-1 py-1.5 text-center">Cek QC (kirim)</th>
                 <th className="px-1 py-1.5 text-center">Cek terima (tiba)</th>
               </tr>
@@ -139,6 +156,20 @@ export function DeliveryNoteA4Document({ data }: DeliveryNoteA4DocumentProps) {
                     {item.quantity}
                   </td>
                   <td className="px-1 py-1.5">{item.unit}</td>
+                  {hasLength ? (
+                    <td className="px-1 py-1.5 text-right tabular-nums">
+                      {item.totalLengthM !== undefined
+                        ? formatDecimal(item.totalLengthM)
+                        : "-"}
+                    </td>
+                  ) : null}
+                  {hasWeight ? (
+                    <td className="px-1 py-1.5 text-right tabular-nums">
+                      {item.totalWeightKg !== undefined
+                        ? formatDecimal(item.totalWeightKg)
+                        : "-"}
+                    </td>
+                  ) : null}
                   <td className="px-1 py-1.5 text-center font-mono">[ ]</td>
                   <td className="px-1 py-1.5 text-center font-mono">[ ]</td>
                 </tr>
@@ -153,8 +184,14 @@ export function DeliveryNoteA4Document({ data }: DeliveryNoteA4DocumentProps) {
                   Total kirim
                 </p>
                 <p className="mt-0.5 mb-0 text-[10.5px]">
-                  {data.totalItems} item · {data.totalQuantity} unit
+                  {data.totalItems} item · {data.totalQuantity} unit dasar
                 </p>
+                {hasLength || hasWeight ? (
+                  <p className="mt-0.5 mb-0 text-[10.5px]">
+                    Panjang total {formatDecimal(data.totalLengthM)} m · Berat
+                    total {formatDecimal(data.totalWeightKg)} kg
+                  </p>
+                ) : null}
                 {data.note ? (
                   <p className="mt-1 mb-0 text-[10px] leading-snug">
                     Catatan: {data.note}

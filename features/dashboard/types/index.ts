@@ -1,4 +1,5 @@
 import type { PaymentMethod } from "@/types";
+import type { ProductUnit } from "@/lib/store/types";
 
 export interface DashboardPaymentCounts {
   cash: number;
@@ -53,6 +54,8 @@ export interface LowStockProduct {
   name: string;
   branch: string;
   remaining: number;
+  baseUnit: string;
+  units: ProductUnit[];
 }
 
 export interface DashboardData {
