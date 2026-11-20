@@ -101,6 +101,8 @@
   margin: 0 auto;
   color: #000000;
   background: #ffffff;
+  /* Pratinjau berada di dalam dialog yang rata kanan; dokumen selalu rata kiri. */
+  text-align: left;
 }
 
 .document-paper--a4 {
