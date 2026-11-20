@@ -1,6 +1,7 @@
 "use client";
 
 import { recordActivity } from "@/lib/store/activity";
+import { syncAppFromCloud } from "@/features/sync/data/app-sync";
 import {
   ensurePrintDocumentAction,
   getPrintDocumentAction,
@@ -18,6 +19,11 @@ export async function ensurePrintDocument(
 ): Promise<PrintDocumentRecord> {
   const result = await ensurePrintDocumentAction(input);
   if (!result.ok) throw new Error(result.error);
+
+  if (input.saveCustomerToProfile) {
+    void syncAppFromCloud({ force: true }).catch(() => undefined);
+  }
+
   return result.data;
 }
 

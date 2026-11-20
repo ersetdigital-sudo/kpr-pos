@@ -35,6 +35,20 @@ export function saveDeliveryNotePaper(paper: DeliveryNotePaper): void {
   }
 }
 
+export const INVOICE_ROWS_PER_PAGE = 9;
+
+/** Pecah baris invoice agar tidak terpotong; header tabel diulang per halaman. */
+export function paginateInvoiceItems<T>(
+  items: readonly T[],
+  rowsPerPage = INVOICE_ROWS_PER_PAGE,
+): T[][] {
+  const pages = Math.max(1, Math.ceil(items.length / rowsPerPage));
+
+  return Array.from({ length: pages }, (_, index) =>
+    items.slice(index * rowsPerPage, (index + 1) * rowsPerPage),
+  );
+}
+
 export function paginateDeliveryNote(
   items: readonly DocumentLine[],
   paper: DeliveryNotePaper,

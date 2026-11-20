@@ -23,6 +23,8 @@ interface DocumentJson {
   driverName: string;
   vehicleNumber: string;
   note: string;
+  recipientAddress: string | null;
+  recipientPhone: string | null;
   createdByName: string;
 }
 
@@ -37,6 +39,8 @@ interface DocumentRow {
   driver_name: string;
   vehicle_number: string;
   note: string;
+  recipient_address: string | null;
+  recipient_phone: string | null;
   created_by_name: string;
 }
 
@@ -56,6 +60,8 @@ function mapJson(row: DocumentJson): PrintDocumentRecord {
     driverName: row.driverName ?? "",
     vehicleNumber: row.vehicleNumber ?? "",
     note: row.note ?? "",
+    recipientAddress: row.recipientAddress ?? null,
+    recipientPhone: row.recipientPhone ?? null,
     createdByName: row.createdByName ?? "",
   };
 }
@@ -72,6 +78,8 @@ function mapRow(row: DocumentRow): PrintDocumentRecord {
     driverName: row.driver_name ?? "",
     vehicleNumber: row.vehicle_number ?? "",
     note: row.note ?? "",
+    recipientAddress: row.recipient_address ?? null,
+    recipientPhone: row.recipient_phone ?? null,
     createdByName: row.created_by_name ?? "",
   };
 }
@@ -138,7 +146,7 @@ export async function getPrintDocumentAction(
   const { data, error } = await admin
     .from("print_documents")
     .select(
-      "id,doc_type,source_type,source_id,branch_id,document_number,doc_date,driver_name,vehicle_number,note,created_by_name",
+      "id,doc_type,source_type,source_id,branch_id,document_number,doc_date,driver_name,vehicle_number,note,recipient_address,recipient_phone,created_by_name",
     )
     .eq("doc_type", docType)
     .eq("source_type", sourceType)

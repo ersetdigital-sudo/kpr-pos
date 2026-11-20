@@ -24,6 +24,9 @@ export interface PrintDocumentRecord {
   driverName: string;
   vehicleNumber: string;
   note: string;
+  /** Null untuk dokumen lama; string kosong berarti memang dikosongkan. */
+  recipientAddress: string | null;
+  recipientPhone: string | null;
   createdByName: string;
 }
 
@@ -83,6 +86,8 @@ export interface DocumentSource {
   branchId: string;
   createdAt: string;
   processedAt?: string;
+  /** Pelanggan master yang tertaut, untuk opsi simpan alamat baru. */
+  customerId: string | null;
   party: DocumentParty;
   items: DocumentLine[];
   subtotal: number;
@@ -131,7 +136,8 @@ export interface InvoiceViewData {
   paidAmount: number;
   remainingAmount: number;
   note: string;
-  termsLine: string;
+  /** Baris Syarat & Catatan; baris kosong tidak dirender. */
+  termsLines: readonly string[];
 }
 
 export interface DeliveryNoteViewData {
@@ -159,6 +165,11 @@ export interface EnsurePrintDocumentInput {
   driverName?: string;
   vehicleNumber?: string;
   note?: string;
+  /** Alamat & telp tujuan; disimpan pada dokumen (bukan selalu pelanggan). */
+  recipientAddress?: string;
+  recipientPhone?: string;
+  /** Isi alamat/telp pelanggan hanya bila masih kosong. */
+  saveCustomerToProfile?: boolean;
 }
 
 export type PrintDocumentActionResult =

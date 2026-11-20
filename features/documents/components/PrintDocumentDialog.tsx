@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -57,11 +57,13 @@ export function PrintDocumentDialog({
   const [driverName, setDriverName] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [note, setNote] = useState("");
+  const [recipientAddress, setRecipientAddress] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [saveCustomerToProfile, setSaveCustomerToProfile] = useState(true);
   const [fieldsDirty, setFieldsDirty] = useState(false);
   const [record, setRecord] = useState<PrintDocumentRecord | null>(null);
-  const [loadingExisting, setLoadingExisting] = useState(
-    docType === "surat_jalan",
-  );
+  const [loadingExisting, setLoadingExisting] = useState(true);
+  const initializedKeyRef = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -69,7 +71,7 @@ export function PrintDocumentDialog({
   const sourceId = source?.sourceId;
 
   useEffect(() => {
-    if (docType !== "surat_jalan" || !sourceType || !sourceId) return;
+    if (!sourceType || !sourceId) return;
 
     let cancelled = false;
 
@@ -82,6 +84,8 @@ export function PrintDocumentDialog({
         setDriverName(existing.driverName);
         setVehicleNumber(existing.vehicleNumber);
         setNote(existing.note);
+        setRecipientAddress(existing.recipientAddress ?? "");
+        setRecipientPhone(existing.recipientPhone ?? "");
       })
       .catch((caught: unknown) => {
         if (cancelled) return;
@@ -116,6 +120,34 @@ export function PrintDocumentDialog({
       ? buildDeliveryNoteView(database, sourceData, record)
       : null;
 
+  useEffect(() => {
+    if (loadingExisting || !sourceData || !source) return;
+
+    const key = [
+      source.sourceType,
+      source.sourceId,
+      record?.id ?? "new",
+      record?.recipientAddress ?? "null",
+      record?.recipientPhone ?? "null",
+    ].join("|");
+
+    if (initializedKeyRef.current === key) return;
+
+    initializedKeyRef.current = key;
+    setRecipientAddress(record?.recipientAddress ?? sourceData.party.address);
+    setRecipientPhone(record?.recipientPhone ?? sourceData.party.phone);
+  }, [loadingExisting, record, source, sourceData]);
+
+  const linkedCustomer =
+    database && sourceData?.customerId
+      ? database.customers.find(
+          (customer) => customer.id === sourceData.customerId,
+        )
+      : undefined;
+  const canSaveCustomer = Boolean(
+    linkedCustomer && !(linkedCustomer.address ?? "").trim(),
+  );
+
   function buildPayload() {
     if (!source) return null;
 
@@ -123,6 +155,9 @@ export function PrintDocumentDialog({
       docType,
       sourceType: source.sourceType,
       sourceId: source.sourceId,
+      recipientAddress,
+      recipientPhone,
+      saveCustomerToProfile: canSaveCustomer && saveCustomerToProfile,
       ...(docType === "surat_jalan" && (fieldsDirty || record)
         ? { driverName, vehicleNumber, note }
         : {}),
@@ -300,6 +335,71 @@ export function PrintDocumentDialog({
                 {blockReason}
               </p>
             ) : null}
+
+            <div className="flex flex-col gap-3 rounded-control border border-line px-3 py-3">
+              <div>
+                <p className="m-0 text-label font-semibold text-ink">
+                  Tujuan dokumen
+                </p>
+                <p className="mt-0.5 mb-0 text-meta text-ink-muted">
+                  Terisi otomatis dari pelanggan dan boleh diubah untuk dokumen
+                  ini.
+                </p>
+              </div>
+
+              <Field label="Alamat tujuan" labelSize="sm">
+                <Textarea
+                  value={recipientAddress}
+                  onChange={(event) =>
+                    setRecipientAddress(event.target.value)
+                  }
+                  placeholder="Alamat pengiriman / penagihan"
+                  rows={3}
+                  disabled={busy || loadingExisting}
+                />
+              </Field>
+
+              <Field label="Telp tujuan (opsional)" labelSize="sm">
+                <Input
+                  value={recipientPhone}
+                  onChange={(event) =>
+                    setRecipientPhone(event.target.value)
+                  }
+                  placeholder="08xxxxxxxxxx"
+                  inputMode="tel"
+                  disabled={busy || loadingExisting}
+                />
+              </Field>
+
+              {canSaveCustomer ? (
+                <label className="flex items-start gap-2.5 rounded-control border border-line bg-canvas px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={saveCustomerToProfile}
+                    onChange={(event) =>
+                      setSaveCustomerToProfile(event.target.checked)
+                    }
+                    disabled={busy || loadingExisting}
+                    className="mt-0.5 h-4 w-4 accent-brand"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-label font-semibold text-ink">
+                      Simpan ke data pelanggan
+                    </span>
+                    <span className="block text-meta text-ink-muted">
+                      Alamat dan telp akan mengisi data pelanggan yang masih
+                      kosong.
+                    </span>
+                  </span>
+                </label>
+              ) : null}
+
+              <p className="m-0 text-meta text-ink-muted">
+                {loadingExisting
+                  ? "Memuat alamat dan isian dokumen sebelumnya…"
+                  : "Alamat dan telp disimpan pada dokumen agar cetak ulang tetap sama."}
+              </p>
+            </div>
 
             {docType === "invoice" ? (
               <div className="rounded-control border border-line px-3 py-3">

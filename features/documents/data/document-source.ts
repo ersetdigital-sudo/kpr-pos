@@ -1,4 +1,3 @@
-import { formatDateShort } from "@/lib/format";
 import type { AppDatabase } from "@/lib/store/types";
 import type {
   DeliveryNoteViewData,
@@ -153,6 +152,7 @@ export function resolveDocumentSource(
       branchId: order.branchId,
       createdAt: order.createdAt,
       processedAt: order.processedAt,
+      customerId: order.customerId ?? null,
       party: buildParty(
         database,
         order.customerId,
@@ -203,6 +203,7 @@ export function resolveDocumentSource(
     branchId: transaction.branchId,
     createdAt: transaction.createdAt,
     processedAt: order?.processedAt,
+    customerId: order?.customerId ?? null,
     party: buildParty(
       database,
       order?.customerId,
@@ -271,26 +272,31 @@ export function getDocumentBlockReason(
   return null;
 }
 
-function buildTerms(source: DocumentSource): string {
-  const parts: string[] = [];
+function buildTerms(
+  source: DocumentSource,
+  shippingAddress: string,
+): string[] {
+  const lines: string[] = ["Pembayaran dilakukan sesuai kesepakatan."];
 
-  if (source.paymentScheme === "tempo" && source.status !== "Lunas") {
-    const tenor = source.tempoDays ? `${source.tempoDays} hari` : "sesuai tenor";
-    const due = source.dueDate
-      ? `, jatuh tempo ${formatDateShort(source.dueDate)}`
-      : "";
-    parts.push(`Pembayaran tempo ${tenor}${due}.`);
+  if (shippingAddress.trim()) {
+    lines.push(`Alamat kirim: ${shippingAddress.trim()}`);
   }
 
-  if (source.note) {
-    parts.push(`Catatan: ${source.note}`);
+  if (source.paymentScheme === "tempo") {
+    lines.push(
+      source.tempoDays
+        ? `Tempo ${source.tempoDays} hari dari tanggal invoice.`
+        : "Pembayaran tempo sesuai kesepakatan.",
+    );
   }
 
-  if (parts.length === 0) {
-    parts.push("Pembayaran dilakukan sesuai kesepakatan.");
+  lines.push("Barang yang sudah diterima tidak dapat dikembalikan.");
+
+  if (source.note.trim()) {
+    lines.push(`Catatan: ${source.note.trim()}`);
   }
 
-  return parts.join(" ");
+  return lines;
 }
 
 export function buildInvoiceView(
@@ -322,13 +328,18 @@ export function buildInvoiceView(
     0,
     Math.round(source.discount - itemDiscountTotal),
   );
+  const recipientParty = {
+    ...source.party,
+    address: record.recipientAddress ?? source.party.address,
+    phone: record.recipientPhone ?? source.party.phone,
+  };
 
   return {
     letterhead: buildLetterhead(database, source.branchId),
     number: record.documentNumber,
     date: record.docDate || source.createdAt,
     badge,
-    party: source.party,
+    party: recipientParty,
     orderNumber: source.orderNumber,
     dueDate:
       source.paymentScheme === "tempo" ? source.dueDate : undefined,
@@ -347,7 +358,7 @@ export function buildInvoiceView(
     paidAmount: source.paidAmount,
     remainingAmount: source.remainingAmount,
     note: source.note,
-    termsLine: buildTerms(source),
+    termsLines: buildTerms(source, recipientParty.address),
   };
 }
 
@@ -360,6 +371,11 @@ export function buildDeliveryNoteView(
     ? database.employees.find((item) => item.id === source.salesEmployeeId)
     : undefined;
   const branch = database.branches.find((item) => item.id === source.branchId);
+  const recipientParty = {
+    ...source.party,
+    address: record.recipientAddress ?? source.party.address,
+    phone: record.recipientPhone ?? source.party.phone,
+  };
 
   return {
     letterhead: buildLetterhead(database, source.branchId),
@@ -368,7 +384,7 @@ export function buildDeliveryNoteView(
     vehicleNumber: record.vehicleNumber,
     driverName: record.driverName,
     orderNumber: source.orderNumber ?? source.sourceNumber,
-    party: source.party,
+    party: recipientParty,
     salesName: sales?.name ?? "-",
     branchName: branch?.name ?? "-",
     items: source.items,
