@@ -11,6 +11,7 @@ import { formatRupiah } from "@/lib/format";
 import { useHydratedDatabase } from "@/lib/store/store";
 import { DeliveryNoteDocument } from "@/features/documents/components/DeliveryNoteDocument";
 import { InvoiceDocument } from "@/features/documents/components/InvoiceDocument";
+import { InvoiceDotMatrixDocument } from "@/features/documents/components/InvoiceDotMatrixDocument";
 import {
   ensurePrintDocument,
   loadPrintDocument,
@@ -25,7 +26,9 @@ import {
 import {
   buildPageSizeCss,
   readDeliveryNotePaper,
+  readInvoicePaper,
   saveDeliveryNotePaper,
+  saveInvoicePaper,
 } from "@/features/documents/data/print-helpers";
 import type {
   DeliveryNotePaper,
@@ -52,7 +55,7 @@ export function PrintDocumentDialog({
   const database = useHydratedDatabase();
   const [step, setStep] = useState<Step>("form");
   const [paper, setPaper] = useState<DeliveryNotePaper>(() =>
-    readDeliveryNotePaper(),
+    docType === "invoice" ? readInvoicePaper() : readDeliveryNotePaper(),
   );
   const [driverName, setDriverName] = useState("");
   const [vehicleNumber, setVehicleNumber] = useState("");
@@ -182,6 +185,7 @@ export function PrintDocumentDialog({
       const saved = await ensurePrintDocument(payload);
       setRecord(saved);
       if (docType === "surat_jalan") saveDeliveryNotePaper(paper);
+      else saveInvoicePaper(paper);
       setStep("preview");
     } catch (caught) {
       setError(
@@ -217,22 +221,27 @@ export function PrintDocumentDialog({
     }
   }
 
-  const title =
-    docType === "invoice" ? "Cetak Invoice" : "Cetak Surat Jalan";
+  const title = docType === "invoice" ? "Cetak Invoice" : "Cetak Surat Jalan";
   const description =
     docType === "invoice"
-      ? "Invoice A4 memakai nomor yang tersimpan agar cetak ulang tetap sama."
+      ? "Pilih kertas A4 atau dot matrix. Nomor invoice tersimpan agar cetak ulang tetap sama."
       : "Surat jalan tanpa harga. Pilih kertas dan isi data pengiriman bila perlu.";
 
   const printRoot =
-    step === "preview" && record && (invoiceView || deliveryNoteView) &&
+    step === "preview" &&
+    record &&
+    (invoiceView || deliveryNoteView) &&
     typeof document !== "undefined"
       ? createPortal(
           <div id="document-print-root" className="hidden">
-            <style>
-              {buildPageSizeCss(docType === "invoice" ? "a4" : paper)}
-            </style>
-            {invoiceView ? <InvoiceDocument data={invoiceView} /> : null}
+            <style>{buildPageSizeCss(paper)}</style>
+            {invoiceView ? (
+              paper === "dot_matrix" ? (
+                <InvoiceDotMatrixDocument data={invoiceView} />
+              ) : (
+                <InvoiceDocument data={invoiceView} />
+              )
+            ) : null}
             {deliveryNoteView ? (
               <DeliveryNoteDocument data={deliveryNoteView} paper={paper} />
             ) : null}
@@ -254,11 +263,7 @@ export function PrintDocumentDialog({
         footer={
           step === "form" ? (
             <>
-              <Button
-                variant="outline"
-                onClick={onClose}
-                disabled={busy}
-              >
+              <Button variant="outline" onClick={onClose} disabled={busy}>
                 Batal
               </Button>
               <Button
@@ -278,11 +283,7 @@ export function PrintDocumentDialog({
               >
                 Kembali
               </Button>
-              <Button
-                variant="primary"
-                onClick={handlePrint}
-                disabled={busy}
-              >
+              <Button variant="primary" onClick={handlePrint} disabled={busy}>
                 {busy ? "Menyiapkan…" : "Cetak"}
               </Button>
             </>
@@ -350,9 +351,7 @@ export function PrintDocumentDialog({
               <Field label="Alamat tujuan" labelSize="sm">
                 <Textarea
                   value={recipientAddress}
-                  onChange={(event) =>
-                    setRecipientAddress(event.target.value)
-                  }
+                  onChange={(event) => setRecipientAddress(event.target.value)}
                   placeholder="Alamat pengiriman / penagihan"
                   rows={3}
                   disabled={busy || loadingExisting}
@@ -362,9 +361,7 @@ export function PrintDocumentDialog({
               <Field label="Telp tujuan (opsional)" labelSize="sm">
                 <Input
                   value={recipientPhone}
-                  onChange={(event) =>
-                    setRecipientPhone(event.target.value)
-                  }
+                  onChange={(event) => setRecipientPhone(event.target.value)}
                   placeholder="08xxxxxxxxxx"
                   inputMode="tel"
                   disabled={busy || loadingExisting}
@@ -401,117 +398,115 @@ export function PrintDocumentDialog({
               </p>
             </div>
 
-            {docType === "invoice" ? (
-              <div className="rounded-control border border-line px-3 py-3">
-                <p className="m-0 text-label font-semibold text-ink">
-                  Kertas A4
-                </p>
-                <p className="mt-0.5 mb-0 text-meta text-ink-muted">
-                  Invoice selalu memakai A4. Nomor dan tanggal disimpan saat
-                  pratinjau pertama, jadi cetak ulang tidak menggandakan nomor.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3.5">
-                <fieldset className="m-0 border-0 p-0">
-                  <legend className="mb-2 text-label font-semibold text-ink-soft">
-                    Ukuran kertas
-                  </legend>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <label className="flex cursor-pointer items-start gap-2.5 rounded-control border border-line-strong px-3 py-3">
-                      <input
-                        type="radio"
-                        name="paper"
-                        value="dot_matrix"
-                        checked={paper === "dot_matrix"}
-                        onChange={() => setPaper("dot_matrix")}
-                        disabled={busy}
-                        className="mt-0.5 h-4 w-4 accent-brand"
-                      />
-                      <span>
-                        <span className="block text-label font-semibold text-ink">
-                          Dot matrix 9,5 × 11 in
-                        </span>
-                        <span className="block text-meta text-ink-muted">
-                          Hitam-putih, Courier, tanpa logo.
-                        </span>
+            <div className="flex flex-col gap-3.5">
+              <fieldset className="m-0 border-0 p-0">
+                <legend className="mb-2 text-label font-semibold text-ink-soft">
+                  Ukuran kertas
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-control border border-line-strong px-3 py-3">
+                    <input
+                      type="radio"
+                      name="paper"
+                      value="dot_matrix"
+                      checked={paper === "dot_matrix"}
+                      onChange={() => setPaper("dot_matrix")}
+                      disabled={busy}
+                      className="mt-0.5 h-4 w-4 accent-brand"
+                    />
+                    <span>
+                      <span className="block text-label font-semibold text-ink">
+                        Dot matrix 9,5 × 11 in
                       </span>
-                    </label>
-                    <label className="flex cursor-pointer items-start gap-2.5 rounded-control border border-line-strong px-3 py-3">
-                      <input
-                        type="radio"
-                        name="paper"
-                        value="a4"
-                        checked={paper === "a4"}
-                        onChange={() => setPaper("a4")}
-                        disabled={busy}
-                        className="mt-0.5 h-4 w-4 accent-brand"
-                      />
-                      <span>
-                        <span className="block text-label font-semibold text-ink">
-                          A4
-                        </span>
-                        <span className="block text-meta text-ink-muted">
-                          Tampilan rapi untuk arsip atau pembeli.
-                        </span>
+                      <span className="block text-meta text-ink-muted">
+                        Hitam-putih, Courier, tanpa logo.
                       </span>
-                    </label>
-                  </div>
-                </fieldset>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Supir (opsional)" labelSize="sm">
-                    <Input
-                      value={driverName}
-                      onChange={(event) => {
-                        setDriverName(event.target.value);
-                        setFieldsDirty(true);
-                      }}
-                      placeholder="Nama pengirim"
-                      disabled={busy || loadingExisting}
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-control border border-line-strong px-3 py-3">
+                    <input
+                      type="radio"
+                      name="paper"
+                      value="a4"
+                      checked={paper === "a4"}
+                      onChange={() => setPaper("a4")}
+                      disabled={busy}
+                      className="mt-0.5 h-4 w-4 accent-brand"
                     />
-                  </Field>
-                  <Field label="No. polisi (opsional)" labelSize="sm">
-                    <Input
-                      value={vehicleNumber}
-                      onChange={(event) => {
-                        setVehicleNumber(event.target.value);
-                        setFieldsDirty(true);
-                      }}
-                      placeholder="AE 1234 XX"
-                      disabled={busy || loadingExisting}
-                    />
-                  </Field>
-                  <Field
-                    label="Catatan pengiriman (opsional)"
-                    labelSize="sm"
-                    className="sm:col-span-2"
-                  >
-                    <Textarea
-                      value={note}
-                      onChange={(event) => {
-                        setNote(event.target.value);
-                        setFieldsDirty(true);
-                      }}
-                      placeholder="Contoh: kirim pagi, hubungi penerima dulu"
-                      rows={2}
-                      disabled={busy || loadingExisting}
-                    />
-                  </Field>
+                    <span>
+                      <span className="block text-label font-semibold text-ink">
+                        A4
+                      </span>
+                      <span className="block text-meta text-ink-muted">
+                        Tampilan rapi untuk arsip atau pembeli.
+                      </span>
+                    </span>
+                  </label>
                 </div>
+              </fieldset>
 
-                <p className="m-0 text-meta text-ink-muted">
-                  {loadingExisting
-                    ? "Memuat isian surat jalan sebelumnya…"
-                    : "Isian ini tersimpan pada surat jalan dan dipakai lagi saat cetak ulang."}
-                </p>
-              </div>
-            )}
+              {docType === "surat_jalan" ? (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Supir (opsional)" labelSize="sm">
+                      <Input
+                        value={driverName}
+                        onChange={(event) => {
+                          setDriverName(event.target.value);
+                          setFieldsDirty(true);
+                        }}
+                        placeholder="Nama pengirim"
+                        disabled={busy || loadingExisting}
+                      />
+                    </Field>
+                    <Field label="No. polisi (opsional)" labelSize="sm">
+                      <Input
+                        value={vehicleNumber}
+                        onChange={(event) => {
+                          setVehicleNumber(event.target.value);
+                          setFieldsDirty(true);
+                        }}
+                        placeholder="AE 1234 XX"
+                        disabled={busy || loadingExisting}
+                      />
+                    </Field>
+                    <Field
+                      label="Catatan pengiriman (opsional)"
+                      labelSize="sm"
+                      className="sm:col-span-2"
+                    >
+                      <Textarea
+                        value={note}
+                        onChange={(event) => {
+                          setNote(event.target.value);
+                          setFieldsDirty(true);
+                        }}
+                        placeholder="Contoh: kirim pagi, hubungi penerima dulu"
+                        rows={2}
+                        disabled={busy || loadingExisting}
+                      />
+                    </Field>
+                  </div>
+
+                  <p className="m-0 text-meta text-ink-muted">
+                    {loadingExisting
+                      ? "Memuat isian surat jalan sebelumnya…"
+                      : "Isian ini tersimpan pada surat jalan dan dipakai lagi saat cetak ulang."}
+                  </p>
+                </>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="rounded-control bg-neutral-200 p-2 sm:p-4">
             <div className="overflow-x-auto">
-              {invoiceView ? <InvoiceDocument data={invoiceView} /> : null}
+              {invoiceView ? (
+                paper === "dot_matrix" ? (
+                  <InvoiceDotMatrixDocument data={invoiceView} />
+                ) : (
+                  <InvoiceDocument data={invoiceView} />
+                )
+              ) : null}
               {deliveryNoteView ? (
                 <DeliveryNoteDocument data={deliveryNoteView} paper={paper} />
               ) : null}

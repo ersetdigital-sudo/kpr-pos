@@ -291,7 +291,7 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
 
                   <DocumentBox className="px-2 py-1">
                     <SummaryRow
-                      label="Harga jual"
+                      label="Harga jual (setelah diskon item)"
                       value={formatRupiah(data.subtotal)}
                     />
                     {data.extraDiscount > 0 ? (

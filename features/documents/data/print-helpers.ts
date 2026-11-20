@@ -35,7 +35,33 @@ export function saveDeliveryNotePaper(paper: DeliveryNotePaper): void {
   }
 }
 
+const INVOICE_PAPER_STORAGE_KEY = "kpr-pos:invoice-paper";
+
+/** Invoice default A4; dot matrix hanya dipakai bila dipilih. */
+export function readInvoicePaper(): DeliveryNotePaper {
+  if (typeof window === "undefined") return "a4";
+
+  try {
+    const value = window.localStorage.getItem(INVOICE_PAPER_STORAGE_KEY);
+    return value === "dot_matrix" ? "dot_matrix" : "a4";
+  } catch {
+    return "a4";
+  }
+}
+
+export function saveInvoicePaper(paper: DeliveryNotePaper): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(INVOICE_PAPER_STORAGE_KEY, paper);
+  } catch {
+    // Pilihan kertas hanya preferensi; gagal menyimpan tidak menghalangi cetak.
+  }
+}
+
 export const INVOICE_ROWS_PER_PAGE = 9;
+/** Dot matrix 11 in memuat lebih sedikit baris karena ada ringkasan dan 3 kotak tanda tangan. */
+export const INVOICE_DOT_ROWS_PER_PAGE = 10;
 
 /** Pecah baris invoice agar tidak terpotong; header tabel diulang per halaman. */
 export function paginateInvoiceItems<T>(
