@@ -1,4 +1,8 @@
-import type { SalesOrderStatus, ShippingMethod } from "@/lib/store/types";
+import type {
+  DiscountType,
+  SalesOrderStatus,
+  ShippingMethod,
+} from "@/lib/store/types";
 
 export type PrintDocumentType = "invoice" | "surat_jalan";
 export type PrintDocumentSourceType = "sales_order" | "transaction";
@@ -61,7 +65,11 @@ export interface DocumentLine {
   /** Harga kotor sebelum diskon baris. */
   gross: number;
   discount: number;
-  /** Harga kotor dikurangi diskon baris. */
+  /** Jenis diskon item; kosong pada data lama berarti nominal. */
+  discountType?: DiscountType;
+  /** Nominal per satuan atau persen, sesuai jenis diskon. */
+  discountValue?: number;
+  /** Harga kotor dikurangi diskon baris (nilai tersimpan). */
   amount: number;
 }
 
@@ -101,7 +109,8 @@ export interface InvoiceViewData {
   letterhead: DocumentLetterhead;
   number: string;
   date: string;
-  badge: "TUNAI" | "COD" | "TEMPO" | "LUNAS";
+  /** Hanya skema COD/Tempo; selain itu tidak ada badge. */
+  badge: "COD" | "TEMPO" | null;
   party: DocumentParty;
   orderNumber: string | null;
   dueDate?: string;
@@ -109,8 +118,10 @@ export interface InvoiceViewData {
   salesName: string;
   branchName: string;
   items: DocumentLine[];
+  /** Jumlah baris setelah diskon item, sebelum potongan luar item. */
   subtotal: number;
-  discount: number;
+  /** Potongan di luar diskon item; 0 berarti baris Potongan disembunyikan. */
+  extraDiscount: number;
   taxEnabled: boolean;
   taxRate: number;
   taxAmount: number;

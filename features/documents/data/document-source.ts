@@ -80,6 +80,8 @@ function buildLines(
     baseQuantity?: number;
     unitPrice: number;
     quantity: number;
+    discountType?: "nominal" | "percent";
+    discountValue?: number;
     discountAmount?: number;
     lineTotal?: number;
   }[],
@@ -111,6 +113,8 @@ function buildLines(
         weightKg !== undefined ? baseQuantity * weightKg : undefined,
       gross,
       discount,
+      discountType: item.discountType,
+      discountValue: item.discountValue,
       amount: item.lineTotal ?? gross - discount,
     };
   });
@@ -283,11 +287,7 @@ function buildTerms(source: DocumentSource): string {
   }
 
   if (parts.length === 0) {
-    parts.push(
-      source.status === "Lunas"
-        ? "Pembayaran telah diterima."
-        : "Pembayaran dilakukan sesuai kesepakatan.",
-    );
+    parts.push("Pembayaran dilakukan sesuai kesepakatan.");
   }
 
   return parts.join(" ");
@@ -302,14 +302,26 @@ export function buildInvoiceView(
     ? database.employees.find((item) => item.id === source.salesEmployeeId)
     : undefined;
   const branch = database.branches.find((item) => item.id === source.branchId);
+  // Badge hanya menandai skema COD/Tempo, bukan status lunas.
   const badge =
-    source.status === "Lunas"
-      ? "LUNAS"
-      : source.paymentScheme === "tempo"
-        ? "TEMPO"
-        : source.paymentScheme === "cod"
-          ? "COD"
-          : "TUNAI";
+    source.paymentScheme === "tempo"
+      ? "TEMPO"
+      : source.paymentScheme === "cod"
+        ? "COD"
+        : null;
+  const itemDiscountTotal = source.items.reduce(
+    (total, item) => total + item.discount,
+    0,
+  );
+  const itemsSubtotal = source.items.reduce(
+    (total, item) => total + item.amount,
+    0,
+  );
+  // Potongan di luar diskon item (mis. diskon keranjang data lama).
+  const extraDiscount = Math.max(
+    0,
+    Math.round(source.discount - itemDiscountTotal),
+  );
 
   return {
     letterhead: buildLetterhead(database, source.branchId),
@@ -324,8 +336,8 @@ export function buildInvoiceView(
     salesName: sales?.name ?? "-",
     branchName: branch?.name ?? "-",
     items: source.items,
-    subtotal: source.subtotal,
-    discount: source.discount,
+    subtotal: itemsSubtotal,
+    extraDiscount,
     taxEnabled: source.taxEnabled && source.taxAmount > 0,
     taxRate: source.taxRate,
     taxAmount: source.taxAmount,

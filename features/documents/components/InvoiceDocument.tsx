@@ -3,7 +3,10 @@ import { formatDecimal } from "@/lib/units";
 import { terbilangRupiah } from "@/lib/terbilang";
 import { DocumentLetterhead } from "@/features/documents/components/DocumentLetterhead";
 import { formatDocumentDate } from "@/features/documents/data/print-helpers";
-import type { InvoiceViewData } from "@/features/documents/types";
+import type {
+  DocumentLine,
+  InvoiceViewData,
+} from "@/features/documents/types";
 
 interface InvoiceDocumentProps {
   data: InvoiceViewData;
@@ -30,6 +33,23 @@ function SummaryRow({
       <span className="whitespace-nowrap tabular-nums">{value}</span>
     </div>
   );
+}
+
+/** Harga satuan setelah diskon item; nominal baris tetap memakai nilai tersimpan. */
+function resolveLineDiscount(item: DocumentLine): {
+  discountPerUnit: number;
+  netUnitPrice: number;
+} {
+  if (item.discount <= 0 || item.quantity <= 0) {
+    return { discountPerUnit: 0, netUnitPrice: item.unitPrice };
+  }
+
+  const discountPerUnit = Math.round(item.discount / item.quantity);
+
+  return {
+    discountPerUnit,
+    netUnitPrice: Math.max(0, item.unitPrice - discountPerUnit),
+  };
 }
 
 export function InvoiceDocument({ data }: InvoiceDocumentProps) {
@@ -59,9 +79,11 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
         <h2 className="m-0 text-[26px] leading-none font-extrabold tracking-[0.22em]">
           INVOICE
         </h2>
-        <span className="border border-black px-3 py-1 text-[10px] font-bold tracking-[0.18em]">
-          {data.badge}
-        </span>
+        {data.badge ? (
+          <span className="border border-black px-3 py-1 text-[10px] font-bold tracking-[0.18em]">
+            {data.badge}
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-4 grid grid-cols-[1.25fr_1fr] gap-6">
@@ -139,11 +161,25 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
           </tr>
         </thead>
         <tbody>
-          {data.items.map((item, index) => (
+          {data.items.map((item, index) => {
+            const linePricing = resolveLineDiscount(item);
+
+            return (
             <tr key={`${item.code}-${index}`} className="border-b border-neutral-300">
               <td className="px-1.5 py-1.5 text-center">{index + 1}</td>
               <td className="px-1.5 py-1.5 font-mono text-[9.5px]">{item.code}</td>
-              <td className="px-1.5 py-1.5 break-words">{item.name}</td>
+              <td className="px-1.5 py-1.5 break-words">
+                <div>{item.name}</div>
+                {item.discount > 0 ? (
+                  <div className="mt-0.5 text-[8.5px] leading-tight italic text-neutral-500">
+                    Harga awal {formatRupiah(item.unitPrice)}, diskon{" "}
+                    {formatRupiah(linePricing.discountPerUnit)} / {item.unit}
+                    {item.discountType === "percent" && item.discountValue
+                      ? ` (${formatPercent(item.discountValue)})`
+                      : ""}
+                  </div>
+                ) : null}
+              </td>
               <td className="px-1.5 py-1.5 text-right tabular-nums">
                 {item.quantity}
               </td>
@@ -163,13 +199,14 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
                 </td>
               ) : null}
               <td className="px-1.5 py-1.5 text-right tabular-nums">
-                {formatRupiah(item.unitPrice)}
+                {formatRupiah(linePricing.netUnitPrice)}
               </td>
               <td className="px-1.5 py-1.5 text-right font-semibold tabular-nums">
-                {formatRupiah(item.gross)}
+                {formatRupiah(item.amount)}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
 
@@ -185,13 +222,16 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
 
         <div className="flex flex-col gap-1.5">
           <SummaryRow label="Subtotal" value={formatRupiah(data.subtotal)} />
-          {data.discount > 0 ? (
-            <SummaryRow label="Potongan" value={`- ${formatRupiah(data.discount)}`} />
+          {data.extraDiscount > 0 ? (
+            <SummaryRow
+              label="Potongan"
+              value={`- ${formatRupiah(data.extraDiscount)}`}
+            />
           ) : null}
           {data.taxEnabled ? (
             <SummaryRow
               label="DPP"
-              value={formatRupiah(data.subtotal - data.discount)}
+              value={formatRupiah(data.subtotal - data.extraDiscount)}
             />
           ) : null}
           {data.taxEnabled ? (
