@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { getDatabase } from "@/lib/store/store";
 import { formatDateLong, formatDateTimeLong, formatPercent, formatRupiah } from "@/lib/format";
+import { resolveDiscountedUnitPricing } from "@/lib/document-pricing";
 import { getItemUnitName } from "@/lib/units";
 import type { SalesOrder } from "@/lib/store/types";
 
@@ -30,12 +31,9 @@ export function CreditOrderReceiptModal({
     (item) => item.id === order.salesEmployeeId,
   );
   const paperSize = database.settings.receipt.paperSize;
-  const subtotal = order.items.reduce(
-    (total, item) => total + item.unitPrice * item.quantity,
-    0,
-  );
-  const discount = order.items.reduce(
-    (total, item) => total + (item.discountAmount ?? 0),
+  const itemsSubtotal = order.items.reduce(
+    (total, item) =>
+      total + item.unitPrice * item.quantity - (item.discountAmount ?? 0),
     0,
   );
   const isTempo = order.paymentScheme === "tempo";
@@ -110,7 +108,18 @@ export function CreditOrderReceiptModal({
       <div className="my-2 border-t border-dashed border-ink/30" />
 
       <div className="flex flex-col gap-2">
-        {order.items.map((item, index) => (
+        {order.items.map((item, index) => {
+          const unitName = getItemUnitName(item);
+          const discountAmount = item.discountAmount ?? 0;
+          const pricing = resolveDiscountedUnitPricing({
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            discountAmount,
+            discountType: item.discountType,
+            discountValue: item.discountValue,
+          });
+
+          return (
           <div
             key={`${item.productId}-${index}`}
             className="flex justify-between gap-2 text-[10px]"
@@ -118,20 +127,28 @@ export function CreditOrderReceiptModal({
             <div className="min-w-0 flex-1">
               <div className="font-semibold">{item.productName}</div>
               <div>
-                {item.quantity} {getItemUnitName(item)} ×{" "}
-                {formatRupiah(item.unitPrice)}
-                {item.discountAmount
-                  ? ` · diskon ${formatRupiah(item.discountAmount)}`
-                  : ""}
+                {item.quantity} {unitName} ×{" "}
+                {formatRupiah(pricing.netUnitPrice)}
+                {item.priceType === "wholesale" ? " (grosir)" : ""}
               </div>
+              {pricing.hasDiscount ? (
+                <div className="leading-tight text-danger-ink">
+                  Harga awal {formatRupiah(item.unitPrice)}, diskon{" "}
+                  {formatRupiah(pricing.discountPerUnit)}/{unitName}
+                  {item.discountType === "percent" && item.discountValue
+                    ? ` (${formatPercent(item.discountValue)})`
+                    : ""}
+                </div>
+              ) : null}
             </div>
             <div className="shrink-0 font-semibold">
               {formatRupiah(
-                item.unitPrice * item.quantity - (item.discountAmount ?? 0),
+                item.unitPrice * item.quantity - discountAmount,
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="my-2 border-t border-dashed border-ink/30" />
@@ -139,14 +156,8 @@ export function CreditOrderReceiptModal({
       <div className="flex flex-col gap-1 text-[10px]">
         <div className="flex justify-between gap-2">
           <span>Subtotal</span>
-          <span>{formatRupiah(subtotal)}</span>
+          <span>{formatRupiah(itemsSubtotal)}</span>
         </div>
-        {discount > 0 ? (
-          <div className="flex justify-between gap-2">
-            <span>Diskon</span>
-            <span>- {formatRupiah(discount)}</span>
-          </div>
-        ) : null}
         {order.taxEnabled && order.taxAmount > 0 ? (
           <div className="flex justify-between gap-2">
             <span>PPN {formatPercent(order.taxRate)}</span>

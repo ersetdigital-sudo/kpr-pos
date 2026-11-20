@@ -1,12 +1,10 @@
 import { formatPercent, formatRupiah } from "@/lib/format";
 import { formatDecimal } from "@/lib/units";
+import { resolveDiscountedUnitPricing } from "@/lib/document-pricing";
 import { terbilangRupiah } from "@/lib/terbilang";
 import { DocumentLetterhead } from "@/features/documents/components/DocumentLetterhead";
 import { formatDocumentDate } from "@/features/documents/data/print-helpers";
-import type {
-  DocumentLine,
-  InvoiceViewData,
-} from "@/features/documents/types";
+import type { InvoiceViewData } from "@/features/documents/types";
 
 interface InvoiceDocumentProps {
   data: InvoiceViewData;
@@ -33,23 +31,6 @@ function SummaryRow({
       <span className="whitespace-nowrap tabular-nums">{value}</span>
     </div>
   );
-}
-
-/** Harga satuan setelah diskon item; nominal baris tetap memakai nilai tersimpan. */
-function resolveLineDiscount(item: DocumentLine): {
-  discountPerUnit: number;
-  netUnitPrice: number;
-} {
-  if (item.discount <= 0 || item.quantity <= 0) {
-    return { discountPerUnit: 0, netUnitPrice: item.unitPrice };
-  }
-
-  const discountPerUnit = Math.round(item.discount / item.quantity);
-
-  return {
-    discountPerUnit,
-    netUnitPrice: Math.max(0, item.unitPrice - discountPerUnit),
-  };
 }
 
 export function InvoiceDocument({ data }: InvoiceDocumentProps) {
@@ -162,7 +143,13 @@ export function InvoiceDocument({ data }: InvoiceDocumentProps) {
         </thead>
         <tbody>
           {data.items.map((item, index) => {
-            const linePricing = resolveLineDiscount(item);
+            const linePricing = resolveDiscountedUnitPricing({
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              discountAmount: item.discount,
+              discountType: item.discountType,
+              discountValue: item.discountValue,
+            });
 
             return (
             <tr key={`${item.code}-${index}`} className="border-b border-neutral-300">

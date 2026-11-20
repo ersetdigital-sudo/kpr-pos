@@ -2,13 +2,25 @@
 
 import Image from "next/image";
 import { formatDateTimeLong, formatPercent, formatRupiah } from "@/lib/format";
+import { resolveDiscountedUnitPricing } from "@/lib/document-pricing";
 import { getItemUnitName } from "@/lib/units";
-import { shippingChargeLabel } from "@/lib/store/charges";
 import type { ReceiptViewData } from "@/features/kasir/types";
 
 export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
   const { transaction } = receipt;
   const compact = receipt.paperSize === 58;
+  const itemDiscountTotal = transaction.items.reduce(
+    (total, item) => total + (item.discountAmount ?? 0),
+    0,
+  );
+  const itemsSubtotal = transaction.items.reduce(
+    (total, item) => total + item.lineTotal,
+    0,
+  );
+  const extraDiscount = Math.max(
+    0,
+    Math.round(transaction.discount.amount - itemDiscountTotal),
+  );
 
   return (
     <div
@@ -84,7 +96,18 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
       <div className="my-2 border-t border-dashed border-ink/30" />
 
       <div className="flex flex-col gap-2">
-        {transaction.items.map((item, index) => (
+        {transaction.items.map((item, index) => {
+          const unitName = getItemUnitName(item);
+          const discountAmount = item.discountAmount ?? 0;
+          const pricing = resolveDiscountedUnitPricing({
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            discountAmount,
+            discountType: item.discountType,
+            discountValue: item.discountValue,
+          });
+
+          return (
           <div
             key={`${item.productId}-${index}`}
             className="flex justify-between gap-2 text-[10px]"
@@ -92,18 +115,17 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
             <div className="min-w-0 flex-1">
               <div className="font-semibold">{item.productName}</div>
               <div>
-                {item.quantity} {getItemUnitName(item)} ×{" "}
-                {formatRupiah(item.unitPrice)}
+                {item.quantity} {unitName} ×{" "}
+                {formatRupiah(pricing.netUnitPrice)}
                 {item.priceType === "wholesale" ? " (grosir)" : ""}
               </div>
-              {item.discountAmount ? (
-                <div className="text-danger-ink">
-                  Diskon{" "}
-                  {item.discountType === "percent"
-                    ? `${item.discountValue ?? 0}%`
-                    : `${formatRupiah(item.discountValue ?? 0)}/${getItemUnitName(item)}`}
-                  {" · -"}
-                  {formatRupiah(item.discountAmount)}
+              {pricing.hasDiscount ? (
+                <div className="leading-tight text-danger-ink">
+                  Harga awal {formatRupiah(item.unitPrice)}, diskon{" "}
+                  {formatRupiah(pricing.discountPerUnit)}/{unitName}
+                  {item.discountType === "percent" && item.discountValue
+                    ? ` (${formatPercent(item.discountValue)})`
+                    : ""}
                 </div>
               ) : null}
             </div>
@@ -111,7 +133,8 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
               {formatRupiah(item.lineTotal)}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="my-2 border-t border-dashed border-ink/30" />
@@ -119,12 +142,12 @@ export function ReceiptPaper({ receipt }: { receipt: ReceiptViewData }) {
       <div className="flex flex-col gap-1 text-[10px]">
         <div className="flex justify-between gap-2">
           <span>Subtotal</span>
-          <span>{formatRupiah(transaction.subtotal)}</span>
+          <span>{formatRupiah(itemsSubtotal)}</span>
         </div>
-        {transaction.discount.amount > 0 ? (
+        {extraDiscount > 0 ? (
           <div className="flex justify-between gap-2">
             <span>Diskon</span>
-            <span>- {formatRupiah(transaction.discount.amount)}</span>
+            <span>- {formatRupiah(extraDiscount)}</span>
           </div>
         ) : null}
         {transaction.taxEnabled && transaction.taxAmount > 0 ? (
