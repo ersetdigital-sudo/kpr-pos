@@ -32,11 +32,11 @@ export function DeliveryNoteDotMatrixDocument({
     hasLength && hasWeight ? "20%" : hasLength || hasWeight ? "28%" : "36%";
 
   const metaItems = [
-    { label: "Tanggal", value: formatDocumentDate(data.date) },
-    { label: "No. SJ", value: data.number },
-    { label: "No. Pol", value: data.vehicleNumber || "-" },
-    { label: "Supir", value: data.driverName || "-" },
-    { label: "No. Order", value: data.orderNumber },
+    { label: "Tanggal", value: `: ${formatDocumentDate(data.date)}` },
+    { label: "No. SJ", value: `: ${data.number}` },
+    { label: "No. Pol", value: `: ${data.vehicleNumber || "-"}` },
+    { label: "Supir", value: `: ${data.driverName || "-"}` },
+    { label: "No. Order", value: `: ${data.orderNumber}` },
   ];
 
   const signatureItems: readonly DocumentSignatureItem[] = [
@@ -56,7 +56,7 @@ export function DeliveryNoteDotMatrixDocument({
       {pages.map((page) => (
         <section
           key={page.pageNumber}
-          className="document-paper document-paper--dot document-page mb-4 flex flex-col bg-white text-black print:mb-0"
+          className="document-paper document-paper--dot document-page mb-4 flex flex-col bg-white text-black uppercase print:mb-0"
         >
           <div className="flex items-start justify-between gap-4 border-b border-black pb-1">
             <DocumentCompanyIdentity
@@ -76,14 +76,16 @@ export function DeliveryNoteDotMatrixDocument({
 
           <div className="mt-1 flex flex-col gap-0.5 text-[8.5px]">
             <div>
-              <span className="font-bold">Kirim ke:</span> {data.party.name}
+              <span className="font-bold">Kirim ke :</span> {data.party.name}
             </div>
-            {data.party.phone.trim() ? (
-              <div>
-                <span className="font-bold">Penerima/Telp:</span>{" "}
-                {data.party.phone}
-              </div>
+            {data.party.address.trim() ? (
+              <div className="whitespace-pre-line">{data.party.address}</div>
             ) : null}
+            <div>
+              <span className="font-bold">Penerima / Telp :</span>{" "}
+              {data.party.name}
+              {data.party.phone.trim() ? ` / ${data.party.phone}` : ""}
+            </div>
           </div>
 
           <div className="mt-1 flex min-h-[290px] flex-1 flex-col border border-black">
@@ -176,8 +178,7 @@ export function DeliveryNoteDotMatrixDocument({
 
             {page.isLast ? (
               <div className="border-t border-black px-1 py-[2px] text-[9px] font-bold">
-                TOTAL KIRIM: {data.totalItems} item / {data.totalQuantity} unit
-                dasar
+                TOTAL KIRIM : {data.totalItems} ITEM / {data.totalQuantity} UNIT
                 {hasLength || hasWeight ? (
                   <div className="mt-0.5 text-[8px] font-normal">
                     Panjang total {formatDecimal(data.totalLengthM)} m · Berat
@@ -190,11 +191,11 @@ export function DeliveryNoteDotMatrixDocument({
 
           <DocumentBox className="mt-1 px-1.5 py-1" padded={false}>
             <div className="grid grid-cols-3 gap-x-3 text-[8px]">
-              <div>Catatan: {data.note || "-"}</div>
-              <div>Pembeli: {data.party.name}</div>
+              <div>Catatan : {data.note || "-"}</div>
+              <div>Pembeli : {data.party.name}</div>
               {data.party.address.trim() ? (
                 <div className="whitespace-pre-line">
-                  Alamat: {data.party.address}
+                  Alamat : {data.party.address}
                 </div>
               ) : (
                 <div />
@@ -210,13 +211,15 @@ export function DeliveryNoteDotMatrixDocument({
             <div className="flex-1" />
           )}
 
-          <div className="mt-1 grid grid-cols-4 gap-2 border-t border-black pt-0.5 text-[7.5px]">
-            <span>Note: {data.note || "-"}</span>
-            <span>
-              Lembar: {page.pageNumber}/{page.totalPages}
-            </span>
-            <span>Sales: {data.salesName}</span>
-            <span className="text-right">Hal: {page.pageNumber}</span>
+          <div className="mt-1 border-t border-black pt-0.5 text-[7.5px] leading-tight">
+            <div>Note : Barang yang sudah diterima dan surat jalan ini sudah ditandatangani penerima, maka barang tidak dapat dikembalikan dengan alasan apapun.</div>
+            <div className="mt-0.5 flex justify-between gap-2">
+              <span>Lembar : [sesuai rangkap]</span>
+              <span>
+                Sales : {data.salesName} &nbsp; Hal. {page.pageNumber}/
+                {page.totalPages}
+              </span>
+            </div>
           </div>
         </section>
       ))}

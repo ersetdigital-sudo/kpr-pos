@@ -1,6 +1,25 @@
 import { cn } from "@/lib/cn";
 import type { DocumentLetterhead } from "@/features/documents/types";
 
+/** Alamat kop dot matrix: singkatan umum, huruf kapital, dibagi dua baris. */
+function formatDotAddressLines(address: string): string[] {
+  const parts = address
+    .replace(/Kecamatan/gi, "Kec.")
+    .replace(/Kabupaten/gi, "Kab.")
+    .replace(/Kode Pos/gi, "Kodepos")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 2) return [parts.join(" ")];
+
+  const middle = Math.ceil(parts.length / 2);
+  return [
+    parts.slice(0, middle).join(" ").toUpperCase(),
+    parts.slice(middle).join(" ").toUpperCase(),
+  ];
+}
+
 interface DocumentCompanyIdentityProps {
   letterhead: DocumentLetterhead;
   variant?: "a4" | "dot";
@@ -36,7 +55,15 @@ export function DocumentCompanyIdentity({
         </div>
       ) : null}
       {letterhead.businessAddress ? (
-        <div className={lineClass}>{letterhead.businessAddress}</div>
+        isDot ? (
+          formatDotAddressLines(letterhead.businessAddress).map((line) => (
+            <div key={line} className={lineClass}>
+              {line}
+            </div>
+          ))
+        ) : (
+          <div className={lineClass}>{letterhead.businessAddress}</div>
+        )
       ) : null}
       {letterhead.businessPhone ? (
         <div className={lineClass}>Telp. {letterhead.businessPhone}</div>

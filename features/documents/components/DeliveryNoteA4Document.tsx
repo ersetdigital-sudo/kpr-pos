@@ -164,7 +164,6 @@ export function DeliveryNoteA4Document({ data }: DeliveryNoteA4DocumentProps) {
             {page.isLast ? (
               <div className="border-t border-black px-1.5 py-1 text-[9px] font-bold">
                 Total kirim: {data.totalItems} item · {data.totalQuantity} unit
-                dasar
                 {hasLength || hasWeight ? (
                   <div className="mt-0.5 text-[8.5px] font-normal">
                     Panjang total {formatDecimal(data.totalLengthM)} m · Berat
@@ -189,7 +188,7 @@ export function DeliveryNoteA4Document({ data }: DeliveryNoteA4DocumentProps) {
           )}
 
           <footer className="mt-2 flex items-center justify-between border-t border-neutral-300 pt-1 text-[8px] text-neutral-500">
-            <span>Barang yang sudah diterima tidak dapat dikembalikan.</span>
+            <span>Barang yang sudah diterima dan surat jalan ini sudah ditandatangani penerima, maka barang tidak dapat dikembalikan dengan alasan apapun.</span>
             <span>
               Hal. {page.pageNumber}/{page.totalPages}
             </span>

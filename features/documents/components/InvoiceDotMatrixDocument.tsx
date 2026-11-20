@@ -60,16 +60,21 @@ export function InvoiceDotMatrixDocument({
   );
 
   const metaItems = [
-    { label: "Tanggal", value: formatDocumentDate(data.date) },
-    { label: "No. Invoice", value: data.number },
+    { label: "Tanggal", value: `: ${formatDocumentDate(data.date)}` },
+    { label: "No. Invoice", value: `: ${data.number}` },
     ...(data.orderNumber
-      ? [{ label: "No. Pesanan", value: data.orderNumber }]
+      ? [{ label: "No. Pesanan", value: `: ${data.orderNumber}` }]
       : []),
     ...(data.dueDate
-      ? [{ label: "Jatuh tempo", value: formatDocumentDate(data.dueDate) }]
+      ? [
+          {
+            label: "Jatuh tempo",
+            value: `: ${formatDocumentDate(data.dueDate)}`,
+          },
+        ]
       : []),
-    { label: "Sales", value: data.salesName },
-    { label: "Cabang", value: data.branchName },
+    { label: "Sales", value: `: ${data.salesName}` },
+    { label: "Cabang", value: `: ${data.branchName}` },
   ];
 
   const signatureItems: readonly DocumentSignatureItem[] = [
@@ -89,7 +94,7 @@ export function InvoiceDotMatrixDocument({
         return (
           <section
             key={pageIndex}
-            className="document-paper document-paper--dot document-page mb-4 flex flex-col bg-white text-black print:mb-0"
+            className="document-paper document-paper--dot document-page mb-4 flex flex-col bg-white text-black uppercase print:mb-0"
           >
             <div className="flex items-start justify-between gap-4 border-b border-black pb-1">
               <DocumentCompanyIdentity

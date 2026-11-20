@@ -290,7 +290,7 @@ function buildTerms(
     );
   }
 
-  lines.push("Barang yang sudah diterima tidak dapat dikembalikan.");
+  lines.push("Barang yang sudah diterima tidak dapat dikembalikan tanpa persetujuan.");
 
   if (source.note.trim()) {
     lines.push(`Catatan: ${source.note.trim()}`);
